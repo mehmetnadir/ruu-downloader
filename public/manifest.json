@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Ruu Downloader (dev)",
+  "version": "0.0.1",
+  "description": "Modern, minimal segmented download manager. Development build.",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "downloads",
+    "storage",
+    "unlimitedStorage",
+    "sidePanel",
+    "offscreen",
+    "notifications",
+    "power"
+  ],
+  "host_permissions": ["*://*/*"],
+  "background": { "service_worker": "sw.js", "type": "module" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "action": { "default_title": "Ruu Downloader" }
+}

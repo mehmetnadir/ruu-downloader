@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruu</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 19h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Ruu</span>
+  </div>
+  <div class="topbar-actions">
+    <button id="pause-all" class="icon-btn" title="Tümünü duraklat">
+      <svg viewBox="0 0 24 24" width="16" height="16"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="add-row">
+  <input id="url-input" type="url" placeholder="URL yapıştır…" spellcheck="false">
+  <button id="add-btn" class="primary" title="İndir">
+    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 5v14m0 0l-5-5m5 5l5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</div>
+
+<main>
+  <section id="active-section">
+    <h2>AKTİF <span id="active-count"></span></h2>
+    <div id="active-list"></div>
+  </section>
+  <section id="done-section">
+    <h2>TAMAMLANAN <span id="done-count"></span></h2>
+    <div id="done-list"></div>
+  </section>
+  <p id="empty-hint">Henüz indirme yok. Bir URL yapıştır ya da bir siteden indirme başlat.</p>
+</main>
+
+<script type="module" src="sidepanel.js"></script>
+</body>
+</html>
