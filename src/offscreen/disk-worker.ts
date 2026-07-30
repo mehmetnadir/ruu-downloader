@@ -1,21 +1,24 @@
 /**
- * Disk Worker — OPFS positioned write.
+ * Disk Worker — OPFS positioned write + meta sidecar.
  * createSyncAccessHandle SADECE dedicated worker'da çalışır; motorun ayrı
  * worker'da olmasının tek sebebi bu. Segmentler nihai byte konumuna yazılır,
- * merge fazı yoktur.
+ * merge fazı yoktur. Meta (jobs/<id>.meta) crash-resume aralık günlüğüdür.
  */
 
-interface InitMsg { type: 'init'; jobId: string; size: number }
+interface InitMsg { type: 'init'; jobId: string; size: number; fresh: boolean }
 interface WriteMsg { type: 'write'; offset: number; buf: Uint8Array }
+interface MetaMsg { type: 'meta'; json: string }
 interface FinalizeMsg { type: 'finalize' }
 interface AbortMsg { type: 'abort' }
-type InMsg = InitMsg | WriteMsg | FinalizeMsg | AbortMsg;
+type InMsg = InitMsg | WriteMsg | MetaMsg | FinalizeMsg | AbortMsg;
 
 const FLUSH_EVERY_BYTES = 32 << 20; // 32 MiB'de bir flush — crash penceresini sınırlar
 
 let handle: FileSystemSyncAccessHandle | null = null;
+let metaHandle: FileSystemSyncAccessHandle | null = null;
 let jobId = '';
 let unflushed = 0;
+const textEncoder = new TextEncoder();
 
 const post = (msg: Record<string, unknown>) => (self as unknown as Worker).postMessage(msg);
 
@@ -31,9 +34,20 @@ self.onmessage = async (ev: MessageEvent<InMsg>) => {
       case 'init': {
         jobId = msg.jobId;
         const dir = await getJobsDir();
-        const fh = await dir.getFileHandle(jobId, { create: true });
+        const fh = await dir.getFileHandle(jobId, { create: msg.fresh });
         handle = await fh.createSyncAccessHandle();
-        handle.truncate(msg.size);
+        if (msg.fresh) {
+          handle.truncate(msg.size);
+        } else if (handle.getSize() !== msg.size) {
+          // yarım truncate/uyumsuz dosya → güvenli yol: sıfırdan başla
+          handle.truncate(msg.size);
+          post({ type: 'size-mismatch' });
+          const mfh = await dir.getFileHandle(`${jobId}.meta`, { create: true });
+          metaHandle = await mfh.createSyncAccessHandle();
+          break;
+        }
+        const mfh = await dir.getFileHandle(`${jobId}.meta`, { create: true });
+        metaHandle = await mfh.createSyncAccessHandle();
         post({ type: 'ready' });
         break;
       }
@@ -45,7 +59,15 @@ self.onmessage = async (ev: MessageEvent<InMsg>) => {
           handle.flush();
           unflushed = 0;
         }
-        post({ type: 'wrote', bytes: msg.buf.byteLength });
+        post({ type: 'wrote', offset: msg.offset, bytes: msg.buf.byteLength });
+        break;
+      }
+      case 'meta': {
+        if (!metaHandle) break;
+        const buf = textEncoder.encode(msg.json);
+        metaHandle.truncate(0);
+        metaHandle.write(buf, { at: 0 });
+        metaHandle.flush();
         break;
       }
       case 'finalize': {
@@ -53,18 +75,22 @@ self.onmessage = async (ev: MessageEvent<InMsg>) => {
         handle.flush();
         handle.close();
         handle = null;
+        metaHandle?.close();
+        metaHandle = null;
         post({ type: 'finalized' });
         break;
       }
       case 'abort': {
         try {
-          handle?.flush();
           handle?.close();
+          metaHandle?.close();
         } catch { /* kapanmışsa sorun değil */ }
         handle = null;
+        metaHandle = null;
         if (jobId) {
           const dir = await getJobsDir();
           await dir.removeEntry(jobId).catch(() => undefined);
+          await dir.removeEntry(`${jobId}.meta`).catch(() => undefined);
         }
         post({ type: 'aborted' });
         break;

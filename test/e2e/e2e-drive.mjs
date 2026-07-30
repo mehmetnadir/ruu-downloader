@@ -5,6 +5,7 @@
  * Kullanım: node test/e2e/e2e-drive.mjs <cdpPort> <extId> <serverPort> <downloadDir>
  */
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { spawn, execSync } from 'node:child_process';
 
 const [cdpPort, extId, serverPort, downloadDir] = process.argv.slice(2);
 if (!downloadDir) {
@@ -172,8 +173,83 @@ const MB = 1024 * 1024;
   record('S4 tarayıcı indirmesini devralma', st === 'done' && !bad, bad ?? `state=${st}`);
 }
 
-browser.close();
-panel.close();
+// S5: CRASH-RESUME — indirme ortasında tarayıcıyı öldür, yeniden başlat, devam ettir (PRD F3)
+{
+  const url = `http://localhost:${serverPort}/f/80?rate=2`;
+  await evalIn(panel, `chrome.runtime.sendMessage({target:'sw',type:'add',url:${JSON.stringify(url)}}); 'sent'`);
+  let offscreen = await pageCdp('offscreen.html');
+  // ~%25'e kadar in
+  let dlBefore = 0;
+  const d1 = Date.now() + 40_000;
+  while (Date.now() < d1) {
+    await sleep(500);
+    dlBefore = await evalIn(offscreen,
+      `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});` +
+      `return j&&j.alloc? j.alloc.downloadedBytes() : 0})()`);
+    if (dlBefore > 20 * MB) break;
+  }
+  offscreen.close();
+  browser.close();
+  panel.close();
+
+  // öldür (crash simülasyonu) → yeniden başlat
+  try { execSync(`pkill -f "${process.env.RUU_PROFILE}"`); } catch { /* çıkış kodu önemsiz */ }
+  await sleep(2500);
+  const args = [
+    ...(process.env.RUU_HEADLESS === '1' ? ['--headless=new'] : []),
+    `--user-data-dir=${process.env.RUU_PROFILE}`,
+    `--remote-debugging-port=${cdpPort}`,
+    '--enable-unsafe-extension-debugging', '--no-first-run', '--no-default-browser-check',
+  ];
+  spawn(process.env.RUU_CHROME, args, { detached: true, stdio: 'ignore' }).unref();
+  const d2 = Date.now() + 20_000;
+  for (;;) {
+    try { await fetch(`http://localhost:${cdpPort}/json/version`); break; }
+    catch { if (Date.now() > d2) throw new Error('Chrome yeniden açılmadı'); await sleep(500); }
+  }
+  // unpacked uzantı restart'ta kaybolur → yeniden yükle (aynı path → aynı ID)
+  const v2 = await (await fetch(`http://localhost:${cdpPort}/json/version`)).json();
+  const b2 = new Cdp(v2.webSocketDebuggerUrl);
+  const loaded = await b2.call('Extensions.loadUnpacked', { path: process.env.RUU_DIST });
+  await b2.call('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir });
+  await b2.call('Target.createTarget', { url: `chrome-extension://${loaded.id}/sidepanel.html` });
+  const panel2 = await pageCdp('sidepanel.html');
+  await sleep(2000); // offscreen boot + restoreStale
+
+  const off2 = await pageCdp('offscreen.html');
+  const restored = JSON.parse(await evalIn(off2,
+    `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});` +
+    `return JSON.stringify(j? {st:j.state, dl:(j.alloc?j.alloc.downloadedBytes():0), id:j.id} : null)})()`));
+
+  let ok = false;
+  let note = 'restore edilemedi';
+  if (restored && restored.st === 'paused' && restored.dl > 0 && restored.dl < 80 * MB) {
+    await evalIn(panel2,
+      `chrome.runtime.sendMessage({target:'sw',type:'resume',jobId:${JSON.stringify(restored.id)}}); 'ok'`);
+    const d3 = Date.now() + 90_000;
+    let st = '';
+    while (Date.now() < d3) {
+      await sleep(1000);
+      st = await evalIn(off2,
+        `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.id===${JSON.stringify(restored.id)});` +
+        `return j? j.state : 'yok'})()`);
+      if (st === 'done' || st === 'error') break;
+    }
+    let file = null;
+    for (let i = 0; i < 20 && !file; i++) { await sleep(500); file = findFile(80 * MB); }
+    const bad = file ? verifyPattern(file) : 'dosya yok';
+    ok = st === 'done' && !bad;
+    note = ok
+      ? `kesinti anı ${Math.round(dlBefore / MB)}MB, restore ${Math.round(restored.dl / MB)}MB'den sürdü`
+      : (bad ?? `state=${st}`);
+  } else if (restored) {
+    note = `restore durumu beklenmedik: ${restored.st} @${Math.round(restored.dl / MB)}MB`;
+  }
+  record('S5 crash-resume (tarayıcı restart)', ok, note);
+  off2.close();
+  panel2.close();
+  b2.close();
+}
 
 const fails = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - fails}/${results.length} senaryo geçti`);

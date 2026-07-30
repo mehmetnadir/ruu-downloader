@@ -2,9 +2,16 @@
  * Ruu Engine — offscreen document içinde yaşar (SW değil: eviction'dan bağımsız).
  * Paralel Range fetch + dinamik tahsis + work-stealing; chunk'lar disk worker'a
  * transferable olarak akar, OPFS'e nihai konumda yazılır.
+ *
+ * Crash-resume (PRD F3): ack'lenmiş aralıklar jobs/<id>.meta sidecar'ına yazılır;
+ * boot'ta meta'lı işler 'paused' olarak geri gelir, resume'da ETag doğrulanır.
+ *
+ * DİKKAT: offscreen document'ta chrome.storage ve çoğu chrome.* API YOK —
+ * yalnızca runtime mesajlaşması. Ayarlar SW'den 'settings' mesajıyla gelir.
  */
 import { RangeAllocator, type Claim } from '../engine/allocator';
 import { autoTuneConnections, collectHints } from '../engine/autotune';
+import { mergeRange, parseMeta, type JobMeta } from '../engine/manifest';
 import { failThreshold } from '../engine/retry';
 import {
   MIN_SPLIT,
@@ -14,16 +21,13 @@ import {
   type Msg,
 } from '../engine/types';
 
-/**
- * Kullanıcı ayarı: ağ hatasında yeniden deneme (varsayılan 1).
- * DİKKAT: offscreen document'ta chrome.storage YOK (yalnızca runtime mesajlaşma
- * açık) — ayar SW'den 'settings' mesajıyla gelir.
- */
-let maxRetries = 1;
-
 const BACKPRESSURE_HIGH = 32 << 20;
 const BACKPRESSURE_LOW = 8 << 20;
 const SPEED_WINDOW_MS = 3000;
+const META_INTERVAL_MS = 2000;
+
+/** Kullanıcı ayarı: ağ hatasında yeniden deneme (varsayılan 1) — SW'den itilir. */
+let maxRetries = 1;
 
 let jobSeq = 0;
 const jobs = new Map<string, Job>();
@@ -36,15 +40,25 @@ const dbg = {
 (globalThis as unknown as { __ruu: typeof dbg & { jobs: Map<string, Job> } }).__ruu =
   Object.assign(dbg, { jobs });
 
+async function jobsDir(): Promise<FileSystemDirectoryHandle> {
+  const root = await navigator.storage.getDirectory();
+  return root.getDirectoryHandle('jobs', { create: true });
+}
+
 class Job {
-  readonly id = `job-${Date.now()}-${jobSeq++}`;
+  id = `job-${Date.now()}-${jobSeq++}`;
   state: JobSnapshot['state'] = 'probing';
   filename = 'download';
   size: number | null = null;
   alloc: RangeAllocator | null = null;
   error?: string;
   native = false;
+  etag?: string;
+  lastModified?: string;
 
+  /** Ack'lenmiş (diske inmiş) aralıklar — meta'nın tek kaynağı. */
+  private acked: Array<[number, number]> = [];
+  private needsRevalidate = false;
   private worker: Worker | null = null;
   private controllers = new Set<AbortController>();
   private pumps = 0;
@@ -53,6 +67,7 @@ class Job {
   private drainWaiters: Array<() => void> = [];
   private ticks: Array<{ t: number; b: number }> = [];
   private blobUrl: string | null = null;
+  private metaTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     readonly url: string,
@@ -60,10 +75,27 @@ class Job {
     readonly filenameHint?: string,
   ) {}
 
+  /** Önceki oturumdan geri yükleme: veri + meta diskte, worker resume'da açılır. */
+  static restored(id: string, meta: JobMeta): Job {
+    const job = new Job(meta.url, meta.connections, meta.filename);
+    job.id = id;
+    job.filename = meta.filename;
+    job.size = meta.size;
+    job.etag = meta.etag;
+    job.lastModified = meta.lastModified;
+    job.acked = meta.ranges.map((r) => [...r] as [number, number]);
+    job.alloc = RangeAllocator.restore(meta.size, meta.ranges, MIN_SPLIT);
+    job.state = 'paused';
+    job.needsRevalidate = true;
+    return job;
+  }
+
   async start(): Promise<void> {
     try {
       const probe = await this.probeWithRetry();
       this.filename = pickFilename(this.url, probe.headers.get('content-disposition'), this.filenameHint);
+      this.etag = probe.headers.get('etag') ?? undefined;
+      this.lastModified = probe.headers.get('last-modified') ?? undefined;
       const total = parseTotal(probe);
       probe.body?.cancel().catch(() => undefined);
 
@@ -78,14 +110,22 @@ class Job {
 
       this.size = total;
       this.alloc = new RangeAllocator(total, MIN_SPLIT);
-      await this.initDisk(total);
-      this.state = 'downloading';
-      keepAwake();
-      this.spawnPumps();
-      broadcast();
+      await this.initDisk(total, true);
+      this.beginDownloading();
     } catch (err) {
       this.fail(err);
     }
+  }
+
+  private beginDownloading(): void {
+    this.state = 'downloading';
+    keepAwake();
+    this.sendMeta();
+    if (!this.metaTimer) {
+      this.metaTimer = setInterval(() => this.sendMeta(), META_INTERVAL_MS);
+    }
+    this.spawnPumps();
+    broadcast();
   }
 
   /** Probe: 3 deneme, artan bekleme — anlık ağ sekmeleri işi düşürmesin. */
@@ -106,7 +146,7 @@ class Job {
     throw lastErr;
   }
 
-  private initDisk(size: number): Promise<void> {
+  private initDisk(size: number, fresh: boolean): Promise<void> {
     return new Promise((resolve, reject) => {
       this.worker = new Worker('disk-worker.js', { type: 'module' });
       this.worker.onerror = (ev) => {
@@ -115,26 +155,55 @@ class Job {
         this.fail(err);
       };
       this.worker.onmessage = (ev) => {
-        const m = ev.data as { type: string; bytes?: number; error?: string };
+        const m = ev.data as { type: string; offset?: number; bytes?: number; error?: string };
         switch (m.type) {
           case 'ready':
             resolve();
             break;
-          case 'wrote':
+          case 'size-mismatch': {
+            // dosya bozulmuş/uyumsuz → sıfırdan (aralıklar geçersiz)
+            this.acked = [];
+            this.alloc = new RangeAllocator(size, MIN_SPLIT);
+            resolve();
+            break;
+          }
+          case 'wrote': {
             dbg.acks++;
-            this.inflight -= m.bytes ?? 0;
+            const bytes = m.bytes ?? 0;
+            mergeRange(this.acked, m.offset ?? 0, (m.offset ?? 0) + bytes);
+            this.inflight -= bytes;
             if (this.inflight < BACKPRESSURE_LOW) {
               this.drainWaiters.splice(0).forEach((w) => w());
             }
             break;
+          }
           case 'disk-error':
             reject(new Error(m.error));
             this.fail(new Error(`disk: ${m.error}`));
             break;
         }
       };
-      this.worker.postMessage({ type: 'init', jobId: this.id, size });
+      this.worker.postMessage({ type: 'init', jobId: this.id, size, fresh });
     });
+  }
+
+  private buildMeta(): JobMeta {
+    return {
+      v: 1,
+      url: this.url,
+      filename: this.filename,
+      size: this.size ?? 0,
+      connections: this.connections,
+      etag: this.etag,
+      lastModified: this.lastModified,
+      ranges: this.acked.map((r) => [...r] as [number, number]),
+      updatedAt: Date.now(),
+    };
+  }
+
+  private sendMeta(): void {
+    if (!this.worker || !this.size) return;
+    this.worker.postMessage({ type: 'meta', json: JSON.stringify(this.buildMeta()) });
   }
 
   private segSize(): number {
@@ -198,8 +267,6 @@ class Job {
             break;
           }
         }
-        // Sunucu aralığı erken kapattıysa (gotAny ama eksik) döngü yeni offset'ten devam eder;
-        // hiç veri gelmeden kapandıysa hata say.
         if (!gotAny && claim.written < claim.end - claim.start) {
           throw new Error('sunucu boş yanıt kapattı');
         }
@@ -245,13 +312,13 @@ class Job {
     }
     this.spawnPumps();
     if (this.pumps === 0) {
-      // boşluk yok, çalınacak segment yok ama tamamlanmadı → tüm pompalar hata ile düştü
       this.fail(new Error(this.error ?? 'tüm bağlantılar düştü'));
     }
   }
 
   private async finalize(): Promise<void> {
     this.state = 'finalizing';
+    this.stopMetaTimer();
     broadcast();
     await new Promise<void>((resolve) => {
       const w = this.worker!;
@@ -262,7 +329,7 @@ class Job {
       };
       w.postMessage({ type: 'finalize' });
     });
-    const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('jobs');
+    const dir = await jobsDir();
     const file = await (await dir.getFileHandle(this.id)).getFile();
     // slice: veri kopyalamadan MIME atar — boş MIME Chrome'un .txt eklemesine yol açıyor
     this.blobUrl = URL.createObjectURL(file.slice(0, file.size, 'application/octet-stream'));
@@ -274,8 +341,9 @@ class Job {
     this.worker?.terminate();
     this.worker = null;
     if (ok) {
-      const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('jobs');
+      const dir = await jobsDir();
       await dir.removeEntry(this.id).catch(() => undefined);
+      await dir.removeEntry(`${this.id}.meta`).catch(() => undefined);
       this.state = 'done';
     } else {
       this.state = 'error';
@@ -289,17 +357,47 @@ class Job {
     if (this.state !== 'downloading') return;
     this.state = 'paused';
     this.abortConnections();
+    this.sendMeta();
+    this.stopMetaTimer();
     keepAwake();
     broadcast();
   }
 
   resume(): void {
     if (this.state !== 'paused') return;
-    this.state = 'downloading';
     this.sequentialErrors = 0;
-    keepAwake();
-    this.spawnPumps();
+    if (this.worker) {
+      // oturum içi devam: worker açık, doğrulama gereksiz
+      this.beginDownloading();
+      return;
+    }
+    // önceki oturumdan geri yüklenen iş: doğrula + diski aç
+    void this.resumeRestored();
+  }
+
+  private async resumeRestored(): Promise<void> {
+    this.state = 'probing';
     broadcast();
+    try {
+      if (this.needsRevalidate) {
+        const probe = await this.probeWithRetry();
+        const newEtag = probe.headers.get('etag') ?? undefined;
+        const newLm = probe.headers.get('last-modified') ?? undefined;
+        probe.body?.cancel().catch(() => undefined);
+        const changed =
+          (this.etag && newEtag && this.etag !== newEtag) ||
+          (!this.etag && this.lastModified && newLm && this.lastModified !== newLm);
+        if (changed) {
+          this.fail(new Error('kaynak sunucuda değişmiş — indirmeyi yeniden başlatın'));
+          return;
+        }
+        this.needsRevalidate = false;
+      }
+      await this.initDisk(this.size!, false);
+      this.beginDownloading();
+    } catch (err) {
+      this.fail(err);
+    }
   }
 
   async cancel(): Promise<void> {
@@ -307,13 +405,15 @@ class Job {
     this.state = 'error';
     this.error = 'iptal edildi';
     this.abortConnections();
+    this.stopMetaTimer();
     if (hadWorker) {
       this.worker!.postMessage({ type: 'abort' });
       this.worker!.terminate();
       this.worker = null;
-      const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('jobs');
-      await dir.removeEntry(this.id).catch(() => undefined);
     }
+    const dir = await jobsDir();
+    await dir.removeEntry(this.id).catch(() => undefined);
+    await dir.removeEntry(`${this.id}.meta`).catch(() => undefined);
     jobs.delete(this.id);
     keepAwake();
     broadcast();
@@ -326,11 +426,19 @@ class Job {
     this.inflight = 0;
   }
 
+  private stopMetaTimer(): void {
+    if (this.metaTimer) {
+      clearInterval(this.metaTimer);
+      this.metaTimer = null;
+    }
+  }
+
   private fail(err: unknown): void {
     if (this.state === 'error') return;
     this.state = 'error';
     this.error = err instanceof Error ? err.message : String(err);
     this.abortConnections();
+    this.stopMetaTimer();
     keepAwake();
     broadcast();
   }
@@ -415,16 +523,44 @@ function keepAwake(): void {
   }
 }
 
-/** Önceki oturumdan kalan OPFS artıklarını temizle (crash-resume v0'da yok — PRD F3 milestone). */
-async function cleanupStale(): Promise<void> {
+/**
+ * Boot: önceki oturumdan kalan işleri geri yükle (PRD F3).
+ * Geçerli meta'sı olan veri dosyaları 'paused' iş olarak geri gelir;
+ * eşleşmeyen artıklar silinir.
+ */
+async function restoreStale(): Promise<void> {
   try {
-    const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('jobs', { create: true });
+    const dir = await jobsDir();
+    const names: string[] = [];
     for await (const name of (dir as unknown as { keys(): AsyncIterable<string> }).keys()) {
-      await dir.removeEntry(name).catch(() => undefined);
+      names.push(name);
     }
+    const dataFiles = names.filter((n) => !n.endsWith('.meta'));
+    for (const name of dataFiles) {
+      let meta: JobMeta | null = null;
+      if (names.includes(`${name}.meta`)) {
+        try {
+          const f = await (await dir.getFileHandle(`${name}.meta`)).getFile();
+          meta = parseMeta(await f.text());
+        } catch { /* okunamadı → sil */ }
+      }
+      if (meta && meta.ranges.length > 0) {
+        jobs.set(name, Job.restored(name, meta));
+      } else {
+        await dir.removeEntry(name).catch(() => undefined);
+        await dir.removeEntry(`${name}.meta`).catch(() => undefined);
+      }
+    }
+    // sahipsiz meta dosyaları
+    for (const name of names.filter((n) => n.endsWith('.meta'))) {
+      if (!dataFiles.includes(name.slice(0, -5))) {
+        await dir.removeEntry(name).catch(() => undefined);
+      }
+    }
+    if (jobs.size > 0) broadcast();
   } catch { /* OPFS yoksa sessiz geç */ }
 }
-void cleanupStale();
+void restoreStale();
 
 chrome.runtime.onMessage.addListener((raw: Msg) => {
   if (raw.target !== 'engine') return;

@@ -49,4 +49,5 @@ EXT_ID="$(node scripts/load-ext.mjs "$CDP_PORT" | sed -n 's/EXTENSION_ID=//p')"
 echo "── uzantı: $EXT_ID"
 
 echo "── senaryolar"
+export RUU_CHROME="$CHROME" RUU_PROFILE="$PROFILE" RUU_HEADLESS="${HEADLESS:-0}" RUU_DIST="$PWD/dist"
 node test/e2e/e2e-drive.mjs "$CDP_PORT" "$EXT_ID" "$SRV_PORT" "$DLDIR"
