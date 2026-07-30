@@ -29,7 +29,7 @@ export interface JobSnapshot {
 
 export type Msg =
   // panel/sw → engine
-  | { target: 'engine'; type: 'add'; url: string; connections?: number }
+  | { target: 'engine'; type: 'add'; url: string; connections?: number; filenameHint?: string }
   | { target: 'engine'; type: 'pause'; jobId: string }
   | { target: 'engine'; type: 'resume'; jobId: string }
   | { target: 'engine'; type: 'cancel'; jobId: string }
@@ -37,7 +37,7 @@ export type Msg =
   | { target: 'engine'; type: 'query' }
   | { target: 'engine'; type: 'delivered'; jobId: string; ok: boolean; error?: string }
   // engine/panel → sw
-  | { target: 'sw'; type: 'add'; url: string; connections?: number }
+  | { target: 'sw'; type: 'add'; url: string; connections?: number; filenameHint?: string }
   | { target: 'sw'; type: 'pause'; jobId: string }
   | { target: 'sw'; type: 'resume'; jobId: string }
   | { target: 'sw'; type: 'cancel'; jobId: string }

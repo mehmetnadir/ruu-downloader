@@ -147,6 +147,28 @@ const MB = 1024 * 1024;
   record('S3 noRange → native fallback', st === 'done' && !bad, bad ?? `state=${st}`);
 }
 
+// S4: DEVRALMA — tarayıcının kendi başlattığı indirmeyi Ruu yakalar (PRD F1)
+{
+  const url = `http://localhost:${serverPort}/f/15?rate=30`;
+  // sekmeye git → sunucu Content-Disposition: attachment döner → tarayıcı indirme başlatır
+  await browser.call('Target.createTarget', { url });
+  const offscreen = await pageCdp('offscreen.html');
+  const deadline = Date.now() + 40_000;
+  let st = 'yok';
+  while (Date.now() < deadline) {
+    await sleep(700);
+    st = await evalIn(offscreen,
+      `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});` +
+      `return j? j.state : 'yok'})()`);
+    if (st === 'done' || st === 'error') break;
+  }
+  offscreen.close();
+  let file = null;
+  for (let i = 0; i < 20 && !file; i++) { await sleep(500); file = findFile(15 * MB); }
+  const bad = file ? verifyPattern(file) : 'dosya yok';
+  record('S4 tarayıcı indirmesini devralma', st === 'done' && !bad, bad ?? `state=${st}`);
+}
+
 browser.close();
 panel.close();
 

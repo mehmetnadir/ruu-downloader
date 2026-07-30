@@ -1,10 +1,60 @@
 /**
  * Service Worker — sadece yönlendirici. Motor offscreen'de yaşar (PRD parça 1).
  */
+import { routeByType } from './engine/foldering';
 import type { Msg } from './engine/types';
 
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+});
+
+// ── Ayarlar (chrome.storage.local; UI sonraki turda) ─────────────────────────
+const settings = { takeover: true, takeoverMinMB: 10, typeFolders: true };
+void chrome.storage.local.get(settings).then((s) => Object.assign(settings, s));
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  for (const [k, v] of Object.entries(changes)) {
+    if (k in settings) (settings as Record<string, unknown>)[k] = v.newValue;
+  }
+});
+
+// ── İndirme devralma (PRD F1) ────────────────────────────────────────────────
+// Kendi başlattığımız indirmeler devralma döngüsüne girmesin (URL bazlı, 30 sn TTL).
+const recentOwnUrls = new Map<string, number>();
+function markOwn(url: string): void {
+  recentOwnUrls.set(url, Date.now() + 30_000);
+  if (recentOwnUrls.size > 100) {
+    for (const [u, t] of recentOwnUrls) if (Date.now() > t) recentOwnUrls.delete(u);
+  }
+}
+function isOwn(url: string): boolean {
+  const t = recentOwnUrls.get(url);
+  if (t === undefined) return false;
+  if (Date.now() > t) { recentOwnUrls.delete(url); return false; }
+  return true;
+}
+
+chrome.downloads.onCreated.addListener((item) => {
+  void (async () => {
+    if (!settings.takeover) return;
+    const url = item.finalUrl || item.url;
+    if (!/^https?:/i.test(url)) return; // blob/data/file şemaları bizim teslimlerimiz
+    if (isOwn(url)) return;
+    if (item.state !== 'in_progress') return;
+    const size = item.totalBytes ?? -1;
+    if (size > 0 && size < settings.takeoverMinMB * 1024 * 1024) return; // küçükler native kalsın
+    try {
+      await chrome.downloads.cancel(item.id);
+      await chrome.downloads.erase({ id: item.id });
+    } catch {
+      return; // iptal edemedik → dokunma, native devam etsin
+    }
+    const hint = item.filename ? item.filename.split(/[\\/]/).pop() : undefined;
+    await ensureOffscreen();
+    void chrome.runtime.sendMessage({
+      target: 'engine', type: 'add', url, filenameHint: hint,
+    } satisfies Msg).catch(() => undefined);
+  })();
 });
 
 async function ensureOffscreen(): Promise<void> {
@@ -46,7 +96,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
         try {
           const id = await chrome.downloads.download({
             url: raw.blobUrl,
-            filename: raw.filename,
+            filename: routeByType(raw.filename, settings.typeFolders),
             conflictAction: 'uniquify',
           });
           deliveries.set(id, raw.jobId);
@@ -59,6 +109,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
         break;
       }
       case 'native-fallback': {
+        markOwn(raw.url); // devralma bunu tekrar yakalayıp döngü kurmasın
         await chrome.downloads.download({ url: raw.url }).catch(() => undefined);
         break;
       }

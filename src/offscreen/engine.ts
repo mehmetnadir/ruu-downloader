@@ -50,12 +50,13 @@ class Job {
   constructor(
     readonly url: string,
     readonly connections: number,
+    readonly filenameHint?: string,
   ) {}
 
   async start(): Promise<void> {
     try {
       const probe = await this.probeWithRetry();
-      this.filename = pickFilename(this.url, probe.headers.get('content-disposition'));
+      this.filename = pickFilename(this.url, probe.headers.get('content-disposition'), this.filenameHint);
       const total = parseTotal(probe);
       probe.body?.cancel().catch(() => undefined);
 
@@ -369,11 +370,12 @@ function parseTotal(resp: Response): number | null {
   return null;
 }
 
-function pickFilename(url: string, disposition: string | null): string {
+function pickFilename(url: string, disposition: string | null, hint?: string): string {
   const star = disposition?.match(/filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i);
   if (star?.[1]) return decodeURIComponent(star[1].trim().replace(/^"|"$/g, ''));
   const plain = disposition?.match(/filename\s*=\s*"?([^";]+)"?/i);
   if (plain?.[1]) return plain[1].trim();
+  if (hint) return hint; // devralmadan gelen tarayıcı dosya adı
   try {
     const base = new URL(url).pathname.split('/').filter(Boolean).pop();
     if (base) return decodeURIComponent(base);
@@ -422,7 +424,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
   switch (raw.type) {
     case 'add': {
       const auto = autoTuneConnections(collectHints());
-      const job = new Job(raw.url, Math.min(8, Math.max(1, raw.connections ?? auto)));
+      const job = new Job(raw.url, Math.min(8, Math.max(1, raw.connections ?? auto)), raw.filenameHint);
       jobs.set(job.id, job);
       void job.start();
       break;
