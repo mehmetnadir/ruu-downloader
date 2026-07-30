@@ -314,7 +314,7 @@ class Job {
     }
     this.spawnPumps();
     if (this.pumps === 0) {
-      this.fail(new Error(this.error ?? 'tüm bağlantılar düştü'));
+      this.fail(new Error(this.error ?? 'errAllDown'));
     }
   }
 
@@ -353,7 +353,7 @@ class Job {
       this.state = 'done';
     } else {
       this.state = 'error';
-      this.error = error ?? 'teslim başarısız';
+      this.error = error ?? 'errDelivery';
     }
     keepAwake();
     broadcast();
@@ -394,7 +394,7 @@ class Job {
           (this.etag && newEtag && this.etag !== newEtag) ||
           (!this.etag && this.lastModified && newLm && this.lastModified !== newLm);
         if (changed) {
-          this.fail(new Error('kaynak sunucuda değişmiş — indirmeyi yeniden başlatın'));
+          this.fail(new Error('errChanged'));
           return;
         }
         this.needsRevalidate = false;
@@ -409,7 +409,7 @@ class Job {
   async cancel(): Promise<void> {
     const hadWorker = this.worker !== null;
     this.state = 'error';
-    this.error = 'iptal edildi';
+    this.error = 'errCancelled';
     this.abortConnections();
     this.stopMetaTimer();
     if (hadWorker) {

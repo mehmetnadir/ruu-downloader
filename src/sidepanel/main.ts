@@ -3,6 +3,26 @@ import { icons } from './icons';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T;
 
+// ── i18n ─────────────────────────────────────────────────────────────────────
+const t = (key: string): string => chrome.i18n.getMessage(key) || key;
+document.documentElement.dir = chrome.i18n.getMessage('@@bidi_dir') || 'ltr';
+document.documentElement.lang = chrome.i18n.getUILanguage();
+for (const el of document.querySelectorAll<HTMLElement>('[data-i18n]')) {
+  el.textContent = t(el.dataset['i18n']!);
+}
+for (const el of document.querySelectorAll<HTMLElement>('[data-i18n-title]')) {
+  const label = t(el.dataset['i18nTitle']!);
+  el.title = label;
+  el.setAttribute('aria-label', label);
+}
+for (const el of document.querySelectorAll<HTMLInputElement>('[data-i18n-ph]')) {
+  el.placeholder = t(el.dataset['i18nPh']!);
+}
+/** Motor hata anahtarlarını yerelleştir; bilinmeyenler ham geçer. */
+const ERR_KEYS = new Set(['errChanged', 'errCancelled', 'errAllDown', 'errDelivery']);
+const terr = (err: string | undefined): string =>
+  err && ERR_KEYS.has(err) ? t(err) : (err ?? '');
+
 const urlInput = $<HTMLInputElement>('#url-input');
 const addBtn = $<HTMLButtonElement>('#add-btn');
 const activeList = $('#active-list');
@@ -14,15 +34,15 @@ const liveRegion = $('#live-region');
 
 const SEG_BUCKETS = 48;
 
-/** Tek-kelime durum sözcükleri (Claude tarzı) — i18n-hazır, minimal metin. */
-const FLOW_WORDS = ['İniyor', 'Akıyor', 'Sürüyor', 'Hızlanıyor', 'Taşınıyor'];
+/** Tek-kelime durum sözcükleri (Claude tarzı) — yerelden gelir. */
+const FLOW_WORDS = [t('f1'), t('f2'), t('f3'), t('f4'), t('f5')];
 const STATE_WORDS: Record<JobSnapshot['state'], string> = {
-  probing: 'Bağlanıyor',
+  probing: t('wProbing'),
   downloading: FLOW_WORDS[0]!,
-  paused: 'Bekliyor',
-  finalizing: 'Yerleşiyor',
-  done: 'İndi',
-  error: 'Takıldı',
+  paused: t('wPaused'),
+  finalizing: t('wFinalizing'),
+  done: t('wDone'),
+  error: t('wError'),
 };
 
 function send(msg: Msg): void {
@@ -110,7 +130,7 @@ const statsLine = $('#stats-line');
 function renderStats(s: { count: number; bytes: number; bestSpeed: number } | undefined): void {
   if (!s || s.count === 0) { statsLine.hidden = true; return; }
   statsLine.hidden = false;
-  statsLine.textContent = `${s.count} indirme · ${fmtBytes(s.bytes)} · rekor ${fmtBytes(s.bestSpeed)}/s`;
+  statsLine.textContent = `${s.count} ${t('statsDl')} · ${fmtBytes(s.bytes)} · ↑ ${fmtBytes(s.bestSpeed)}/s`;
 }
 void chrome.storage.local.get({ stats: { count: 0, bytes: 0, bestSpeed: 0 } })
   .then((s) => renderStats(s['stats'] as { count: number; bytes: number; bestSpeed: number }));
@@ -214,20 +234,19 @@ function setWord(ref: CardRef, text: string): void {
   }
 }
 
+function btn(act: string, idAttr: string, idVal: string | number, label: string, icon: string): string {
+  return `<button class="icon-btn" data-act="${act}" data-${idAttr}="${idVal}" aria-label="${label}" title="${label}">${icon}</button>`;
+}
+
 function actionButtons(job: JobSnapshot): string {
   let out = '';
-  if (job.state === 'downloading') {
-    out += `<button class="icon-btn" data-act="pause" data-id="${job.id}" aria-label="Duraklat" title="Duraklat">${icons.pause}</button>`;
-  } else if (job.state === 'paused') {
-    out += `<button class="icon-btn" data-act="resume" data-id="${job.id}" aria-label="Devam et" title="Devam et">${icons.play}</button>`;
-  }
+  if (job.state === 'downloading') out += btn('pause', 'id', job.id, t('pause'), icons.pause);
+  else if (job.state === 'paused') out += btn('resume', 'id', job.id, t('resume'), icons.play);
   if (job.state === 'done' && job.downloadId !== undefined && !job.native) {
-    out += `<button class="icon-btn" data-act="open" data-dlid="${job.downloadId}" aria-label="Dosyayı aç" title="Dosyayı aç">${icons.open}</button>`;
-    out += `<button class="icon-btn" data-act="show" data-dlid="${job.downloadId}" aria-label="Klasörde göster" title="Klasörde göster">${icons.show}</button>`;
+    out += btn('open', 'dlid', job.downloadId, t('openFile'), icons.open);
+    out += btn('show', 'dlid', job.downloadId, t('showFolder'), icons.show);
   }
-  if (job.state !== 'done') {
-    out += `<button class="icon-btn" data-act="cancel" data-id="${job.id}" aria-label="İptal et" title="İptal et">${icons.x}</button>`;
-  }
+  if (job.state !== 'done') out += btn('cancel', 'id', job.id, t('cancel'), icons.x);
   return out;
 }
 
@@ -241,10 +260,10 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
     ref.actions.innerHTML = actionButtons(job);
     setWord(ref, STATE_WORDS[job.state]);
     if (job.state === 'done' && prev && prev !== 'done') {
-      liveRegion.textContent = `${job.filename} indirildi`;
+      liveRegion.textContent = `${job.filename} — ${t('wDone')}`;
     }
     if (job.state === 'error') {
-      liveRegion.textContent = `${job.filename}: ${job.error ?? 'hata'}`;
+      liveRegion.textContent = `${job.filename}: ${terr(job.error)}`;
     }
   }
 
@@ -262,9 +281,9 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
   } else if (job.state === 'paused') {
     ref.stats.textContent = `%${Math.floor(pct * 100)}`;
   } else if (job.state === 'error') {
-    ref.stats.textContent = job.error ?? '';
+    ref.stats.textContent = terr(job.error);
   } else if (job.state === 'done' && job.native) {
-    ref.stats.textContent = 'tarayıcıya devredildi';
+    ref.stats.textContent = t('wNative');
   } else {
     ref.stats.textContent = '';
   }

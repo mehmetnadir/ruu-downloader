@@ -1,9 +1,16 @@
 /**
  * Service Worker — sadece yönlendirici. Motor offscreen'de yaşar (PRD parça 1).
  */
-import { routeByType } from './engine/foldering';
+import { DEFAULT_CATEGORY_NAMES, routeByType } from './engine/foldering';
 import { applyDownload, EMPTY_STATS, type Stats } from './engine/stats';
 import type { Msg } from './engine/types';
+
+const t = (key: string): string => chrome.i18n.getMessage(key) || key;
+
+/** Yerelleştirilmiş klasör kategori adları (catImg → "Görseller" vb.). */
+const CATEGORY_NAMES: Record<string, string> = Object.fromEntries(
+  Object.keys(DEFAULT_CATEGORY_NAMES).map((k) => [k, t(k)]),
+);
 
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -123,9 +130,9 @@ function celebrate(downloadId: number): void {
       void chrome.notifications.create(`ruu-dl-${downloadId}`, {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
-        title: 'Ruu — indirme tamam',
-        message: 'Dosya kaydedildi.',
-        buttons: [{ title: 'Aç' }],
+        title: t('nTitle'),
+        message: t('nMsg'),
+        buttons: [{ title: t('nOpen') }],
       }).catch(() => undefined);
       break;
   }
@@ -164,7 +171,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
         try {
           const id = await chrome.downloads.download({
             url: raw.blobUrl,
-            filename: routeByType(raw.filename, settings.typeFolders),
+            filename: routeByType(raw.filename, settings.typeFolders, CATEGORY_NAMES),
             conflictAction: 'uniquify',
           });
           deliveries.set(id, { jobId: raw.jobId, size: raw.size, topSpeed: raw.topSpeed });

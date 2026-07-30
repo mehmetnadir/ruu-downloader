@@ -10,23 +10,23 @@
 <header class="topbar">
   <div class="brand">
     <svg class="logo" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-      <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 19h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 17V3m-6 8 6 6 6-6M19 21H5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <span>Ruu</span>
   </div>
   <div class="topbar-actions">
-    <button id="pause-all" class="icon-btn" title="Tümünü duraklat" aria-label="Tümünü duraklat">
+    <button id="pause-all" class="icon-btn" data-i18n-title="pauseAll">
       <svg viewBox="0 0 24 24" width="16" height="16"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
     </button>
-    <button id="settings-btn" class="icon-btn" title="Ayarlar" aria-label="Ayarlar" aria-expanded="false"></button>
+    <button id="settings-btn" class="icon-btn" data-i18n-title="settings" aria-expanded="false"></button>
   </div>
 </header>
 
 <section id="onboard" class="onboard" hidden>
-  <p>Ruu'yu varsayılan indirme deneyimi yap? Chrome'un indirme balonu gizlenir, indirmeleri Ruu hızlandırır.</p>
+  <p data-i18n="onboard"></p>
   <div class="onboard-actions">
-    <button id="onboard-yes" class="btn-accent">Evet, devral</button>
-    <button id="onboard-no" class="btn-ghost">Şimdilik hayır</button>
+    <button id="onboard-yes" class="btn-accent" data-i18n="onboardYes"></button>
+    <button id="onboard-no" class="btn-ghost" data-i18n="onboardNo"></button>
   </div>
 </section>
 
@@ -34,90 +34,90 @@
   <label class="set-row">
     <span class="set-icon" data-icon="globe"></span>
     <span class="set-text">
-      <span class="set-title">Varsayılan deneyim</span>
-      <span class="set-desc">Chrome'un indirme balonu gizlenir, indirmeler Ruu'da yaşar</span>
+      <span class="set-title" data-i18n="stDefT"></span>
+      <span class="set-desc" data-i18n="stDefD"></span>
     </span>
     <input type="checkbox" id="set-default">
   </label>
   <label class="set-row">
     <span class="set-icon" data-icon="magnet"></span>
     <span class="set-text">
-      <span class="set-title">İndirmeleri devral</span>
-      <span class="set-desc">Tarayıcının başlattığı indirmeleri yakalar ve hızlandırır</span>
+      <span class="set-title" data-i18n="stTakeT"></span>
+      <span class="set-desc" data-i18n="stTakeD"></span>
     </span>
     <input type="checkbox" id="set-takeover">
   </label>
   <label class="set-row">
     <span class="set-icon" data-icon="gauge"></span>
     <span class="set-text">
-      <span class="set-title">Devralma eşiği</span>
-      <span class="set-desc">Bu boyutun (MB) altındakiler tarayıcıda kalır</span>
+      <span class="set-title" data-i18n="stThrT"></span>
+      <span class="set-desc" data-i18n="stThrD"></span>
     </span>
     <input type="number" id="set-minmb" min="0" max="1024" step="1">
   </label>
   <label class="set-row">
     <span class="set-icon" data-icon="folder"></span>
     <span class="set-text">
-      <span class="set-title">Türe göre klasörle</span>
-      <span class="set-desc">Görsel, video, arşiv… kendi klasörüne iner</span>
+      <span class="set-title" data-i18n="stFolT"></span>
+      <span class="set-desc" data-i18n="stFolD"></span>
     </span>
     <input type="checkbox" id="set-folders">
   </label>
   <label class="set-row">
     <span class="set-icon" data-icon="refresh"></span>
     <span class="set-text">
-      <span class="set-title">Yeniden deneme</span>
-      <span class="set-desc">Ağ hatasında bağlantı başına tekrar sayısı</span>
+      <span class="set-title" data-i18n="stRetT"></span>
+      <span class="set-desc" data-i18n="stRetD"></span>
     </span>
     <input type="number" id="set-retries" min="0" max="10" step="1">
   </label>
   <label class="set-row">
     <span class="set-icon" data-icon="bell"></span>
     <span class="set-text">
-      <span class="set-title">Bitince</span>
-      <span class="set-desc">Sessiz in · bildirim göster · ya da parti başlat</span>
+      <span class="set-title" data-i18n="stNotT"></span>
+      <span class="set-desc" data-i18n="stNotD"></span>
     </span>
     <select id="set-notify">
-      <option value="silent">Sessiz</option>
-      <option value="notify">Bildir</option>
-      <option value="party">Parti 🎵</option>
+      <option value="silent" data-i18n="ntSilent"></option>
+      <option value="notify" data-i18n="ntNotify"></option>
+      <option value="party" data-i18n="ntParty"></option>
     </select>
   </label>
   <label class="set-row" id="party-row" hidden>
     <span class="set-icon" data-icon="music"></span>
     <span class="set-text">
-      <span class="set-title">Parti videosu</span>
-      <span class="set-desc">İndirme bitince açılacak video</span>
+      <span class="set-title" data-i18n="stPartyT"></span>
+      <span class="set-desc" data-i18n="stPartyD"></span>
     </span>
     <input type="url" id="set-party" placeholder="YouTube URL">
   </label>
   <label class="set-row">
     <span class="set-icon" data-icon="external"></span>
     <span class="set-text">
-      <span class="set-title">İndir ve aç</span>
-      <span class="set-desc">Biten dosyayı hemen açmayı dener</span>
+      <span class="set-title" data-i18n="stOpenT"></span>
+      <span class="set-desc" data-i18n="stOpenD"></span>
     </span>
     <input type="checkbox" id="set-open">
   </label>
 </section>
 
 <div class="add-row">
-  <input id="url-input" type="url" placeholder="URL yapıştır…" spellcheck="false">
-  <button id="add-btn" class="primary" title="İndir">
+  <input id="url-input" type="url" data-i18n-ph="addPh" spellcheck="false">
+  <button id="add-btn" class="primary" data-i18n-title="addBtn">
     <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 5v14m0 0l-5-5m5 5l5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
 </div>
 
 <main>
   <section id="active-section">
-    <h2>AKTİF <span id="active-count"></span></h2>
+    <h2><span data-i18n="active"></span> <span id="active-count"></span></h2>
     <div id="active-list" role="list"></div>
   </section>
   <section id="done-section">
-    <h2>TAMAMLANAN <span id="done-count"></span></h2>
+    <h2><span data-i18n="completed"></span> <span id="done-count"></span></h2>
     <div id="done-list" role="list"></div>
   </section>
-  <p id="empty-hint">Henüz indirme yok. Bir URL yapıştır ya da bir siteden indirme başlat.</p>
+  <p id="empty-hint" data-i18n="emptyHint"></p>
 </main>
 <footer id="stats-line" class="stats-line" hidden></footer>
 <div id="live-region" class="visually-hidden" aria-live="polite"></div>
