@@ -48,6 +48,9 @@ const DEFAULTS = {
   takeoverMinMB: 10,
   typeFolders: true,
   maxRetries: 1,
+  notifyMode: 'notify',
+  partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  openWhenDone: false,
 };
 
 const settingsBtn = $<HTMLButtonElement>('#settings-btn');
@@ -69,6 +72,10 @@ const setTakeover = $<HTMLInputElement>('#set-takeover');
 const setMinMb = $<HTMLInputElement>('#set-minmb');
 const setFolders = $<HTMLInputElement>('#set-folders');
 const setRetries = $<HTMLInputElement>('#set-retries');
+const setNotify = $<HTMLSelectElement>('#set-notify');
+const setParty = $<HTMLInputElement>('#set-party');
+const partyRow = $('#party-row');
+const setOpen = $<HTMLInputElement>('#set-open');
 
 void chrome.storage.local.get(DEFAULTS).then((s) => {
   onboard.hidden = Boolean(s['onboarded']);
@@ -77,6 +84,10 @@ void chrome.storage.local.get(DEFAULTS).then((s) => {
   setMinMb.value = String(s['takeoverMinMB']);
   setFolders.checked = Boolean(s['typeFolders']);
   setRetries.value = String(s['maxRetries']);
+  setNotify.value = String(s['notifyMode']);
+  setParty.value = String(s['partyUrl']);
+  partyRow.hidden = s['notifyMode'] !== 'party';
+  setOpen.checked = Boolean(s['openWhenDone']);
 });
 
 const save = (patch: Record<string, unknown>): void => {
@@ -87,6 +98,27 @@ setTakeover.addEventListener('change', () => save({ takeover: setTakeover.checke
 setMinMb.addEventListener('change', () => save({ takeoverMinMB: Math.max(0, Number(setMinMb.value) || 0) }));
 setFolders.addEventListener('change', () => save({ typeFolders: setFolders.checked }));
 setRetries.addEventListener('change', () => save({ maxRetries: Math.min(10, Math.max(0, Number(setRetries.value) || 0)) }));
+setNotify.addEventListener('change', () => {
+  partyRow.hidden = setNotify.value !== 'party';
+  save({ notifyMode: setNotify.value });
+});
+setParty.addEventListener('change', () => save({ partyUrl: setParty.value.trim() || DEFAULTS.partyUrl }));
+setOpen.addEventListener('change', () => save({ openWhenDone: setOpen.checked }));
+
+// ── Yerel istatistik satırı ──────────────────────────────────────────────────
+const statsLine = $('#stats-line');
+function renderStats(s: { count: number; bytes: number; bestSpeed: number } | undefined): void {
+  if (!s || s.count === 0) { statsLine.hidden = true; return; }
+  statsLine.hidden = false;
+  statsLine.textContent = `${s.count} indirme · ${fmtBytes(s.bytes)} · rekor ${fmtBytes(s.bestSpeed)}/s`;
+}
+void chrome.storage.local.get({ stats: { count: 0, bytes: 0, bestSpeed: 0 } })
+  .then((s) => renderStats(s['stats'] as { count: number; bytes: number; bestSpeed: number }));
+chrome.storage.onChanged.addListener((ch, area) => {
+  if (area === 'local' && ch['stats']) {
+    renderStats(ch['stats'].newValue as { count: number; bytes: number; bestSpeed: number });
+  }
+});
 
 $('#onboard-yes').addEventListener('click', () => {
   save({ onboarded: true, defaultExperience: true, takeover: true });
@@ -188,6 +220,10 @@ function actionButtons(job: JobSnapshot): string {
     out += `<button class="icon-btn" data-act="pause" data-id="${job.id}" aria-label="Duraklat" title="Duraklat">${icons.pause}</button>`;
   } else if (job.state === 'paused') {
     out += `<button class="icon-btn" data-act="resume" data-id="${job.id}" aria-label="Devam et" title="Devam et">${icons.play}</button>`;
+  }
+  if (job.state === 'done' && job.downloadId !== undefined && !job.native) {
+    out += `<button class="icon-btn" data-act="open" data-dlid="${job.downloadId}" aria-label="Dosyayı aç" title="Dosyayı aç">${icons.open}</button>`;
+    out += `<button class="icon-btn" data-act="show" data-dlid="${job.downloadId}" aria-label="Klasörde göster" title="Klasörde göster">${icons.show}</button>`;
   }
   if (job.state !== 'done') {
     out += `<button class="icon-btn" data-act="cancel" data-id="${job.id}" aria-label="İptal et" title="İptal et">${icons.x}</button>`;
@@ -302,9 +338,17 @@ setInterval(() => {
 document.body.addEventListener('click', (e) => {
   const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
   if (!btn) return;
-  const act = btn.dataset['act'] as 'pause' | 'resume' | 'cancel';
+  const act = btn.dataset['act']!;
+  if (act === 'open' || act === 'show') {
+    const dlid = Number(btn.dataset['dlid']);
+    try {
+      if (act === 'open') chrome.downloads.open(dlid); // panel tıklaması = user gesture
+      else chrome.downloads.show(dlid);
+    } catch { /* dosya taşınmış olabilir */ }
+    return;
+  }
   const jobId = btn.dataset['id']!;
-  send({ target: 'sw', type: act, jobId });
+  send({ target: 'sw', type: act as 'pause' | 'resume' | 'cancel', jobId });
 });
 
 chrome.runtime.onMessage.addListener((raw: Msg) => {

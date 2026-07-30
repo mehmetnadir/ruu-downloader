@@ -68,6 +68,8 @@ class Job {
   private ticks: Array<{ t: number; b: number }> = [];
   private blobUrl: string | null = null;
   private metaTimer: ReturnType<typeof setInterval> | null = null;
+  private topSpeed = 0;
+  downloadId?: number;
 
   constructor(
     readonly url: string,
@@ -333,10 +335,14 @@ class Job {
     const file = await (await dir.getFileHandle(this.id)).getFile();
     // slice: veri kopyalamadan MIME atar — boş MIME Chrome'un .txt eklemesine yol açıyor
     this.blobUrl = URL.createObjectURL(file.slice(0, file.size, 'application/octet-stream'));
-    send({ target: 'sw', type: 'deliver', jobId: this.id, blobUrl: this.blobUrl, filename: this.filename });
+    send({
+      target: 'sw', type: 'deliver', jobId: this.id, blobUrl: this.blobUrl,
+      filename: this.filename, size: this.size ?? file.size, topSpeed: this.topSpeed,
+    });
   }
 
-  async delivered(ok: boolean, error?: string): Promise<void> {
+  async delivered(ok: boolean, error?: string, downloadId?: number): Promise<void> {
+    this.downloadId = downloadId;
     if (this.blobUrl) URL.revokeObjectURL(this.blobUrl);
     this.worker?.terminate();
     this.worker = null;
@@ -454,7 +460,9 @@ class Job {
     const now = performance.now();
     const bytes = this.ticks.reduce((a, x) => a + x.b, 0);
     const span = Math.max(250, now - this.ticks[0]!.t);
-    return (bytes / span) * 1000;
+    const s = (bytes / span) * 1000;
+    if (s > this.topSpeed) this.topSpeed = s;
+    return s;
   }
 
   snapshot(): JobSnapshot {
@@ -472,6 +480,7 @@ class Job {
       })),
       error: this.error,
       native: this.native,
+      downloadId: this.downloadId,
     };
   }
 }
@@ -577,7 +586,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
     case 'cancel': void jobs.get(raw.jobId)?.cancel(); break;
     case 'pause-all': for (const j of jobs.values()) j.pause(); break;
     case 'query': broadcast(); break;
-    case 'delivered': void jobs.get(raw.jobId)?.delivered(raw.ok, raw.error); break;
+    case 'delivered': void jobs.get(raw.jobId)?.delivered(raw.ok, raw.error, raw.downloadId); break;
     case 'settings': maxRetries = Math.min(10, Math.max(0, raw.maxRetries)); break;
   }
 });

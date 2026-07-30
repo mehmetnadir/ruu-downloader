@@ -192,8 +192,10 @@ const MB = 1024 * 1024;
   browser.close();
   panel.close();
 
-  // öldür (crash simülasyonu) → yeniden başlat
-  try { execSync(`pkill -f "${process.env.RUU_PROFILE}"`); } catch { /* çıkış kodu önemsiz */ }
+  // öldür — SIGKILL: gerçek crash simülasyonu. SIGTERM'de Chrome nazikçe kapanır
+  // ve CDP-yüklü unpacked uzantıyı kaldırıp OPFS'ini TEMİZLER (kalıcı kurulumda
+  // olmayan bir test-ortamı artefaktı). -9 bu temizliğe fırsat vermez.
+  try { execSync(`pkill -9 -f "${process.env.RUU_PROFILE}"`); } catch { /* çıkış kodu önemsiz */ }
   await sleep(2500);
   const args = [
     ...(process.env.RUU_HEADLESS === '1' ? ['--headless=new'] : []),
@@ -217,9 +219,15 @@ const MB = 1024 * 1024;
   await sleep(2000); // offscreen boot + restoreStale
 
   const off2 = await pageCdp('offscreen.html');
-  const restored = JSON.parse(await evalIn(off2,
-    `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});` +
-    `return JSON.stringify(j? {st:j.state, dl:(j.alloc?j.alloc.downloadedBytes():0), id:j.id} : null)})()`));
+  let restored = null;
+  const dR = Date.now() + 15_000;
+  while (Date.now() < dR) {
+    await sleep(700);
+    restored = JSON.parse(await evalIn(off2,
+      `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});` +
+      `return JSON.stringify(j? {st:j.state, dl:(j.alloc?j.alloc.downloadedBytes():0), id:j.id} : null)})()`));
+    if (restored && restored.st === 'paused') break;
+  }
 
   let ok = false;
   let note = 'restore edilemedi';
@@ -244,6 +252,14 @@ const MB = 1024 * 1024;
       : (bad ?? `state=${st}`);
   } else if (restored) {
     note = `restore durumu beklenmedik: ${restored.st} @${Math.round(restored.dl / MB)}MB`;
+  }
+  if (!ok && !restored) {
+    // teşhis: OPFS'te ne var, jobs map'te ne var?
+    const diag = await evalIn(off2,
+      `(async()=>{const dir=await (await navigator.storage.getDirectory()).getDirectoryHandle('jobs',{create:true});` +
+      `const names=[]; for await (const n of dir.keys()) names.push(n);` +
+      `return JSON.stringify({opfs:names, jobs:[...__ruu.jobs.values()].map(j=>({u:j.url.slice(-20),st:j.state}))})})()`);
+    note = `restore edilemedi — diag: ${diag}`;
   }
   record('S5 crash-resume (tarayıcı restart)', ok, note);
   off2.close();

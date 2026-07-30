@@ -151,6 +151,22 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .set-row input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
+.set-row select, .set-row input[type="url"] {
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 7px;
+  padding: 4px 7px; font-size: 12px; max-width: 120px;
+}
+
+.stats-line {
+  position: sticky; bottom: 0;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
 
 main { padding: 4px 14px 20px; }
 h2 { font-size: 10.5px; letter-spacing: 1.1px; color: var(--muted); font-weight: 600; margin: 16px 0 8px; }

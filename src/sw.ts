@@ -2,6 +2,7 @@
  * Service Worker — sadece yönlendirici. Motor offscreen'de yaşar (PRD parça 1).
  */
 import { routeByType } from './engine/foldering';
+import { applyDownload, EMPTY_STATS, type Stats } from './engine/stats';
 import type { Msg } from './engine/types';
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -15,6 +16,9 @@ const settings = {
   typeFolders: true,
   defaultExperience: false, // Chrome'un indirme balonunu gizle → Ruu varsayılan UI
   maxRetries: 1,
+  notifyMode: 'notify' as 'silent' | 'notify' | 'party',
+  partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  openWhenDone: false,
 };
 
 /** Offscreen'de chrome.storage yok — motoru ilgilendiren ayarlar mesajla itilir. */
@@ -100,7 +104,43 @@ async function ensureOffscreen(): Promise<void> {
   pushEngineSettings();
 }
 
-const deliveries = new Map<number, string>(); // chrome downloadId → jobId
+interface Delivery { jobId: string; size: number; topSpeed: number }
+const deliveries = new Map<number, Delivery>(); // chrome downloadId → teslim bilgisi
+
+async function recordStats(size: number, topSpeed: number): Promise<void> {
+  const cur = (await chrome.storage.local.get({ stats: EMPTY_STATS }))['stats'] as Stats;
+  await chrome.storage.local.set({ stats: applyDownload(cur, size, topSpeed) });
+}
+
+function celebrate(downloadId: number): void {
+  switch (settings.notifyMode) {
+    case 'silent':
+      break;
+    case 'party':
+      void chrome.tabs.create({ url: settings.partyUrl }).catch(() => undefined);
+      break;
+    case 'notify':
+      void chrome.notifications.create(`ruu-dl-${downloadId}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: 'Ruu — indirme tamam',
+        message: 'Dosya kaydedildi.',
+        buttons: [{ title: 'Aç' }],
+      }).catch(() => undefined);
+      break;
+  }
+  if (settings.openWhenDone) {
+    // gesture gerektirebilir; olmadıysa bildirim/panel Aç butonu devrede
+    try { chrome.downloads.open(downloadId); } catch { /* gesture yok */ }
+  }
+}
+
+chrome.notifications.onButtonClicked.addListener((notificationId) => {
+  const m = notificationId.match(/^ruu-dl-(\d+)$/);
+  if (m) {
+    try { chrome.downloads.open(Number(m[1])); } catch { /* dosya taşınmış olabilir */ }
+  }
+});
 
 chrome.runtime.onMessage.addListener((raw: Msg) => {
   if (raw.target !== 'sw') return;
@@ -127,7 +167,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
             filename: routeByType(raw.filename, settings.typeFolders),
             conflictAction: 'uniquify',
           });
-          deliveries.set(id, raw.jobId);
+          deliveries.set(id, { jobId: raw.jobId, size: raw.size, topSpeed: raw.topSpeed });
         } catch (err) {
           void chrome.runtime.sendMessage({
             target: 'engine', type: 'delivered', jobId: raw.jobId,
@@ -151,23 +191,20 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
 });
 
 chrome.downloads.onChanged.addListener((delta) => {
-  const jobId = deliveries.get(delta.id);
-  if (!jobId) return;
+  const delivery = deliveries.get(delta.id);
+  if (!delivery) return;
   if (delta.state?.current === 'complete') {
     deliveries.delete(delta.id);
     void chrome.runtime.sendMessage({
-      target: 'engine', type: 'delivered', jobId, ok: true,
+      target: 'engine', type: 'delivered', jobId: delivery.jobId, ok: true, downloadId: delta.id,
     } satisfies Msg).catch(() => undefined);
-    void chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icons/icon128.png',
-      title: 'Ruu — indirme tamam',
-      message: 'Dosya Downloads klasörüne kaydedildi.',
-    }).catch(() => undefined);
+    void recordStats(delivery.size, delivery.topSpeed);
+    celebrate(delta.id);
   } else if (delta.state?.current === 'interrupted') {
     deliveries.delete(delta.id);
     void chrome.runtime.sendMessage({
-      target: 'engine', type: 'delivered', jobId, ok: false, error: delta.error?.current ?? 'interrupted',
+      target: 'engine', type: 'delivered', jobId: delivery.jobId, ok: false,
+      error: delta.error?.current ?? 'interrupted',
     } satisfies Msg).catch(() => undefined);
   }
 });
