@@ -1,4 +1,5 @@
 import type { JobSnapshot, Msg } from '../engine/types';
+import { icons } from './icons';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T;
 
@@ -9,6 +10,20 @@ const doneList = $('#done-list');
 const activeCount = $('#active-count');
 const doneCount = $('#done-count');
 const emptyHint = $('#empty-hint');
+const liveRegion = $('#live-region');
+
+const SEG_BUCKETS = 48;
+
+/** Tek-kelime durum sözcükleri (Claude tarzı) — i18n-hazır, minimal metin. */
+const FLOW_WORDS = ['İniyor', 'Akıyor', 'Sürüyor', 'Hızlanıyor', 'Taşınıyor'];
+const STATE_WORDS: Record<JobSnapshot['state'], string> = {
+  probing: 'Bağlanıyor',
+  downloading: FLOW_WORDS[0]!,
+  paused: 'Bekliyor',
+  finalizing: 'Yerleşiyor',
+  done: 'İndi',
+  error: 'Takıldı',
+};
 
 function send(msg: Msg): void {
   void chrome.runtime.sendMessage(msg).catch(() => undefined);
@@ -33,83 +48,196 @@ function fmtBytes(n: number): string {
 }
 
 function fmtEta(sec: number): string {
-  if (!Number.isFinite(sec) || sec <= 0) return '—';
+  if (!Number.isFinite(sec) || sec <= 0) return '';
   if (sec < 60) return `${Math.ceil(sec)}sn`;
   return `${Math.floor(sec / 60)}dk ${Math.ceil(sec % 60)}sn`;
 }
 
-const ICONS = {
-  pause: '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
-  play: '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M7 4.5l12 7.5-12 7.5z" fill="currentColor"/></svg>',
-  x: '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
-};
+// ── Keyed renderer ───────────────────────────────────────────────────────────
+// Kart DOM'u iş başına BİR KEZ kurulur, sonraki güncellemeler yerinde yapılır;
+// innerHTML yeniden kurulumu animasyonları sıfırladığı için yasak.
 
-function segbar(job: JobSnapshot): string {
-  if (!job.size || job.claims.length === 0) return '';
-  const parts: string[] = [];
-  let cursor = 0;
-  for (const c of job.claims) {
-    if (c.s > cursor) {
-      parts.push(`<div class="seg" style="width:${((c.s - cursor) / job.size) * 100}%"></div>`);
-    }
-    const done = (c.w / Math.max(1, c.e - c.s)) * 100;
-    parts.push(
-      `<div class="seg${c.a ? ' active' : ''}" style="width:${((c.e - c.s) / job.size) * 100}%;` +
-      `background:linear-gradient(to right, var(--accent) ${done}%, transparent ${done}%)"></div>`,
-    );
-    cursor = c.e;
-  }
-  if (cursor < job.size) {
-    parts.push(`<div class="seg" style="width:${((job.size - cursor) / job.size) * 100}%"></div>`);
-  }
-  return `<div class="segbar">${parts.join('')}</div>`;
+interface CardRef {
+  el: HTMLElement;
+  fill: HTMLElement;
+  fname: HTMLElement;
+  fsize: HTMLElement;
+  word: HTMLElement;
+  stats: HTMLElement;
+  actions: HTMLElement;
+  buckets: HTMLElement[];
+  state: JobSnapshot['state'] | '';
+  wordText: string;
+  wordIdx: number;
 }
 
-function card(job: JobSnapshot): string {
-  const pct = job.size ? Math.floor((job.downloaded / job.size) * 100) : 0;
-  const eta = job.speed > 0 && job.size ? (job.size - job.downloaded) / job.speed : NaN;
-  let stats: string;
-  let buttons = '';
-  switch (job.state) {
-    case 'probing': stats = 'bağlanıyor…'; break;
-    case 'downloading':
-      stats = `${fmtBytes(job.speed)}/s · %${pct} · ${fmtEta(eta)}`;
-      buttons = `<button class="icon-btn" data-act="pause" data-id="${job.id}" title="Duraklat">${ICONS.pause}</button>`;
-      break;
-    case 'paused':
-      stats = `duraklatıldı · %${pct}`;
-      buttons = `<button class="icon-btn" data-act="resume" data-id="${job.id}" title="Devam">${ICONS.play}</button>`;
-      break;
-    case 'finalizing': stats = 'diske teslim ediliyor…'; break;
-    case 'done': stats = job.native ? 'tarayıcıya devredildi' : 'tamamlandı'; break;
-    case 'error': stats = job.error ?? 'hata'; break;
+const cards = new Map<string, CardRef>();
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+function createCard(job: JobSnapshot): CardRef {
+  const el = document.createElement('div');
+  el.setAttribute('role', 'listitem');
+  el.dataset['id'] = job.id;
+  el.className = 'card';
+  el.innerHTML = `
+    <div class="card-bg"><div class="card-fill"><div class="flow"></div></div></div>
+    <div class="card-content">
+      <div class="row1">
+        <span class="beat-dot" aria-hidden="true"></span>
+        <span class="fname"></span>
+        <span class="fsize"></span>
+      </div>
+      <div class="segbar" aria-hidden="true">${'<div class="seg"><div class="f"></div></div>'.repeat(SEG_BUCKETS)}</div>
+      <div class="row2">
+        <span class="statusline"><span class="word"></span><span class="stats"></span></span>
+        <span class="actions"></span>
+      </div>
+    </div>`;
+  const ref: CardRef = {
+    el,
+    fill: el.querySelector('.card-fill')!,
+    fname: el.querySelector('.fname')!,
+    fsize: el.querySelector('.fsize')!,
+    word: el.querySelector('.word')!,
+    stats: el.querySelector('.stats')!,
+    actions: el.querySelector('.actions')!,
+    buckets: [...el.querySelectorAll<HTMLElement>('.seg > .f')],
+    state: '',
+    wordText: '',
+    wordIdx: Math.floor(Math.random() * FLOW_WORDS.length),
+  };
+  cards.set(job.id, ref);
+  return ref;
+}
+
+function setWord(ref: CardRef, text: string): void {
+  if (ref.wordText === text) return;
+  ref.wordText = text;
+  ref.word.textContent = text;
+  if (!reducedMotion.matches) {
+    ref.word.animate(
+      [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 220, easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)' },
+    );
+  }
+}
+
+function actionButtons(job: JobSnapshot): string {
+  let out = '';
+  if (job.state === 'downloading') {
+    out += `<button class="icon-btn" data-act="pause" data-id="${job.id}" aria-label="Duraklat" title="Duraklat">${icons.pause}</button>`;
+  } else if (job.state === 'paused') {
+    out += `<button class="icon-btn" data-act="resume" data-id="${job.id}" aria-label="Devam et" title="Devam et">${icons.play}</button>`;
   }
   if (job.state !== 'done') {
-    buttons += `<button class="icon-btn" data-act="cancel" data-id="${job.id}" title="İptal">${ICONS.x}</button>`;
+    out += `<button class="icon-btn" data-act="cancel" data-id="${job.id}" aria-label="İptal et" title="İptal et">${icons.x}</button>`;
   }
-  return `<div class="card ${job.state}">
-    <div class="row1">
-      <span class="fname" title="${job.url}">${escapeHtml(job.filename)}</span>
-      <span class="fsize">${job.size ? fmtBytes(job.size) : ''}</span>
-    </div>
-    ${job.state === 'downloading' || job.state === 'paused' ? segbar(job) : ''}
-    <div class="row2"><span class="stats">${stats}</span><span class="actions">${buttons}</span></div>
-  </div>`;
+  return out;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+function updateCard(ref: CardRef, job: JobSnapshot): void {
+  const pct = job.size ? job.downloaded / job.size : 0;
+
+  if (ref.state !== job.state) {
+    const prev = ref.state;
+    ref.state = job.state;
+    ref.el.className = `card ${job.state}`;
+    ref.actions.innerHTML = actionButtons(job);
+    setWord(ref, STATE_WORDS[job.state]);
+    if (job.state === 'done' && prev && prev !== 'done') {
+      liveRegion.textContent = `${job.filename} indirildi`;
+    }
+    if (job.state === 'error') {
+      liveRegion.textContent = `${job.filename}: ${job.error ?? 'hata'}`;
+    }
+  }
+
+  ref.fname.textContent = job.filename;
+  ref.fname.title = job.url;
+  ref.fsize.textContent = job.size ? fmtBytes(job.size) : '';
+  ref.fill.style.width = `${(pct * 100).toFixed(2)}%`;
+
+  if (job.state === 'downloading') {
+    const eta = job.speed > 0 && job.size ? (job.size - job.downloaded) / job.speed : NaN;
+    const parts = [`${fmtBytes(job.speed)}/s`, `%${Math.floor(pct * 100)}`];
+    const etaTxt = fmtEta(eta);
+    if (etaTxt) parts.push(etaTxt);
+    ref.stats.textContent = parts.join(' · ');
+  } else if (job.state === 'paused') {
+    ref.stats.textContent = `%${Math.floor(pct * 100)}`;
+  } else if (job.state === 'error') {
+    ref.stats.textContent = job.error ?? '';
+  } else if (job.state === 'done' && job.native) {
+    ref.stats.textContent = 'tarayıcıya devredildi';
+  } else {
+    ref.stats.textContent = '';
+  }
+
+  // Segment haritası: 48 sabit bucket; node yeniden kurulmaz, opacity güncellenir.
+  if ((job.state === 'downloading' || job.state === 'paused') && job.size) {
+    ref.el.classList.add('has-segbar');
+    const size = job.size;
+    const bucketOf = (byte: number): number =>
+      Math.min(SEG_BUCKETS - 1, Math.floor((byte / size) * SEG_BUCKETS));
+    const fillPer = new Float32Array(SEG_BUCKETS);
+    const activeSet = new Set<number>();
+    for (const c of job.claims) {
+      if (c.w > 0) {
+        const s = bucketOf(c.s);
+        const e = bucketOf(c.s + c.w - 1);
+        for (let b = s; b <= e; b++) fillPer[b] = 1;
+        // uç bucket kısmi olabilir; basit yaklaşım: uçta oran uygula
+        const bucketSize = size / SEG_BUCKETS;
+        fillPer[e] = Math.min(1, ((c.s + c.w) - e * bucketSize) / bucketSize);
+        if (s === e) fillPer[s] = Math.min(1, c.w / bucketSize);
+      }
+      if (c.a) activeSet.add(bucketOf(c.s + c.w));
+    }
+    for (let b = 0; b < SEG_BUCKETS; b++) {
+      const f = ref.buckets[b]!;
+      f.style.opacity = String(fillPer[b]);
+      f.parentElement!.classList.toggle('active', activeSet.has(b));
+    }
+  } else {
+    ref.el.classList.remove('has-segbar');
+  }
 }
 
 function render(jobsList: JobSnapshot[]): void {
-  const active = jobsList.filter((j) => j.state !== 'done');
-  const done = jobsList.filter((j) => j.state === 'done');
-  activeList.innerHTML = active.map(card).join('');
-  doneList.innerHTML = done.map(card).join('');
-  activeCount.textContent = active.length ? `(${active.length})` : '';
-  doneCount.textContent = done.length ? `(${done.length})` : '';
+  const seen = new Set<string>();
+  let active = 0;
+  let done = 0;
+
+  for (const job of jobsList) {
+    seen.add(job.id);
+    const ref = cards.get(job.id) ?? createCard(job);
+    updateCard(ref, job);
+    const targetList = job.state === 'done' ? doneList : activeList;
+    if (ref.el.parentElement !== targetList) targetList.appendChild(ref.el);
+    if (job.state === 'done') done++; else active++;
+  }
+
+  for (const [id, ref] of cards) {
+    if (!seen.has(id)) {
+      ref.el.remove();
+      cards.delete(id);
+    }
+  }
+
+  activeCount.textContent = active ? `(${active})` : '';
+  doneCount.textContent = done ? `(${done})` : '';
   emptyHint.style.display = jobsList.length ? 'none' : '';
 }
+
+// Akış sözcüğü rotasyonu: aktif kartlarda 4 sn'de bir yumuşak geçiş.
+setInterval(() => {
+  for (const ref of cards.values()) {
+    if (ref.state === 'downloading') {
+      ref.wordIdx = (ref.wordIdx + 1) % FLOW_WORDS.length;
+      setWord(ref, FLOW_WORDS[ref.wordIdx]!);
+    }
+  }
+}, 4000);
 
 document.body.addEventListener('click', (e) => {
   const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');

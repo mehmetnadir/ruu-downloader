@@ -31,14 +31,15 @@
 <main>
   <section id="active-section">
     <h2>AKTİF <span id="active-count"></span></h2>
-    <div id="active-list"></div>
+    <div id="active-list" role="list"></div>
   </section>
   <section id="done-section">
     <h2>TAMAMLANAN <span id="done-count"></span></h2>
-    <div id="done-list"></div>
+    <div id="done-list" role="list"></div>
   </section>
   <p id="empty-hint">Henüz indirme yok. Bir URL yapıştır ya da bir siteden indirme başlat.</p>
 </main>
+<div id="live-region" class="visually-hidden" aria-live="polite"></div>
 
 <script type="module" src="sidepanel.js"></script>
 </body>
