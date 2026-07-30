@@ -4,6 +4,7 @@
  * transferable olarak akar, OPFS'e nihai konumda yazılır.
  */
 import { RangeAllocator, type Claim } from '../engine/allocator';
+import { autoTuneConnections, collectHints } from '../engine/autotune';
 import {
   MAX_SEQUENTIAL_ERRORS,
   MIN_SPLIT,
@@ -53,11 +54,7 @@ class Job {
 
   async start(): Promise<void> {
     try {
-      const probe = await fetch(this.url, {
-        headers: { Range: 'bytes=0-0' },
-        credentials: 'include',
-        cache: 'no-store',
-      });
+      const probe = await this.probeWithRetry();
       this.filename = pickFilename(this.url, probe.headers.get('content-disposition'));
       const total = parseTotal(probe);
       probe.body?.cancel().catch(() => undefined);
@@ -81,6 +78,24 @@ class Job {
     } catch (err) {
       this.fail(err);
     }
+  }
+
+  /** Probe: 3 deneme, artan bekleme — anlık ağ sekmeleri işi düşürmesin. */
+  private async probeWithRetry(): Promise<Response> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt));
+      try {
+        return await fetch(this.url, {
+          headers: { Range: 'bytes=0-0' },
+          credentials: 'include',
+          cache: 'no-store',
+        });
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr;
   }
 
   private initDisk(size: number): Promise<void> {
@@ -184,7 +199,9 @@ class Job {
       this.alloc!.settle(claim);
     } catch (err) {
       this.alloc!.settle(claim);
-      if (dbg.pumpErrors.length < 20) {
+      const isAbort = controller.signal.aborted ||
+        (err instanceof Error && err.name === 'AbortError');
+      if (!isAbort && dbg.pumpErrors.length < 20) {
         dbg.pumpErrors.push(err instanceof Error ? `${err.name}: ${err.message}` : String(err));
       }
       if (this.state === 'downloading' && !controller.signal.aborted) {
@@ -404,7 +421,8 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
   if (raw.target !== 'engine') return;
   switch (raw.type) {
     case 'add': {
-      const job = new Job(raw.url, Math.min(8, Math.max(1, raw.connections ?? 4)));
+      const auto = autoTuneConnections(collectHints());
+      const job = new Job(raw.url, Math.min(8, Math.max(1, raw.connections ?? auto)));
       jobs.set(job.id, job);
       void job.start();
       break;

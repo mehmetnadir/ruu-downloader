@@ -32,7 +32,7 @@ function send(msg: Msg): void {
 function addFromInput(): void {
   const url = urlInput.value.trim();
   if (!url) return;
-  send({ target: 'sw', type: 'add', url, connections: 4 });
+  send({ target: 'sw', type: 'add', url }); // bağlantı sayısı: motor cihaza göre otomatik seçer
   urlInput.value = '';
 }
 

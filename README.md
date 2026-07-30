@@ -27,9 +27,25 @@ on modern web platform primitives (OPFS, File System Access, Side Panel).
 Ruu is a productivity tool. It does **not** sniff, capture, or rip streaming video
 (HLS/DASH). Only direct file links are supported.
 
+## Development
+
+```bash
+npm install
+npm run build        # bundles to dist/ (esbuild)
+npm test             # unit tests (Vitest)
+./test/e2e/run.sh    # full E2E: isolated Chrome + throttled test server,
+                     # 3 scenarios, byte-level integrity checks
+HEADLESS=1 ./test/e2e/run.sh   # CI mode
+```
+
+Note: Chrome 137+ removed `--load-extension`; the E2E harness loads the unpacked
+extension via CDP `Extensions.loadUnpacked` (requires `--enable-unsafe-extension-debugging`).
+
 ## Status
 
-Early development — research and architecture phase. See `.claude/docs/` for design docs.
+Walking skeleton is live: segmented engine, OPFS positioned writes, Side Panel with
+live segment map, pause/resume, native fallback — all verified end-to-end.
+See `.claude/docs/` for design docs and roadmap.
 
 ## License
 

@@ -81,7 +81,7 @@ chrome.downloads.onChanged.addListener((delta) => {
     } satisfies Msg).catch(() => undefined);
     void chrome.notifications.create({
       type: 'basic',
-      iconUrl: 'icon.png',
+      iconUrl: 'icons/icon128.png',
       title: 'Ruu — indirme tamam',
       message: 'Dosya Downloads klasörüne kaydedildi.',
     }).catch(() => undefined);
