@@ -49,16 +49,27 @@ function send(msg: Msg): void {
   void chrome.runtime.sendMessage(msg).catch(() => undefined);
 }
 
+let privateMode = false;
+
 function addFromInput(): void {
   const url = urlInput.value.trim();
   if (!url) return;
-  send({ target: 'sw', type: 'add', url }); // bağlantı sayısı: motor cihaza göre otomatik seçer
+  // bağlantı sayısı: motor cihaza göre otomatik seçer
+  send({ target: 'sw', type: 'add', url, priv: privateMode || undefined });
   urlInput.value = '';
 }
 
 addBtn.addEventListener('click', addFromInput);
 urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addFromInput(); });
 $('#pause-all').addEventListener('click', () => send({ target: 'sw', type: 'pause-all' }));
+
+const privToggle = $<HTMLButtonElement>('#priv-toggle');
+privToggle.innerHTML = icons.eyeOff;
+privToggle.addEventListener('click', () => {
+  privateMode = !privateMode;
+  privToggle.setAttribute('aria-pressed', String(privateMode));
+  privToggle.classList.toggle('toggled', privateMode);
+});
 
 // ── Onboarding (tek seferlik) + Ayarlar ──────────────────────────────────────
 const DEFAULTS = {
@@ -196,6 +207,7 @@ function createCard(job: JobSnapshot): CardRef {
     <div class="card-content">
       <div class="row1">
         <span class="beat-dot" aria-hidden="true"></span>
+        ${job.priv ? `<span class="priv-badge" title="${t('privT')}">${icons.eyeOff}</span>` : ''}
         <span class="fname"></span>
         <span class="fsize"></span>
       </div>

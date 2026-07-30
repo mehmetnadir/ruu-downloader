@@ -1,63 +1,188 @@
 {
-  "extName": { "message": "Ruu Downloader" },
-  "extDesc": { "message": "现代极简下载管理器 — 分段下载，崩溃也能续传。" },
-  "addPh": { "message": "粘贴链接…" },
-  "addBtn": { "message": "下载" },
-  "pauseAll": { "message": "全部暂停" },
-  "settings": { "message": "设置" },
-  "active": { "message": "进行中" },
-  "completed": { "message": "已完成" },
-  "emptyHint": { "message": "暂无下载。粘贴链接，或从任意网站开始下载。" },
-  "onboard": { "message": "将 Ruu 设为默认下载体验？Chrome 的下载气泡将被隐藏，Ruu 为你加速下载。" },
-  "onboardYes": { "message": "好，接管" },
-  "onboardNo": { "message": "暂不" },
-  "stDefT": { "message": "默认体验" },
-  "stDefD": { "message": "隐藏 Chrome 下载气泡；下载都在 Ruu 中" },
-  "stTakeT": { "message": "接管下载" },
-  "stTakeD": { "message": "捕获浏览器下载并加速" },
-  "stThrT": { "message": "接管阈值" },
-  "stThrD": { "message": "小于此大小（MB）的文件留在浏览器" },
-  "stFolT": { "message": "按类型归档" },
-  "stFolD": { "message": "图片、视频、压缩包…各归各的文件夹" },
-  "stRetT": { "message": "重试次数" },
-  "stRetD": { "message": "网络错误时每个连接的重试次数" },
-  "stNotT": { "message": "完成时" },
-  "stNotD": { "message": "静默、通知，或开派对" },
-  "ntSilent": { "message": "静默" },
-  "ntNotify": { "message": "通知" },
-  "ntParty": { "message": "派对 🎵" },
-  "stPartyT": { "message": "派对视频" },
-  "stPartyD": { "message": "下载完成时自动打开" },
-  "stOpenT": { "message": "下载并打开" },
-  "stOpenD": { "message": "完成后立即尝试打开文件" },
-  "openFile": { "message": "打开文件" },
-  "showFolder": { "message": "在文件夹中显示" },
-  "pause": { "message": "暂停" },
-  "resume": { "message": "继续" },
-  "cancel": { "message": "取消" },
-  "statsDl": { "message": "次下载" },
-  "wProbing": { "message": "连接中" },
-  "wPaused": { "message": "等待中" },
-  "wFinalizing": { "message": "收尾中" },
-  "wDone": { "message": "完成" },
-  "wError": { "message": "卡住了" },
-  "wNative": { "message": "已交给浏览器" },
-  "f1": { "message": "流动中" },
-  "f2": { "message": "疾驰中" },
-  "f3": { "message": "巡航中" },
-  "f4": { "message": "加速中" },
-  "f5": { "message": "降落中" },
-  "nTitle": { "message": "Ruu — 下载完成" },
-  "nMsg": { "message": "文件已保存。" },
-  "nOpen": { "message": "打开" },
-  "errChanged": { "message": "服务器上的源文件已更改 — 请重新开始下载" },
-  "errCancelled": { "message": "已取消" },
-  "errAllDown": { "message": "所有连接均失败" },
-  "errDelivery": { "message": "交付失败" },
-  "catImg": { "message": "图片" },
-  "catVid": { "message": "视频" },
-  "catMus": { "message": "音乐" },
-  "catArc": { "message": "压缩包" },
-  "catDoc": { "message": "文档" },
-  "catApp": { "message": "应用" }
+  "extName": {
+    "message": "Ruu Downloader"
+  },
+  "extDesc": {
+    "message": "现代极简下载管理器 — 分段下载，崩溃也能续传。"
+  },
+  "addPh": {
+    "message": "粘贴链接…"
+  },
+  "addBtn": {
+    "message": "下载"
+  },
+  "pauseAll": {
+    "message": "全部暂停"
+  },
+  "settings": {
+    "message": "设置"
+  },
+  "active": {
+    "message": "进行中"
+  },
+  "completed": {
+    "message": "已完成"
+  },
+  "emptyHint": {
+    "message": "暂无下载。粘贴链接，或从任意网站开始下载。"
+  },
+  "onboard": {
+    "message": "将 Ruu 设为默认下载体验？Chrome 的下载气泡将被隐藏，Ruu 为你加速下载。"
+  },
+  "onboardYes": {
+    "message": "好，接管"
+  },
+  "onboardNo": {
+    "message": "暂不"
+  },
+  "stDefT": {
+    "message": "默认体验"
+  },
+  "stDefD": {
+    "message": "隐藏 Chrome 下载气泡；下载都在 Ruu 中"
+  },
+  "stTakeT": {
+    "message": "接管下载"
+  },
+  "stTakeD": {
+    "message": "捕获浏览器下载并加速"
+  },
+  "stThrT": {
+    "message": "接管阈值"
+  },
+  "stThrD": {
+    "message": "小于此大小（MB）的文件留在浏览器"
+  },
+  "stFolT": {
+    "message": "按类型归档"
+  },
+  "stFolD": {
+    "message": "图片、视频、压缩包…各归各的文件夹"
+  },
+  "stRetT": {
+    "message": "重试次数"
+  },
+  "stRetD": {
+    "message": "网络错误时每个连接的重试次数"
+  },
+  "stNotT": {
+    "message": "完成时"
+  },
+  "stNotD": {
+    "message": "静默、通知，或开派对"
+  },
+  "ntSilent": {
+    "message": "静默"
+  },
+  "ntNotify": {
+    "message": "通知"
+  },
+  "ntParty": {
+    "message": "派对 🎵"
+  },
+  "stPartyT": {
+    "message": "派对视频"
+  },
+  "stPartyD": {
+    "message": "下载完成时自动打开"
+  },
+  "stOpenT": {
+    "message": "下载并打开"
+  },
+  "stOpenD": {
+    "message": "完成后立即尝试打开文件"
+  },
+  "openFile": {
+    "message": "打开文件"
+  },
+  "showFolder": {
+    "message": "在文件夹中显示"
+  },
+  "pause": {
+    "message": "暂停"
+  },
+  "resume": {
+    "message": "继续"
+  },
+  "cancel": {
+    "message": "取消"
+  },
+  "statsDl": {
+    "message": "次下载"
+  },
+  "wProbing": {
+    "message": "连接中"
+  },
+  "wPaused": {
+    "message": "等待中"
+  },
+  "wFinalizing": {
+    "message": "收尾中"
+  },
+  "wDone": {
+    "message": "完成"
+  },
+  "wError": {
+    "message": "卡住了"
+  },
+  "wNative": {
+    "message": "已交给浏览器"
+  },
+  "f1": {
+    "message": "流动中"
+  },
+  "f2": {
+    "message": "疾驰中"
+  },
+  "f3": {
+    "message": "巡航中"
+  },
+  "f4": {
+    "message": "加速中"
+  },
+  "f5": {
+    "message": "降落中"
+  },
+  "nTitle": {
+    "message": "Ruu — 下载完成"
+  },
+  "nMsg": {
+    "message": "文件已保存。"
+  },
+  "nOpen": {
+    "message": "打开"
+  },
+  "errChanged": {
+    "message": "服务器上的源文件已更改 — 请重新开始下载"
+  },
+  "errCancelled": {
+    "message": "已取消"
+  },
+  "errAllDown": {
+    "message": "所有连接均失败"
+  },
+  "errDelivery": {
+    "message": "交付失败"
+  },
+  "catImg": {
+    "message": "图片"
+  },
+  "catVid": {
+    "message": "视频"
+  },
+  "catMus": {
+    "message": "音乐"
+  },
+  "catArc": {
+    "message": "压缩包"
+  },
+  "catDoc": {
+    "message": "文档"
+  },
+  "catApp": {
+    "message": "应用"
+  },
+  "privT": {
+    "message": "私密下载"
+  }
 }

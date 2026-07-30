@@ -1,63 +1,188 @@
 {
-  "extName": { "message": "Ruu Downloader" },
-  "extDesc": { "message": "Modern, minimal download manager — segmented downloads, crash-proof resume." },
-  "addPh": { "message": "Paste a URL…" },
-  "addBtn": { "message": "Download" },
-  "pauseAll": { "message": "Pause all" },
-  "settings": { "message": "Settings" },
-  "active": { "message": "ACTIVE" },
-  "completed": { "message": "COMPLETED" },
-  "emptyHint": { "message": "No downloads yet. Paste a URL or start one from any site." },
-  "onboard": { "message": "Make Ruu your default download experience? Chrome's download bubble is hidden and Ruu accelerates your downloads." },
-  "onboardYes": { "message": "Yes, take over" },
-  "onboardNo": { "message": "Not now" },
-  "stDefT": { "message": "Default experience" },
-  "stDefD": { "message": "Hides Chrome's download bubble; downloads live in Ruu" },
-  "stTakeT": { "message": "Take over downloads" },
-  "stTakeD": { "message": "Catches browser downloads and accelerates them" },
-  "stThrT": { "message": "Takeover threshold" },
-  "stThrD": { "message": "Files below this size (MB) stay in the browser" },
-  "stFolT": { "message": "Sort by type" },
-  "stFolD": { "message": "Images, video, archives… each lands in its own folder" },
-  "stRetT": { "message": "Retries" },
-  "stRetD": { "message": "Attempts per connection on network errors" },
-  "stNotT": { "message": "When finished" },
-  "stNotD": { "message": "Stay silent, notify, or start the party" },
-  "ntSilent": { "message": "Silent" },
-  "ntNotify": { "message": "Notify" },
-  "ntParty": { "message": "Party 🎵" },
-  "stPartyT": { "message": "Party video" },
-  "stPartyD": { "message": "Opens when a download finishes" },
-  "stOpenT": { "message": "Download & open" },
-  "stOpenD": { "message": "Tries to open the file right away" },
-  "openFile": { "message": "Open file" },
-  "showFolder": { "message": "Show in folder" },
-  "pause": { "message": "Pause" },
-  "resume": { "message": "Resume" },
-  "cancel": { "message": "Cancel" },
-  "statsDl": { "message": "downloads" },
-  "wProbing": { "message": "Connecting" },
-  "wPaused": { "message": "Waiting" },
-  "wFinalizing": { "message": "Settling" },
-  "wDone": { "message": "Done" },
-  "wError": { "message": "Stuck" },
-  "wNative": { "message": "handed to browser" },
-  "f1": { "message": "Flowing" },
-  "f2": { "message": "Rushing" },
-  "f3": { "message": "Cruising" },
-  "f4": { "message": "Zooming" },
-  "f5": { "message": "Landing" },
-  "nTitle": { "message": "Ruu — download complete" },
-  "nMsg": { "message": "File saved." },
-  "nOpen": { "message": "Open" },
-  "errChanged": { "message": "source changed on the server — restart the download" },
-  "errCancelled": { "message": "cancelled" },
-  "errAllDown": { "message": "all connections failed" },
-  "errDelivery": { "message": "delivery failed" },
-  "catImg": { "message": "Images" },
-  "catVid": { "message": "Video" },
-  "catMus": { "message": "Music" },
-  "catArc": { "message": "Archives" },
-  "catDoc": { "message": "Documents" },
-  "catApp": { "message": "Apps" }
+  "extName": {
+    "message": "Ruu Downloader"
+  },
+  "extDesc": {
+    "message": "Modern, minimal download manager — segmented downloads, crash-proof resume."
+  },
+  "addPh": {
+    "message": "Paste a URL…"
+  },
+  "addBtn": {
+    "message": "Download"
+  },
+  "pauseAll": {
+    "message": "Pause all"
+  },
+  "settings": {
+    "message": "Settings"
+  },
+  "active": {
+    "message": "ACTIVE"
+  },
+  "completed": {
+    "message": "COMPLETED"
+  },
+  "emptyHint": {
+    "message": "No downloads yet. Paste a URL or start one from any site."
+  },
+  "onboard": {
+    "message": "Make Ruu your default download experience? Chrome's download bubble is hidden and Ruu accelerates your downloads."
+  },
+  "onboardYes": {
+    "message": "Yes, take over"
+  },
+  "onboardNo": {
+    "message": "Not now"
+  },
+  "stDefT": {
+    "message": "Default experience"
+  },
+  "stDefD": {
+    "message": "Hides Chrome's download bubble; downloads live in Ruu"
+  },
+  "stTakeT": {
+    "message": "Take over downloads"
+  },
+  "stTakeD": {
+    "message": "Catches browser downloads and accelerates them"
+  },
+  "stThrT": {
+    "message": "Takeover threshold"
+  },
+  "stThrD": {
+    "message": "Files below this size (MB) stay in the browser"
+  },
+  "stFolT": {
+    "message": "Sort by type"
+  },
+  "stFolD": {
+    "message": "Images, video, archives… each lands in its own folder"
+  },
+  "stRetT": {
+    "message": "Retries"
+  },
+  "stRetD": {
+    "message": "Attempts per connection on network errors"
+  },
+  "stNotT": {
+    "message": "When finished"
+  },
+  "stNotD": {
+    "message": "Stay silent, notify, or start the party"
+  },
+  "ntSilent": {
+    "message": "Silent"
+  },
+  "ntNotify": {
+    "message": "Notify"
+  },
+  "ntParty": {
+    "message": "Party 🎵"
+  },
+  "stPartyT": {
+    "message": "Party video"
+  },
+  "stPartyD": {
+    "message": "Opens when a download finishes"
+  },
+  "stOpenT": {
+    "message": "Download & open"
+  },
+  "stOpenD": {
+    "message": "Tries to open the file right away"
+  },
+  "openFile": {
+    "message": "Open file"
+  },
+  "showFolder": {
+    "message": "Show in folder"
+  },
+  "pause": {
+    "message": "Pause"
+  },
+  "resume": {
+    "message": "Resume"
+  },
+  "cancel": {
+    "message": "Cancel"
+  },
+  "statsDl": {
+    "message": "downloads"
+  },
+  "wProbing": {
+    "message": "Connecting"
+  },
+  "wPaused": {
+    "message": "Waiting"
+  },
+  "wFinalizing": {
+    "message": "Settling"
+  },
+  "wDone": {
+    "message": "Done"
+  },
+  "wError": {
+    "message": "Stuck"
+  },
+  "wNative": {
+    "message": "handed to browser"
+  },
+  "f1": {
+    "message": "Flowing"
+  },
+  "f2": {
+    "message": "Rushing"
+  },
+  "f3": {
+    "message": "Cruising"
+  },
+  "f4": {
+    "message": "Zooming"
+  },
+  "f5": {
+    "message": "Landing"
+  },
+  "nTitle": {
+    "message": "Ruu — download complete"
+  },
+  "nMsg": {
+    "message": "File saved."
+  },
+  "nOpen": {
+    "message": "Open"
+  },
+  "errChanged": {
+    "message": "source changed on the server — restart the download"
+  },
+  "errCancelled": {
+    "message": "cancelled"
+  },
+  "errAllDown": {
+    "message": "all connections failed"
+  },
+  "errDelivery": {
+    "message": "delivery failed"
+  },
+  "catImg": {
+    "message": "Images"
+  },
+  "catVid": {
+    "message": "Video"
+  },
+  "catMus": {
+    "message": "Music"
+  },
+  "catArc": {
+    "message": "Archives"
+  },
+  "catDoc": {
+    "message": "Documents"
+  },
+  "catApp": {
+    "message": "Apps"
+  },
+  "privT": {
+    "message": "Private download"
+  }
 }

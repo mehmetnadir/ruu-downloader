@@ -1,63 +1,188 @@
 {
-  "extName": { "message": "Ruu Downloader" },
-  "extDesc": { "message": "Gerenciador de downloads moderno e minimalista — downloads segmentados, retomada à prova de falhas." },
-  "addPh": { "message": "Cole uma URL…" },
-  "addBtn": { "message": "Baixar" },
-  "pauseAll": { "message": "Pausar tudo" },
-  "settings": { "message": "Configurações" },
-  "active": { "message": "ATIVOS" },
-  "completed": { "message": "CONCLUÍDOS" },
-  "emptyHint": { "message": "Nenhum download ainda. Cole uma URL ou inicie um de qualquer site." },
-  "onboard": { "message": "Tornar o Ruu sua experiência padrão de download? A bolha do Chrome é ocultada e o Ruu acelera seus downloads." },
-  "onboardYes": { "message": "Sim, assumir" },
-  "onboardNo": { "message": "Agora não" },
-  "stDefT": { "message": "Experiência padrão" },
-  "stDefD": { "message": "Oculta a bolha do Chrome; os downloads vivem no Ruu" },
-  "stTakeT": { "message": "Assumir downloads" },
-  "stTakeD": { "message": "Captura os downloads do navegador e os acelera" },
-  "stThrT": { "message": "Limite de captura" },
-  "stThrD": { "message": "Arquivos menores (MB) ficam no navegador" },
-  "stFolT": { "message": "Organizar por tipo" },
-  "stFolD": { "message": "Imagens, vídeos, arquivos… cada um em sua pasta" },
-  "stRetT": { "message": "Novas tentativas" },
-  "stRetD": { "message": "Tentativas por conexão em erros de rede" },
-  "stNotT": { "message": "Ao terminar" },
-  "stNotD": { "message": "Silêncio, notificação ou festa" },
-  "ntSilent": { "message": "Silêncio" },
-  "ntNotify": { "message": "Notificar" },
-  "ntParty": { "message": "Festa 🎵" },
-  "stPartyT": { "message": "Vídeo da festa" },
-  "stPartyD": { "message": "Abre quando um download termina" },
-  "stOpenT": { "message": "Baixar e abrir" },
-  "stOpenD": { "message": "Tenta abrir o arquivo na hora" },
-  "openFile": { "message": "Abrir arquivo" },
-  "showFolder": { "message": "Mostrar na pasta" },
-  "pause": { "message": "Pausar" },
-  "resume": { "message": "Retomar" },
-  "cancel": { "message": "Cancelar" },
-  "statsDl": { "message": "downloads" },
-  "wProbing": { "message": "Conectando" },
-  "wPaused": { "message": "Esperando" },
-  "wFinalizing": { "message": "Assentando" },
-  "wDone": { "message": "Pronto" },
-  "wError": { "message": "Travado" },
-  "wNative": { "message": "entregue ao navegador" },
-  "f1": { "message": "Fluindo" },
-  "f2": { "message": "Voando" },
-  "f3": { "message": "Navegando" },
-  "f4": { "message": "Acelerando" },
-  "f5": { "message": "Pousando" },
-  "nTitle": { "message": "Ruu — download concluído" },
-  "nMsg": { "message": "Arquivo salvo." },
-  "nOpen": { "message": "Abrir" },
-  "errChanged": { "message": "a fonte mudou no servidor — reinicie o download" },
-  "errCancelled": { "message": "cancelado" },
-  "errAllDown": { "message": "todas as conexões falharam" },
-  "errDelivery": { "message": "falha na entrega" },
-  "catImg": { "message": "Imagens" },
-  "catVid": { "message": "Vídeos" },
-  "catMus": { "message": "Música" },
-  "catArc": { "message": "Arquivos" },
-  "catDoc": { "message": "Documentos" },
-  "catApp": { "message": "Aplicativos" }
+  "extName": {
+    "message": "Ruu Downloader"
+  },
+  "extDesc": {
+    "message": "Gerenciador de downloads moderno e minimalista — downloads segmentados, retomada à prova de falhas."
+  },
+  "addPh": {
+    "message": "Cole uma URL…"
+  },
+  "addBtn": {
+    "message": "Baixar"
+  },
+  "pauseAll": {
+    "message": "Pausar tudo"
+  },
+  "settings": {
+    "message": "Configurações"
+  },
+  "active": {
+    "message": "ATIVOS"
+  },
+  "completed": {
+    "message": "CONCLUÍDOS"
+  },
+  "emptyHint": {
+    "message": "Nenhum download ainda. Cole uma URL ou inicie um de qualquer site."
+  },
+  "onboard": {
+    "message": "Tornar o Ruu sua experiência padrão de download? A bolha do Chrome é ocultada e o Ruu acelera seus downloads."
+  },
+  "onboardYes": {
+    "message": "Sim, assumir"
+  },
+  "onboardNo": {
+    "message": "Agora não"
+  },
+  "stDefT": {
+    "message": "Experiência padrão"
+  },
+  "stDefD": {
+    "message": "Oculta a bolha do Chrome; os downloads vivem no Ruu"
+  },
+  "stTakeT": {
+    "message": "Assumir downloads"
+  },
+  "stTakeD": {
+    "message": "Captura os downloads do navegador e os acelera"
+  },
+  "stThrT": {
+    "message": "Limite de captura"
+  },
+  "stThrD": {
+    "message": "Arquivos menores (MB) ficam no navegador"
+  },
+  "stFolT": {
+    "message": "Organizar por tipo"
+  },
+  "stFolD": {
+    "message": "Imagens, vídeos, arquivos… cada um em sua pasta"
+  },
+  "stRetT": {
+    "message": "Novas tentativas"
+  },
+  "stRetD": {
+    "message": "Tentativas por conexão em erros de rede"
+  },
+  "stNotT": {
+    "message": "Ao terminar"
+  },
+  "stNotD": {
+    "message": "Silêncio, notificação ou festa"
+  },
+  "ntSilent": {
+    "message": "Silêncio"
+  },
+  "ntNotify": {
+    "message": "Notificar"
+  },
+  "ntParty": {
+    "message": "Festa 🎵"
+  },
+  "stPartyT": {
+    "message": "Vídeo da festa"
+  },
+  "stPartyD": {
+    "message": "Abre quando um download termina"
+  },
+  "stOpenT": {
+    "message": "Baixar e abrir"
+  },
+  "stOpenD": {
+    "message": "Tenta abrir o arquivo na hora"
+  },
+  "openFile": {
+    "message": "Abrir arquivo"
+  },
+  "showFolder": {
+    "message": "Mostrar na pasta"
+  },
+  "pause": {
+    "message": "Pausar"
+  },
+  "resume": {
+    "message": "Retomar"
+  },
+  "cancel": {
+    "message": "Cancelar"
+  },
+  "statsDl": {
+    "message": "downloads"
+  },
+  "wProbing": {
+    "message": "Conectando"
+  },
+  "wPaused": {
+    "message": "Esperando"
+  },
+  "wFinalizing": {
+    "message": "Assentando"
+  },
+  "wDone": {
+    "message": "Pronto"
+  },
+  "wError": {
+    "message": "Travado"
+  },
+  "wNative": {
+    "message": "entregue ao navegador"
+  },
+  "f1": {
+    "message": "Fluindo"
+  },
+  "f2": {
+    "message": "Voando"
+  },
+  "f3": {
+    "message": "Navegando"
+  },
+  "f4": {
+    "message": "Acelerando"
+  },
+  "f5": {
+    "message": "Pousando"
+  },
+  "nTitle": {
+    "message": "Ruu — download concluído"
+  },
+  "nMsg": {
+    "message": "Arquivo salvo."
+  },
+  "nOpen": {
+    "message": "Abrir"
+  },
+  "errChanged": {
+    "message": "a fonte mudou no servidor — reinicie o download"
+  },
+  "errCancelled": {
+    "message": "cancelado"
+  },
+  "errAllDown": {
+    "message": "todas as conexões falharam"
+  },
+  "errDelivery": {
+    "message": "falha na entrega"
+  },
+  "catImg": {
+    "message": "Imagens"
+  },
+  "catVid": {
+    "message": "Vídeos"
+  },
+  "catMus": {
+    "message": "Música"
+  },
+  "catArc": {
+    "message": "Arquivos"
+  },
+  "catDoc": {
+    "message": "Documentos"
+  },
+  "catApp": {
+    "message": "Aplicativos"
+  },
+  "privT": {
+    "message": "Download privado"
+  }
 }

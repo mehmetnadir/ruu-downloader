@@ -173,6 +173,32 @@ const MB = 1024 * 1024;
   record('S4 tarayıcı indirmesini devralma', st === 'done' && !bad, bad ?? `state=${st}`);
 }
 
+// S6: GİZLİ İNDİRME — dosya iner ama tarayıcı geçmişinde iz kalmaz (PRD-3 #7)
+{
+  const url = `http://localhost:${serverPort}/f/12?rate=30`;
+  await evalIn(panel, `chrome.runtime.sendMessage({target:'sw',type:'add',url:${JSON.stringify(url)},priv:true}); 'sent'`);
+  const offscreen = await pageCdp('offscreen.html');
+  const deadline = Date.now() + 40_000;
+  let st = 'yok';
+  while (Date.now() < deadline) {
+    await sleep(700);
+    st = await evalIn(offscreen,
+      `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});` +
+      `return j? j.state : 'yok'})()`);
+    if (st === 'done' || st === 'error') break;
+  }
+  offscreen.close();
+  let file = null;
+  for (let i = 0; i < 20 && !file; i++) { await sleep(500); file = findFile(12 * MB); }
+  const bad = file ? verifyPattern(file) : 'dosya yok';
+  await sleep(1000); // erase işlemi tamamlansın
+  const historyHit = await evalIn(panel,
+    `chrome.downloads.search({}).then(items => items.some(i => i.totalBytes === ${12 * MB}))`);
+  const ok = st === 'done' && !bad && historyHit === false;
+  record('S6 gizli indirme (dosya var, iz yok)', ok,
+    ok ? 'dosya indi, geçmiş temiz' : (bad ?? `state=${st}, geçmişte iz: ${historyHit}`));
+}
+
 // S5: CRASH-RESUME — indirme ortasında tarayıcıyı öldür, yeniden başlat, devam ettir (PRD F3)
 {
   const url = `http://localhost:${serverPort}/f/80?rate=2`;

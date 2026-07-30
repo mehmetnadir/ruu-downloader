@@ -1,63 +1,188 @@
 {
-  "extName": { "message": "Ruu Downloader" },
-  "extDesc": { "message": "مدير تنزيلات عصري وبسيط — تنزيلات مجزأة واستئناف مضمون بعد الانقطاع." },
-  "addPh": { "message": "الصق رابطًا…" },
-  "addBtn": { "message": "تنزيل" },
-  "pauseAll": { "message": "إيقاف الكل مؤقتًا" },
-  "settings": { "message": "الإعدادات" },
-  "active": { "message": "نشطة" },
-  "completed": { "message": "مكتملة" },
-  "emptyHint": { "message": "لا توجد تنزيلات بعد. الصق رابطًا أو ابدأ تنزيلًا من أي موقع." },
-  "onboard": { "message": "هل تريد جعل Ruu تجربة التنزيل الافتراضية؟ تُخفى فقاعة تنزيلات كروم ويقوم Ruu بتسريع تنزيلاتك." },
-  "onboardYes": { "message": "نعم، تولَّ الأمر" },
-  "onboardNo": { "message": "ليس الآن" },
-  "stDefT": { "message": "التجربة الافتراضية" },
-  "stDefD": { "message": "تُخفى فقاعة كروم؛ التنزيلات تعيش في Ruu" },
-  "stTakeT": { "message": "تولّي التنزيلات" },
-  "stTakeD": { "message": "يلتقط تنزيلات المتصفح ويسرّعها" },
-  "stThrT": { "message": "حد التولّي" },
-  "stThrD": { "message": "الملفات الأصغر (ميغابايت) تبقى في المتصفح" },
-  "stFolT": { "message": "فرز حسب النوع" },
-  "stFolD": { "message": "صور، فيديو، أرشيفات… كلٌّ في مجلده" },
-  "stRetT": { "message": "إعادة المحاولة" },
-  "stRetD": { "message": "محاولات لكل اتصال عند أخطاء الشبكة" },
-  "stNotT": { "message": "عند الانتهاء" },
-  "stNotD": { "message": "صمت، إشعار، أو حفلة" },
-  "ntSilent": { "message": "صامت" },
-  "ntNotify": { "message": "إشعار" },
-  "ntParty": { "message": "حفلة 🎵" },
-  "stPartyT": { "message": "فيديو الحفلة" },
-  "stPartyD": { "message": "يُفتح عند اكتمال التنزيل" },
-  "stOpenT": { "message": "نزّل وافتح" },
-  "stOpenD": { "message": "يحاول فتح الملف فورًا" },
-  "openFile": { "message": "فتح الملف" },
-  "showFolder": { "message": "إظهار في المجلد" },
-  "pause": { "message": "إيقاف مؤقت" },
-  "resume": { "message": "استئناف" },
-  "cancel": { "message": "إلغاء" },
-  "statsDl": { "message": "تنزيلات" },
-  "wProbing": { "message": "جارٍ الاتصال" },
-  "wPaused": { "message": "بانتظار" },
-  "wFinalizing": { "message": "يستقر" },
-  "wDone": { "message": "اكتمل" },
-  "wError": { "message": "تعثّر" },
-  "wNative": { "message": "سُلِّم للمتصفح" },
-  "f1": { "message": "يتدفق" },
-  "f2": { "message": "ينطلق" },
-  "f3": { "message": "يبحر" },
-  "f4": { "message": "يتسارع" },
-  "f5": { "message": "يهبط" },
-  "nTitle": { "message": "Ruu — اكتمل التنزيل" },
-  "nMsg": { "message": "تم حفظ الملف." },
-  "nOpen": { "message": "فتح" },
-  "errChanged": { "message": "تغيّر المصدر على الخادم — أعد بدء التنزيل" },
-  "errCancelled": { "message": "أُلغي" },
-  "errAllDown": { "message": "فشلت كل الاتصالات" },
-  "errDelivery": { "message": "فشل التسليم" },
-  "catImg": { "message": "صور" },
-  "catVid": { "message": "فيديو" },
-  "catMus": { "message": "موسيقى" },
-  "catArc": { "message": "أرشيفات" },
-  "catDoc": { "message": "مستندات" },
-  "catApp": { "message": "تطبيقات" }
+  "extName": {
+    "message": "Ruu Downloader"
+  },
+  "extDesc": {
+    "message": "مدير تنزيلات عصري وبسيط — تنزيلات مجزأة واستئناف مضمون بعد الانقطاع."
+  },
+  "addPh": {
+    "message": "الصق رابطًا…"
+  },
+  "addBtn": {
+    "message": "تنزيل"
+  },
+  "pauseAll": {
+    "message": "إيقاف الكل مؤقتًا"
+  },
+  "settings": {
+    "message": "الإعدادات"
+  },
+  "active": {
+    "message": "نشطة"
+  },
+  "completed": {
+    "message": "مكتملة"
+  },
+  "emptyHint": {
+    "message": "لا توجد تنزيلات بعد. الصق رابطًا أو ابدأ تنزيلًا من أي موقع."
+  },
+  "onboard": {
+    "message": "هل تريد جعل Ruu تجربة التنزيل الافتراضية؟ تُخفى فقاعة تنزيلات كروم ويقوم Ruu بتسريع تنزيلاتك."
+  },
+  "onboardYes": {
+    "message": "نعم، تولَّ الأمر"
+  },
+  "onboardNo": {
+    "message": "ليس الآن"
+  },
+  "stDefT": {
+    "message": "التجربة الافتراضية"
+  },
+  "stDefD": {
+    "message": "تُخفى فقاعة كروم؛ التنزيلات تعيش في Ruu"
+  },
+  "stTakeT": {
+    "message": "تولّي التنزيلات"
+  },
+  "stTakeD": {
+    "message": "يلتقط تنزيلات المتصفح ويسرّعها"
+  },
+  "stThrT": {
+    "message": "حد التولّي"
+  },
+  "stThrD": {
+    "message": "الملفات الأصغر (ميغابايت) تبقى في المتصفح"
+  },
+  "stFolT": {
+    "message": "فرز حسب النوع"
+  },
+  "stFolD": {
+    "message": "صور، فيديو، أرشيفات… كلٌّ في مجلده"
+  },
+  "stRetT": {
+    "message": "إعادة المحاولة"
+  },
+  "stRetD": {
+    "message": "محاولات لكل اتصال عند أخطاء الشبكة"
+  },
+  "stNotT": {
+    "message": "عند الانتهاء"
+  },
+  "stNotD": {
+    "message": "صمت، إشعار، أو حفلة"
+  },
+  "ntSilent": {
+    "message": "صامت"
+  },
+  "ntNotify": {
+    "message": "إشعار"
+  },
+  "ntParty": {
+    "message": "حفلة 🎵"
+  },
+  "stPartyT": {
+    "message": "فيديو الحفلة"
+  },
+  "stPartyD": {
+    "message": "يُفتح عند اكتمال التنزيل"
+  },
+  "stOpenT": {
+    "message": "نزّل وافتح"
+  },
+  "stOpenD": {
+    "message": "يحاول فتح الملف فورًا"
+  },
+  "openFile": {
+    "message": "فتح الملف"
+  },
+  "showFolder": {
+    "message": "إظهار في المجلد"
+  },
+  "pause": {
+    "message": "إيقاف مؤقت"
+  },
+  "resume": {
+    "message": "استئناف"
+  },
+  "cancel": {
+    "message": "إلغاء"
+  },
+  "statsDl": {
+    "message": "تنزيلات"
+  },
+  "wProbing": {
+    "message": "جارٍ الاتصال"
+  },
+  "wPaused": {
+    "message": "بانتظار"
+  },
+  "wFinalizing": {
+    "message": "يستقر"
+  },
+  "wDone": {
+    "message": "اكتمل"
+  },
+  "wError": {
+    "message": "تعثّر"
+  },
+  "wNative": {
+    "message": "سُلِّم للمتصفح"
+  },
+  "f1": {
+    "message": "يتدفق"
+  },
+  "f2": {
+    "message": "ينطلق"
+  },
+  "f3": {
+    "message": "يبحر"
+  },
+  "f4": {
+    "message": "يتسارع"
+  },
+  "f5": {
+    "message": "يهبط"
+  },
+  "nTitle": {
+    "message": "Ruu — اكتمل التنزيل"
+  },
+  "nMsg": {
+    "message": "تم حفظ الملف."
+  },
+  "nOpen": {
+    "message": "فتح"
+  },
+  "errChanged": {
+    "message": "تغيّر المصدر على الخادم — أعد بدء التنزيل"
+  },
+  "errCancelled": {
+    "message": "أُلغي"
+  },
+  "errAllDown": {
+    "message": "فشلت كل الاتصالات"
+  },
+  "errDelivery": {
+    "message": "فشل التسليم"
+  },
+  "catImg": {
+    "message": "صور"
+  },
+  "catVid": {
+    "message": "فيديو"
+  },
+  "catMus": {
+    "message": "موسيقى"
+  },
+  "catArc": {
+    "message": "أرشيفات"
+  },
+  "catDoc": {
+    "message": "مستندات"
+  },
+  "catApp": {
+    "message": "تطبيقات"
+  },
+  "privT": {
+    "message": "تنزيل خاص"
+  }
 }

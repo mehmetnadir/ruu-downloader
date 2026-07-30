@@ -1,63 +1,188 @@
 {
-  "extName": { "message": "Ruu Downloader" },
-  "extDesc": { "message": "Modern, minimal indirme yöneticisi — segmentli indirme, kırılmaz devam." },
-  "addPh": { "message": "URL yapıştır…" },
-  "addBtn": { "message": "İndir" },
-  "pauseAll": { "message": "Tümünü duraklat" },
-  "settings": { "message": "Ayarlar" },
-  "active": { "message": "AKTİF" },
-  "completed": { "message": "TAMAMLANAN" },
-  "emptyHint": { "message": "Henüz indirme yok. Bir URL yapıştır ya da bir siteden indirme başlat." },
-  "onboard": { "message": "Ruu'yu varsayılan indirme deneyimi yap? Chrome'un indirme balonu gizlenir, indirmeleri Ruu hızlandırır." },
-  "onboardYes": { "message": "Evet, devral" },
-  "onboardNo": { "message": "Şimdilik hayır" },
-  "stDefT": { "message": "Varsayılan deneyim" },
-  "stDefD": { "message": "Chrome'un indirme balonu gizlenir, indirmeler Ruu'da yaşar" },
-  "stTakeT": { "message": "İndirmeleri devral" },
-  "stTakeD": { "message": "Tarayıcının başlattığı indirmeleri yakalar ve hızlandırır" },
-  "stThrT": { "message": "Devralma eşiği" },
-  "stThrD": { "message": "Bu boyutun (MB) altındakiler tarayıcıda kalır" },
-  "stFolT": { "message": "Türe göre klasörle" },
-  "stFolD": { "message": "Görsel, video, arşiv… kendi klasörüne iner" },
-  "stRetT": { "message": "Yeniden deneme" },
-  "stRetD": { "message": "Ağ hatasında bağlantı başına tekrar sayısı" },
-  "stNotT": { "message": "Bitince" },
-  "stNotD": { "message": "Sessiz in, bildir ya da partiyi başlat" },
-  "ntSilent": { "message": "Sessiz" },
-  "ntNotify": { "message": "Bildir" },
-  "ntParty": { "message": "Parti 🎵" },
-  "stPartyT": { "message": "Parti videosu" },
-  "stPartyD": { "message": "İndirme bitince açılacak video" },
-  "stOpenT": { "message": "İndir ve aç" },
-  "stOpenD": { "message": "Biten dosyayı hemen açmayı dener" },
-  "openFile": { "message": "Dosyayı aç" },
-  "showFolder": { "message": "Klasörde göster" },
-  "pause": { "message": "Duraklat" },
-  "resume": { "message": "Devam et" },
-  "cancel": { "message": "İptal et" },
-  "statsDl": { "message": "indirme" },
-  "wProbing": { "message": "Bağlanıyor" },
-  "wPaused": { "message": "Bekliyor" },
-  "wFinalizing": { "message": "Yerleşiyor" },
-  "wDone": { "message": "İndi" },
-  "wError": { "message": "Takıldı" },
-  "wNative": { "message": "tarayıcıya devredildi" },
-  "f1": { "message": "İniyor" },
-  "f2": { "message": "Akıyor" },
-  "f3": { "message": "Sürüyor" },
-  "f4": { "message": "Hızlanıyor" },
-  "f5": { "message": "Taşınıyor" },
-  "nTitle": { "message": "Ruu — indirme tamam" },
-  "nMsg": { "message": "Dosya kaydedildi." },
-  "nOpen": { "message": "Aç" },
-  "errChanged": { "message": "kaynak sunucuda değişmiş — indirmeyi yeniden başlatın" },
-  "errCancelled": { "message": "iptal edildi" },
-  "errAllDown": { "message": "tüm bağlantılar düştü" },
-  "errDelivery": { "message": "teslim başarısız" },
-  "catImg": { "message": "Görseller" },
-  "catVid": { "message": "Video" },
-  "catMus": { "message": "Müzik" },
-  "catArc": { "message": "Arşiv" },
-  "catDoc": { "message": "Belgeler" },
-  "catApp": { "message": "Uygulamalar" }
+  "extName": {
+    "message": "Ruu Downloader"
+  },
+  "extDesc": {
+    "message": "Modern, minimal indirme yöneticisi — segmentli indirme, kırılmaz devam."
+  },
+  "addPh": {
+    "message": "URL yapıştır…"
+  },
+  "addBtn": {
+    "message": "İndir"
+  },
+  "pauseAll": {
+    "message": "Tümünü duraklat"
+  },
+  "settings": {
+    "message": "Ayarlar"
+  },
+  "active": {
+    "message": "AKTİF"
+  },
+  "completed": {
+    "message": "TAMAMLANAN"
+  },
+  "emptyHint": {
+    "message": "Henüz indirme yok. Bir URL yapıştır ya da bir siteden indirme başlat."
+  },
+  "onboard": {
+    "message": "Ruu'yu varsayılan indirme deneyimi yap? Chrome'un indirme balonu gizlenir, indirmeleri Ruu hızlandırır."
+  },
+  "onboardYes": {
+    "message": "Evet, devral"
+  },
+  "onboardNo": {
+    "message": "Şimdilik hayır"
+  },
+  "stDefT": {
+    "message": "Varsayılan deneyim"
+  },
+  "stDefD": {
+    "message": "Chrome'un indirme balonu gizlenir, indirmeler Ruu'da yaşar"
+  },
+  "stTakeT": {
+    "message": "İndirmeleri devral"
+  },
+  "stTakeD": {
+    "message": "Tarayıcının başlattığı indirmeleri yakalar ve hızlandırır"
+  },
+  "stThrT": {
+    "message": "Devralma eşiği"
+  },
+  "stThrD": {
+    "message": "Bu boyutun (MB) altındakiler tarayıcıda kalır"
+  },
+  "stFolT": {
+    "message": "Türe göre klasörle"
+  },
+  "stFolD": {
+    "message": "Görsel, video, arşiv… kendi klasörüne iner"
+  },
+  "stRetT": {
+    "message": "Yeniden deneme"
+  },
+  "stRetD": {
+    "message": "Ağ hatasında bağlantı başına tekrar sayısı"
+  },
+  "stNotT": {
+    "message": "Bitince"
+  },
+  "stNotD": {
+    "message": "Sessiz in, bildir ya da partiyi başlat"
+  },
+  "ntSilent": {
+    "message": "Sessiz"
+  },
+  "ntNotify": {
+    "message": "Bildir"
+  },
+  "ntParty": {
+    "message": "Parti 🎵"
+  },
+  "stPartyT": {
+    "message": "Parti videosu"
+  },
+  "stPartyD": {
+    "message": "İndirme bitince açılacak video"
+  },
+  "stOpenT": {
+    "message": "İndir ve aç"
+  },
+  "stOpenD": {
+    "message": "Biten dosyayı hemen açmayı dener"
+  },
+  "openFile": {
+    "message": "Dosyayı aç"
+  },
+  "showFolder": {
+    "message": "Klasörde göster"
+  },
+  "pause": {
+    "message": "Duraklat"
+  },
+  "resume": {
+    "message": "Devam et"
+  },
+  "cancel": {
+    "message": "İptal et"
+  },
+  "statsDl": {
+    "message": "indirme"
+  },
+  "wProbing": {
+    "message": "Bağlanıyor"
+  },
+  "wPaused": {
+    "message": "Bekliyor"
+  },
+  "wFinalizing": {
+    "message": "Yerleşiyor"
+  },
+  "wDone": {
+    "message": "İndi"
+  },
+  "wError": {
+    "message": "Takıldı"
+  },
+  "wNative": {
+    "message": "tarayıcıya devredildi"
+  },
+  "f1": {
+    "message": "İniyor"
+  },
+  "f2": {
+    "message": "Akıyor"
+  },
+  "f3": {
+    "message": "Sürüyor"
+  },
+  "f4": {
+    "message": "Hızlanıyor"
+  },
+  "f5": {
+    "message": "Taşınıyor"
+  },
+  "nTitle": {
+    "message": "Ruu — indirme tamam"
+  },
+  "nMsg": {
+    "message": "Dosya kaydedildi."
+  },
+  "nOpen": {
+    "message": "Aç"
+  },
+  "errChanged": {
+    "message": "kaynak sunucuda değişmiş — indirmeyi yeniden başlatın"
+  },
+  "errCancelled": {
+    "message": "iptal edildi"
+  },
+  "errAllDown": {
+    "message": "tüm bağlantılar düştü"
+  },
+  "errDelivery": {
+    "message": "teslim başarısız"
+  },
+  "catImg": {
+    "message": "Görseller"
+  },
+  "catVid": {
+    "message": "Video"
+  },
+  "catMus": {
+    "message": "Müzik"
+  },
+  "catArc": {
+    "message": "Arşiv"
+  },
+  "catDoc": {
+    "message": "Belgeler"
+  },
+  "catApp": {
+    "message": "Uygulamalar"
+  },
+  "privT": {
+    "message": "Gizli indirme"
+  }
 }

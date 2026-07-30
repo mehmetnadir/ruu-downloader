@@ -70,6 +70,7 @@ class Job {
   private metaTimer: ReturnType<typeof setInterval> | null = null;
   private topSpeed = 0;
   downloadId?: number;
+  priv = false; // gizli: geçmişe yazılmaz, istatistiğe girmez, kart kaybolur
 
   constructor(
     readonly url: string,
@@ -338,6 +339,7 @@ class Job {
     send({
       target: 'sw', type: 'deliver', jobId: this.id, blobUrl: this.blobUrl,
       filename: this.filename, size: this.size ?? file.size, topSpeed: this.topSpeed,
+      priv: this.priv,
     });
   }
 
@@ -351,6 +353,10 @@ class Job {
       await dir.removeEntry(this.id).catch(() => undefined);
       await dir.removeEntry(`${this.id}.meta`).catch(() => undefined);
       this.state = 'done';
+      if (this.priv) {
+        // gizli iş: kart kısa süre sonra panelden de silinir — iz kalmaz
+        setTimeout(() => { jobs.delete(this.id); broadcast(); }, 6000);
+      }
     } else {
       this.state = 'error';
       this.error = error ?? 'errDelivery';
@@ -481,6 +487,7 @@ class Job {
       error: this.error,
       native: this.native,
       downloadId: this.downloadId,
+      priv: this.priv || undefined,
     };
   }
 }
@@ -577,6 +584,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
     case 'add': {
       const auto = autoTuneConnections(collectHints());
       const job = new Job(raw.url, Math.min(8, Math.max(1, raw.connections ?? auto)), raw.filenameHint);
+      job.priv = raw.priv ?? false;
       jobs.set(job.id, job);
       void job.start();
       break;

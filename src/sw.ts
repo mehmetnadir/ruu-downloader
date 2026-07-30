@@ -111,7 +111,7 @@ async function ensureOffscreen(): Promise<void> {
   pushEngineSettings();
 }
 
-interface Delivery { jobId: string; size: number; topSpeed: number }
+interface Delivery { jobId: string; size: number; topSpeed: number; priv: boolean }
 const deliveries = new Map<number, Delivery>(); // chrome downloadId → teslim bilgisi
 
 async function recordStats(size: number, topSpeed: number): Promise<void> {
@@ -174,7 +174,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
             filename: routeByType(raw.filename, settings.typeFolders, CATEGORY_NAMES),
             conflictAction: 'uniquify',
           });
-          deliveries.set(id, { jobId: raw.jobId, size: raw.size, topSpeed: raw.topSpeed });
+          deliveries.set(id, { jobId: raw.jobId, size: raw.size, topSpeed: raw.topSpeed, priv: raw.priv ?? false });
         } catch (err) {
           void chrome.runtime.sendMessage({
             target: 'engine', type: 'delivered', jobId: raw.jobId,
@@ -202,11 +202,19 @@ chrome.downloads.onChanged.addListener((delta) => {
   if (!delivery) return;
   if (delta.state?.current === 'complete') {
     deliveries.delete(delta.id);
-    void chrome.runtime.sendMessage({
-      target: 'engine', type: 'delivered', jobId: delivery.jobId, ok: true, downloadId: delta.id,
-    } satisfies Msg).catch(() => undefined);
-    void recordStats(delivery.size, delivery.topSpeed);
-    celebrate(delta.id);
+    if (delivery.priv) {
+      // gizli: geçmiş kaydı silinir, istatistik/parti yok, panel Aç butonu almaz
+      void chrome.downloads.erase({ id: delta.id }).catch(() => undefined);
+      void chrome.runtime.sendMessage({
+        target: 'engine', type: 'delivered', jobId: delivery.jobId, ok: true,
+      } satisfies Msg).catch(() => undefined);
+    } else {
+      void chrome.runtime.sendMessage({
+        target: 'engine', type: 'delivered', jobId: delivery.jobId, ok: true, downloadId: delta.id,
+      } satisfies Msg).catch(() => undefined);
+      void recordStats(delivery.size, delivery.topSpeed);
+      celebrate(delta.id);
+    }
   } else if (delta.state?.current === 'interrupted') {
     deliveries.delete(delta.id);
     void chrome.runtime.sendMessage({

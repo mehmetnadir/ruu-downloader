@@ -1,63 +1,188 @@
 {
-  "extName": { "message": "Ruu Downloader" },
-  "extDesc": { "message": "आधुनिक, सरल डाउनलोड मैनेजर — खंडित डाउनलोड, क्रैश-प्रूफ़ रिज़्यूम।" },
-  "addPh": { "message": "URL चिपकाएँ…" },
-  "addBtn": { "message": "डाउनलोड" },
-  "pauseAll": { "message": "सभी रोकें" },
-  "settings": { "message": "सेटिंग्स" },
-  "active": { "message": "सक्रिय" },
-  "completed": { "message": "पूर्ण" },
-  "emptyHint": { "message": "अभी कोई डाउनलोड नहीं। URL चिपकाएँ या किसी साइट से शुरू करें।" },
-  "onboard": { "message": "Ruu को अपना डिफ़ॉल्ट डाउनलोड अनुभव बनाएँ? Chrome का डाउनलोड बबल छिप जाता है और Ruu डाउनलोड तेज़ करता है।" },
-  "onboardYes": { "message": "हाँ, संभालो" },
-  "onboardNo": { "message": "अभी नहीं" },
-  "stDefT": { "message": "डिफ़ॉल्ट अनुभव" },
-  "stDefD": { "message": "Chrome का बबल छिपता है; डाउनलोड Ruu में रहते हैं" },
-  "stTakeT": { "message": "डाउनलोड संभालें" },
-  "stTakeD": { "message": "ब्राउज़र के डाउनलोड पकड़कर तेज़ करता है" },
-  "stThrT": { "message": "सीमा" },
-  "stThrD": { "message": "इस आकार (MB) से छोटे ब्राउज़र में रहते हैं" },
-  "stFolT": { "message": "प्रकार से फ़ोल्डर" },
-  "stFolD": { "message": "चित्र, वीडियो, संग्रह… सब अपने फ़ोल्डर में" },
-  "stRetT": { "message": "पुनर्प्रयास" },
-  "stRetD": { "message": "नेटवर्क त्रुटि पर प्रति कनेक्शन प्रयास" },
-  "stNotT": { "message": "पूरा होने पर" },
-  "stNotD": { "message": "चुप, सूचना, या पार्टी" },
-  "ntSilent": { "message": "चुप" },
-  "ntNotify": { "message": "सूचित करें" },
-  "ntParty": { "message": "पार्टी 🎵" },
-  "stPartyT": { "message": "पार्टी वीडियो" },
-  "stPartyD": { "message": "डाउनलोड पूरा होते ही खुलता है" },
-  "stOpenT": { "message": "डाउनलोड कर खोलें" },
-  "stOpenD": { "message": "फ़ाइल तुरंत खोलने की कोशिश" },
-  "openFile": { "message": "फ़ाइल खोलें" },
-  "showFolder": { "message": "फ़ोल्डर में दिखाएँ" },
-  "pause": { "message": "रोकें" },
-  "resume": { "message": "जारी रखें" },
-  "cancel": { "message": "रद्द करें" },
-  "statsDl": { "message": "डाउनलोड" },
-  "wProbing": { "message": "जुड़ रहा है" },
-  "wPaused": { "message": "प्रतीक्षा में" },
-  "wFinalizing": { "message": "समेट रहा है" },
-  "wDone": { "message": "हो गया" },
-  "wError": { "message": "अटक गया" },
-  "wNative": { "message": "ब्राउज़र को सौंपा" },
-  "f1": { "message": "बह रहा है" },
-  "f2": { "message": "दौड़ रहा है" },
-  "f3": { "message": "तैर रहा है" },
-  "f4": { "message": "रफ़्तार में" },
-  "f5": { "message": "उतर रहा है" },
-  "nTitle": { "message": "Ruu — डाउनलोड पूर्ण" },
-  "nMsg": { "message": "फ़ाइल सहेजी गई।" },
-  "nOpen": { "message": "खोलें" },
-  "errChanged": { "message": "सर्वर पर स्रोत बदल गया — डाउनलोड फिर शुरू करें" },
-  "errCancelled": { "message": "रद्द" },
-  "errAllDown": { "message": "सभी कनेक्शन विफल" },
-  "errDelivery": { "message": "डिलीवरी विफल" },
-  "catImg": { "message": "चित्र" },
-  "catVid": { "message": "वीडियो" },
-  "catMus": { "message": "संगीत" },
-  "catArc": { "message": "संग्रह" },
-  "catDoc": { "message": "दस्तावेज़" },
-  "catApp": { "message": "ऐप्स" }
+  "extName": {
+    "message": "Ruu Downloader"
+  },
+  "extDesc": {
+    "message": "आधुनिक, सरल डाउनलोड मैनेजर — खंडित डाउनलोड, क्रैश-प्रूफ़ रिज़्यूम।"
+  },
+  "addPh": {
+    "message": "URL चिपकाएँ…"
+  },
+  "addBtn": {
+    "message": "डाउनलोड"
+  },
+  "pauseAll": {
+    "message": "सभी रोकें"
+  },
+  "settings": {
+    "message": "सेटिंग्स"
+  },
+  "active": {
+    "message": "सक्रिय"
+  },
+  "completed": {
+    "message": "पूर्ण"
+  },
+  "emptyHint": {
+    "message": "अभी कोई डाउनलोड नहीं। URL चिपकाएँ या किसी साइट से शुरू करें।"
+  },
+  "onboard": {
+    "message": "Ruu को अपना डिफ़ॉल्ट डाउनलोड अनुभव बनाएँ? Chrome का डाउनलोड बबल छिप जाता है और Ruu डाउनलोड तेज़ करता है।"
+  },
+  "onboardYes": {
+    "message": "हाँ, संभालो"
+  },
+  "onboardNo": {
+    "message": "अभी नहीं"
+  },
+  "stDefT": {
+    "message": "डिफ़ॉल्ट अनुभव"
+  },
+  "stDefD": {
+    "message": "Chrome का बबल छिपता है; डाउनलोड Ruu में रहते हैं"
+  },
+  "stTakeT": {
+    "message": "डाउनलोड संभालें"
+  },
+  "stTakeD": {
+    "message": "ब्राउज़र के डाउनलोड पकड़कर तेज़ करता है"
+  },
+  "stThrT": {
+    "message": "सीमा"
+  },
+  "stThrD": {
+    "message": "इस आकार (MB) से छोटे ब्राउज़र में रहते हैं"
+  },
+  "stFolT": {
+    "message": "प्रकार से फ़ोल्डर"
+  },
+  "stFolD": {
+    "message": "चित्र, वीडियो, संग्रह… सब अपने फ़ोल्डर में"
+  },
+  "stRetT": {
+    "message": "पुनर्प्रयास"
+  },
+  "stRetD": {
+    "message": "नेटवर्क त्रुटि पर प्रति कनेक्शन प्रयास"
+  },
+  "stNotT": {
+    "message": "पूरा होने पर"
+  },
+  "stNotD": {
+    "message": "चुप, सूचना, या पार्टी"
+  },
+  "ntSilent": {
+    "message": "चुप"
+  },
+  "ntNotify": {
+    "message": "सूचित करें"
+  },
+  "ntParty": {
+    "message": "पार्टी 🎵"
+  },
+  "stPartyT": {
+    "message": "पार्टी वीडियो"
+  },
+  "stPartyD": {
+    "message": "डाउनलोड पूरा होते ही खुलता है"
+  },
+  "stOpenT": {
+    "message": "डाउनलोड कर खोलें"
+  },
+  "stOpenD": {
+    "message": "फ़ाइल तुरंत खोलने की कोशिश"
+  },
+  "openFile": {
+    "message": "फ़ाइल खोलें"
+  },
+  "showFolder": {
+    "message": "फ़ोल्डर में दिखाएँ"
+  },
+  "pause": {
+    "message": "रोकें"
+  },
+  "resume": {
+    "message": "जारी रखें"
+  },
+  "cancel": {
+    "message": "रद्द करें"
+  },
+  "statsDl": {
+    "message": "डाउनलोड"
+  },
+  "wProbing": {
+    "message": "जुड़ रहा है"
+  },
+  "wPaused": {
+    "message": "प्रतीक्षा में"
+  },
+  "wFinalizing": {
+    "message": "समेट रहा है"
+  },
+  "wDone": {
+    "message": "हो गया"
+  },
+  "wError": {
+    "message": "अटक गया"
+  },
+  "wNative": {
+    "message": "ब्राउज़र को सौंपा"
+  },
+  "f1": {
+    "message": "बह रहा है"
+  },
+  "f2": {
+    "message": "दौड़ रहा है"
+  },
+  "f3": {
+    "message": "तैर रहा है"
+  },
+  "f4": {
+    "message": "रफ़्तार में"
+  },
+  "f5": {
+    "message": "उतर रहा है"
+  },
+  "nTitle": {
+    "message": "Ruu — डाउनलोड पूर्ण"
+  },
+  "nMsg": {
+    "message": "फ़ाइल सहेजी गई।"
+  },
+  "nOpen": {
+    "message": "खोलें"
+  },
+  "errChanged": {
+    "message": "सर्वर पर स्रोत बदल गया — डाउनलोड फिर शुरू करें"
+  },
+  "errCancelled": {
+    "message": "रद्द"
+  },
+  "errAllDown": {
+    "message": "सभी कनेक्शन विफल"
+  },
+  "errDelivery": {
+    "message": "डिलीवरी विफल"
+  },
+  "catImg": {
+    "message": "चित्र"
+  },
+  "catVid": {
+    "message": "वीडियो"
+  },
+  "catMus": {
+    "message": "संगीत"
+  },
+  "catArc": {
+    "message": "संग्रह"
+  },
+  "catDoc": {
+    "message": "दस्तावेज़"
+  },
+  "catApp": {
+    "message": "ऐप्स"
+  },
+  "privT": {
+    "message": "निजी डाउनलोड"
+  }
 }

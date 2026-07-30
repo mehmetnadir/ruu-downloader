@@ -77,6 +77,10 @@ body {
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--text); }
 .icon-btn:active { transform: scale(0.92); }
+.icon-btn.toggled { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.priv-badge { display: inline-flex; color: var(--muted); flex-shrink: 0; align-self: center; }
+.priv-badge svg { width: 12px; height: 12px; }
 
 .add-row { display: flex; gap: 8px; padding: 12px 14px; }
 .add-row input {
