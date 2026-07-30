@@ -5,14 +5,21 @@
  */
 import { RangeAllocator, type Claim } from '../engine/allocator';
 import { autoTuneConnections, collectHints } from '../engine/autotune';
+import { failThreshold } from '../engine/retry';
 import {
-  MAX_SEQUENTIAL_ERRORS,
   MIN_SPLIT,
   SEG_MAX,
   SEG_MIN,
   type JobSnapshot,
   type Msg,
 } from '../engine/types';
+
+/**
+ * Kullanıcı ayarı: ağ hatasında yeniden deneme (varsayılan 1).
+ * DİKKAT: offscreen document'ta chrome.storage YOK (yalnızca runtime mesajlaşma
+ * açık) — ayar SW'den 'settings' mesajıyla gelir.
+ */
+let maxRetries = 1;
 
 const BACKPRESSURE_HIGH = 32 << 20;
 const BACKPRESSURE_LOW = 8 << 20;
@@ -207,7 +214,7 @@ class Job {
       }
       if (this.state === 'downloading' && !controller.signal.aborted) {
         this.sequentialErrors++;
-        if (this.sequentialErrors >= MAX_SEQUENTIAL_ERRORS) {
+        if (this.sequentialErrors >= failThreshold(this.connections, maxRetries)) {
           this.fail(err);
         }
       }
@@ -435,5 +442,6 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
     case 'pause-all': for (const j of jobs.values()) j.pause(); break;
     case 'query': broadcast(); break;
     case 'delivered': void jobs.get(raw.jobId)?.delivered(raw.ok, raw.error); break;
+    case 'settings': maxRetries = Math.min(10, Math.max(0, raw.maxRetries)); break;
   }
 });

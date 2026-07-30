@@ -57,7 +57,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function evalIn(cdp, expression) {
   const r = await cdp.call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
-  if (r.exceptionDetails) throw new Error(`eval: ${r.exceptionDetails.text}`);
+  if (r.exceptionDetails) {
+    const d = r.exceptionDetails;
+    throw new Error(`eval: ${d.text} ${d.exception?.description ?? d.exception?.value ?? ''}`);
+  }
   return r.result.value;
 }
 

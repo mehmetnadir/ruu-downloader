@@ -21,6 +21,41 @@
 | 12 | **Erişilebilirlik (Apple seviyesi)** | Sürekli katman: ARIA live (indirme anonsları), tam klavye, :focus-visible, kontrast, reduced-motion, SR etiketleri. Her dalgada denetim | Sürekli |
 | 13 | **Önizleme (her formata)** | Panel-içi viewer: görsel/video/ses (native), PDF, metin/kod, ZIP listesi. Bonus: OPFS sayesinde indirme BİTMEDEN önizleme mümkün. Kapatılabilir | Faz 3 |
 
+## Ek kararlar (2026-07-30 gece, Nadir)
+
+**Varsayılan deneyim:** İlk açılışta BİR KEZ sorulur ("Ruu'yu varsayılan indirme deneyimi
+yap?"). Evet → `chrome.downloads.setUiOptions({enabled:false})` ile Chrome'un indirme
+balonu gizlenir + devralma açık; Hayır → pasif mod (devralma kapalı, Chrome UI kalır).
+Sınır notu: Side Panel'i indirme anında otomatik AÇAMAYIZ (sidePanel.open user gesture
+ister) — rozet + bildirim ile telafi.
+
+**Retry politikası:** Ağ hatasında varsayılan 1 yeniden deneme (bağlantı başına);
+ayarlardan 0-10 arası. Eşik: bağlantı × (1+retry) ardışık hata → iş düşer.
+
+**Analytics (CWS kuralları neyse o):** Chrome politikası analytics'e İZİN VERİR ama
+şartlı: gizlilik politikası + Privacy tab beyanı + Limited Use (veri satışı/profil
+çıkarma yasak) + tarama verisi toplama yasak. Kararımız: v1'de uzak telemetri YOK —
+yerel istatistikler (toplam indirme, ortalama hız) panelde gösterilir; ileride
+İSTEĞE BAĞLI (opt-in) anonim telemetri, açık beyan ile. Review riskini sıfırlar.
+
+## #14 — Cihazlar arası "Ruu Beam" (telefonda gör → PC'ye indirt) [TASARIM]
+
+Kısıt: Chrome mobil, uzantı DESTEKLEMEZ → mobil taraf uzantı olamaz.
+Önerilen mimari (self-host dostu, free-tier uyumlu):
+
+1. **Mobil taraf:** Küçük bir PWA — Android'de "Paylaş → Ruu'ya Gönder" (Web Share
+   Target). Herhangi bir uygulamadan link paylaşılır.
+2. **Köprü:** Cloudflare Worker (ücretsiz tier) — sadece kısa mesaj kuyruğu:
+   {pairId, url, zaman}. İçerik geçmez, SADECE URL geçer.
+3. **PC tarafı:** Ruu uzantısı Web Push aboneliği (VAPID) — Worker push'lar,
+   SW uyanır, iş kuyruğa girer, Ruu indirir. Push yoksa: 30sn'lik polling fallback'i.
+4. **Eşleştirme:** PC panelinde QR (pairId+anahtar) → telefonda PWA okur. Uçtan uca
+   basit şifreleme (URL, pair anahtarıyla AES-GCM) → Worker URL'leri okuyamaz.
+
+Alternatifler elendi: Chrome'un yerleşik "cihaza gönder" özelliğinin uzantı API'si yok;
+Telegram-bot köprüsü bağımlılık getiriyor. Beam ayrı iş paketi (ruu-beam/): PWA +
+Worker + uzantı push modülü. Sıra: çekirdek turlar bitince.
+
 ## Bu dalganın kapsamı (onaylı sayılır — Nadir talep etti)
 
 1. Keyed renderer (animasyon sıfırlanma bug'ının kökten çözümü)

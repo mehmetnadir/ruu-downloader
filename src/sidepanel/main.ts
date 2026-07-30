@@ -40,6 +40,66 @@ addBtn.addEventListener('click', addFromInput);
 urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addFromInput(); });
 $('#pause-all').addEventListener('click', () => send({ target: 'sw', type: 'pause-all' }));
 
+// ── Onboarding (tek seferlik) + Ayarlar ──────────────────────────────────────
+const DEFAULTS = {
+  onboarded: false,
+  defaultExperience: false,
+  takeover: true,
+  takeoverMinMB: 10,
+  typeFolders: true,
+  maxRetries: 1,
+};
+
+const settingsBtn = $<HTMLButtonElement>('#settings-btn');
+settingsBtn.innerHTML = icons.sliders;
+for (const el of document.querySelectorAll<HTMLElement>('.set-icon[data-icon]')) {
+  el.innerHTML = icons[el.dataset['icon'] as keyof typeof icons] ?? '';
+}
+const settingsPanel = $('#settings');
+const onboard = $('#onboard');
+
+settingsBtn.addEventListener('click', () => {
+  const open = settingsPanel.hidden;
+  settingsPanel.hidden = !open;
+  settingsBtn.setAttribute('aria-expanded', String(open));
+});
+
+const setDefault = $<HTMLInputElement>('#set-default');
+const setTakeover = $<HTMLInputElement>('#set-takeover');
+const setMinMb = $<HTMLInputElement>('#set-minmb');
+const setFolders = $<HTMLInputElement>('#set-folders');
+const setRetries = $<HTMLInputElement>('#set-retries');
+
+void chrome.storage.local.get(DEFAULTS).then((s) => {
+  onboard.hidden = Boolean(s['onboarded']);
+  setDefault.checked = Boolean(s['defaultExperience']);
+  setTakeover.checked = Boolean(s['takeover']);
+  setMinMb.value = String(s['takeoverMinMB']);
+  setFolders.checked = Boolean(s['typeFolders']);
+  setRetries.value = String(s['maxRetries']);
+});
+
+const save = (patch: Record<string, unknown>): void => {
+  void chrome.storage.local.set(patch);
+};
+setDefault.addEventListener('change', () => save({ defaultExperience: setDefault.checked }));
+setTakeover.addEventListener('change', () => save({ takeover: setTakeover.checked }));
+setMinMb.addEventListener('change', () => save({ takeoverMinMB: Math.max(0, Number(setMinMb.value) || 0) }));
+setFolders.addEventListener('change', () => save({ typeFolders: setFolders.checked }));
+setRetries.addEventListener('change', () => save({ maxRetries: Math.min(10, Math.max(0, Number(setRetries.value) || 0)) }));
+
+$('#onboard-yes').addEventListener('click', () => {
+  save({ onboarded: true, defaultExperience: true, takeover: true });
+  setDefault.checked = true;
+  setTakeover.checked = true;
+  onboard.hidden = true;
+});
+$('#onboard-no').addEventListener('click', () => {
+  save({ onboarded: true, defaultExperience: false, takeover: false });
+  setTakeover.checked = false;
+  onboard.hidden = true;
+});
+
 function fmtBytes(n: number): string {
   if (n >= 1 << 30) return `${(n / (1 << 30)).toFixed(2)} GB`;
   if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;

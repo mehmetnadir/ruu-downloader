@@ -15,11 +15,63 @@
     <span>Ruu</span>
   </div>
   <div class="topbar-actions">
-    <button id="pause-all" class="icon-btn" title="Tümünü duraklat">
+    <button id="pause-all" class="icon-btn" title="Tümünü duraklat" aria-label="Tümünü duraklat">
       <svg viewBox="0 0 24 24" width="16" height="16"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
     </button>
+    <button id="settings-btn" class="icon-btn" title="Ayarlar" aria-label="Ayarlar" aria-expanded="false"></button>
   </div>
 </header>
+
+<section id="onboard" class="onboard" hidden>
+  <p>Ruu'yu varsayılan indirme deneyimi yap? Chrome'un indirme balonu gizlenir, indirmeleri Ruu hızlandırır.</p>
+  <div class="onboard-actions">
+    <button id="onboard-yes" class="btn-accent">Evet, devral</button>
+    <button id="onboard-no" class="btn-ghost">Şimdilik hayır</button>
+  </div>
+</section>
+
+<section id="settings" class="settings" hidden>
+  <label class="set-row">
+    <span class="set-icon" data-icon="globe"></span>
+    <span class="set-text">
+      <span class="set-title">Varsayılan deneyim</span>
+      <span class="set-desc">Chrome'un indirme balonu gizlenir, indirmeler Ruu'da yaşar</span>
+    </span>
+    <input type="checkbox" id="set-default">
+  </label>
+  <label class="set-row">
+    <span class="set-icon" data-icon="magnet"></span>
+    <span class="set-text">
+      <span class="set-title">İndirmeleri devral</span>
+      <span class="set-desc">Tarayıcının başlattığı indirmeleri yakalar ve hızlandırır</span>
+    </span>
+    <input type="checkbox" id="set-takeover">
+  </label>
+  <label class="set-row">
+    <span class="set-icon" data-icon="gauge"></span>
+    <span class="set-text">
+      <span class="set-title">Devralma eşiği</span>
+      <span class="set-desc">Bu boyutun (MB) altındakiler tarayıcıda kalır</span>
+    </span>
+    <input type="number" id="set-minmb" min="0" max="1024" step="1">
+  </label>
+  <label class="set-row">
+    <span class="set-icon" data-icon="folder"></span>
+    <span class="set-text">
+      <span class="set-title">Türe göre klasörle</span>
+      <span class="set-desc">Görsel, video, arşiv… kendi klasörüne iner</span>
+    </span>
+    <input type="checkbox" id="set-folders">
+  </label>
+  <label class="set-row">
+    <span class="set-icon" data-icon="refresh"></span>
+    <span class="set-text">
+      <span class="set-title">Yeniden deneme</span>
+      <span class="set-desc">Ağ hatasında bağlantı başına tekrar sayısı</span>
+    </span>
+    <input type="number" id="set-retries" min="0" max="10" step="1">
+  </label>
+</section>
 
 <div class="add-row">
   <input id="url-input" type="url" placeholder="URL yapıştır…" spellcheck="false">

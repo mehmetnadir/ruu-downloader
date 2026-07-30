@@ -36,6 +36,7 @@ export type Msg =
   | { target: 'engine'; type: 'pause-all' }
   | { target: 'engine'; type: 'query' }
   | { target: 'engine'; type: 'delivered'; jobId: string; ok: boolean; error?: string }
+  | { target: 'engine'; type: 'settings'; maxRetries: number }
   // engine/panel → sw
   | { target: 'sw'; type: 'add'; url: string; connections?: number; filenameHint?: string }
   | { target: 'sw'; type: 'pause'; jobId: string }
@@ -52,4 +53,3 @@ export type Msg =
 export const MIN_SPLIT = 1 << 20; // 1 MiB — work-stealing alt sınırı
 export const SEG_MIN = 1 << 20;
 export const SEG_MAX = 128 << 20;
-export const MAX_SEQUENTIAL_ERRORS = 10;

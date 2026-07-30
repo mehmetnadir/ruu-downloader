@@ -8,14 +8,41 @@ chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 });
 
-// ── Ayarlar (chrome.storage.local; UI sonraki turda) ─────────────────────────
-const settings = { takeover: true, takeoverMinMB: 10, typeFolders: true };
-void chrome.storage.local.get(settings).then((s) => Object.assign(settings, s));
+// ── Ayarlar (chrome.storage.local; UI panelde) ───────────────────────────────
+const settings = {
+  takeover: true,
+  takeoverMinMB: 10,
+  typeFolders: true,
+  defaultExperience: false, // Chrome'un indirme balonunu gizle → Ruu varsayılan UI
+  maxRetries: 1,
+};
+
+/** Offscreen'de chrome.storage yok — motoru ilgilendiren ayarlar mesajla itilir. */
+function pushEngineSettings(): void {
+  void chrome.runtime.sendMessage({
+    target: 'engine', type: 'settings', maxRetries: settings.maxRetries,
+  } satisfies Msg).catch(() => undefined);
+}
+
+/** Chrome'un kendi indirme arayüzünü aç/kapat (downloads.ui izni). */
+function applyDownloadUi(): void {
+  const api = chrome.downloads as typeof chrome.downloads & {
+    setUiOptions?: (o: { enabled: boolean }) => Promise<void>;
+  };
+  void api.setUiOptions?.({ enabled: !settings.defaultExperience }).catch(() => undefined);
+}
+
+void chrome.storage.local.get(settings).then((s) => {
+  Object.assign(settings, s);
+  applyDownloadUi();
+});
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   for (const [k, v] of Object.entries(changes)) {
     if (k in settings) (settings as Record<string, unknown>)[k] = v.newValue;
   }
+  if (changes['defaultExperience']) applyDownloadUi();
+  if (changes['maxRetries']) pushEngineSettings();
 });
 
 // ── İndirme devralma (PRD F1) ────────────────────────────────────────────────
@@ -70,6 +97,7 @@ async function ensureOffscreen(): Promise<void> {
       'survive service worker suspension; creates blob URLs to hand completed files ' +
       'to the downloads API.',
   });
+  pushEngineSettings();
 }
 
 const deliveries = new Map<number, string>(); // chrome downloadId → jobId
