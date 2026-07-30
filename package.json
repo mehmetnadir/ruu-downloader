@@ -1,13 +1,14 @@
 {
   "name": "ruu-downloader",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:server": "node test/server/server.mjs"
+    "test:server": "node test/server/server.mjs",
+    "package": "node scripts/package.mjs"
   },
   "devDependencies": {
     "@types/chrome": "^0.2.2",

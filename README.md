@@ -6,21 +6,31 @@ Inspired by what people actually love about classic download managers — multi-
 segmented downloading, bulletproof pause/resume, and seamless browser integration — rebuilt
 on modern web platform primitives (OPFS, File System Access, Side Panel).
 
-## Core features (MVP)
+## Features
 
 - **Dynamic segmented downloads** — parallel connections with work-stealing: when a
   connection frees up, it splits the largest in-flight segment, so a single slow
   connection never drags the whole download.
-- **Crash-proof resume** — segment progress is derived from bytes already written to disk,
-  with ETag/Last-Modified validation on resume.
-- **Browser takeover** — intercepts regular browser downloads and accelerates them.
-- **No merge phase** — segments are written directly at their final byte offsets (OPFS
-  positioned writes). No "merging segments, please wait".
-- **Side Panel UI** — minimal, modern, with a live segment map.
-- **Queues & scheduling (roadmap)** — multiple queues with concurrency limits and
-  scheduled/recurring download windows.
-- **Smart share-link resolution (roadmap)** — one-click downloads for WeTransfer, Dropbox,
-  OneDrive links found in your mail.
+- **Crash-proof resume** — even a hard browser crash: acknowledged byte ranges are
+  journaled to a sidecar, jobs come back paused and continue where they left off,
+  with ETag/Last-Modified validation.
+- **Browser takeover** — one-time opt-in makes Ruu the default download experience:
+  Chrome's download bubble is hidden and downloads above a threshold are accelerated.
+- **No merge phase** — segments are written directly at their final byte offsets
+  (OPFS positioned writes). No "merging segments, please wait".
+- **Side Panel UI** — minimal, warm-dark, with a live segment map, heartbeat pulse,
+  one-word status verbs, and full reduced-motion support.
+- **Device-aware tuning** — connection count adapts to network speed and hardware.
+- **Type-based sorting** — images/video/music/archives/documents/apps each land in
+  their own folder (optional).
+- **Private downloads** — file lands on disk, zero trace in browser history or stats.
+- **Finish modes** — silent, notification with Open button, or "party mode" that
+  opens a video of your choice. Plus download-and-open.
+- **11 languages** — including RTL (Arabic); icon-first, minimal-text UI.
+- **Local-only stats** — no telemetry, ever. See [PRIVACY.md](PRIVACY.md).
+
+Roadmap: queues & scheduling, smart share-link resolution (WeTransfer/Dropbox/OneDrive),
+phone-to-PC "Beam", in-panel previews. See `.claude/docs/prd-03-roadmap.md`.
 
 ## What this is not
 
@@ -43,10 +53,12 @@ extension via CDP `Extensions.loadUnpacked` (requires `--enable-unsafe-extension
 
 ## Status
 
-Walking skeleton is live: segmented engine, OPFS positioned writes, Side Panel with
-live segment map, pause/resume, native fallback — all verified end-to-end.
-See `.claude/docs/` for design docs and roadmap.
+v0.1.0 — feature-complete core, verified by 37 unit tests and a 6-scenario E2E
+suite (segmented integrity, connection drops, native fallback, browser takeover,
+private downloads, hard-crash resume) running headful and headless.
+
+Release packaging: `npm run package` → `out/ruu-downloader-v<version>.zip`.
 
 ## License
 
-MIT (planned).
+[MIT](LICENSE).

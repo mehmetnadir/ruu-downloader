@@ -14,7 +14,7 @@ const options = {
   bundle: true,
   format: 'esm',
   target: 'chrome116',
-  sourcemap: 'inline',
+  sourcemap: process.env['RUU_RELEASE'] ? false : 'inline',
   logLevel: 'info',
 };
 
