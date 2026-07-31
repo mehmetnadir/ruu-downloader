@@ -48,6 +48,8 @@ export type Msg =
   | { target: 'sw'; type: 'cancel'; jobId: string }
   | { target: 'sw'; type: 'pause-all' }
   | { target: 'sw'; type: 'renew'; jobId: string; url: string }
+  | { target: 'sw'; type: 'share-fetch'; url: string }
+  | { target: 'sw'; type: 'share-clicked'; label: string }
   | { target: 'sw'; type: 'hello-panel' }
   | { target: 'sw'; type: 'deliver'; jobId: string; blobUrl: string; filename: string; size: number; topSpeed: number; priv?: boolean }
   | { target: 'sw'; type: 'native-fallback'; jobId: string; url: string }

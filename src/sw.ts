@@ -1,6 +1,7 @@
 /**
  * Service Worker — sadece yönlendirici. Motor offscreen'de yaşar (PRD parça 1).
  */
+import { matchShareLink } from './content/patterns';
 import { DEFAULT_CATEGORY_NAMES, routeByType } from './engine/foldering';
 import { decideTakeover } from './engine/takeover';
 import { applyDownload, EMPTY_STATS, type Stats } from './engine/stats';
@@ -153,6 +154,94 @@ function celebrate(downloadId: number): void {
   }
 }
 
+// ── Paylaşım linki çözümleme (mail entegrasyonu) ─────────────────────────────
+/**
+ * Sayfaya enjekte edilen otomasyon ajanı — TAMAMEN sayfa içinde çalışır.
+ * KRİTİK (MV3): uzun bekleme SW'de YAPILAMAZ — setTimeout service worker'ı
+ * ayakta tutmaz, iş sessizce ölür. Bu yüzden onay/indir bekleme döngüsü
+ * sayfanın kendi zamanlayıcılarında yaşar; SW yalnızca sekmeyi açar ve ajanı
+ * bir kez enjekte eder. Kapalı (closure'sız) olmak ZORUNDA — serialize edilir.
+ */
+function shareFlowAgent(): void {
+  // DİKKAT: kalıplar NORMALLEŞTİRİLMİŞ metinle eşleşir — JS'te /indir/i Türkçe
+  // "İndir"i eşleştirmez (U+0130 → "i"+U+0307). Saha bug'ı, testli.
+  const PATTERNS = /(tumunu indir|hepsini indir|indir|download all|download|indirmeyi baslat|onayliyorum|onayla|kabul ediyorum|kabul|accept|i agree|continue|devam)/;
+  const norm = (s: string): string =>
+    s.replace(/ı/g, 'i').replace(/İ/g, 'I')
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const clicked = new Set<string>();
+  let ticks = 0;
+  const tick = (): void => {
+    ticks++;
+    try {
+      const els = [
+        ...document.querySelectorAll<HTMLElement>('button, a[download], a[href*="download"], [role="button"]'),
+      ];
+      for (const el of els) {
+        const text = (el.textContent ?? '').trim();
+        if (!text || text.length > 60 || el.offsetParent === null) continue;
+        if (!PATTERNS.test(norm(text))) continue;
+        const key = norm(text);
+        if (clicked.has(key)) continue;
+        clicked.add(key);
+        el.click();
+        try {
+          void chrome.runtime.sendMessage({
+            target: 'sw', type: 'share-clicked', label: text.slice(0, 40),
+          }).catch(() => undefined);
+        } catch { /* extension context yenilendi — akış yine de sürer */ }
+        break; // her turda tek tık — sayfa yeniden çizilsin
+      }
+    } catch { /* sayfa DOM'u değişebilir; döngü ölmemeli */ }
+    // ZORUNLU: bir sonraki tur HER DURUMDA planlanır (tıklama hatası akışı öldürmesin)
+    if (ticks < 10) setTimeout(tick, 1200);
+  };
+  setTimeout(tick, 900);
+}
+
+async function handleShareFetch(rawUrl: string): Promise<void> {
+  const match = matchShareLink(rawUrl);
+  if (!match) return;
+  if (match.kind === 'direct') {
+    // Tier 1: dönüştürülmüş URL doğrudan motora
+    markOwn(match.url);
+    await ensureOffscreen();
+    void chrome.runtime.sendMessage({
+      target: 'engine', type: 'add', url: match.url,
+    } satisfies Msg).catch(() => undefined);
+    void logTakeover({ url: match.url.slice(0, 72), action: 'taken', size: -1 });
+    return;
+  }
+  // Tier 3: paylaşım sayfasını arka planda aç + ajanı enjekte et; sitenin
+  // başlattığı indirmeyi devralma yakalar. YALNIZCA tanınan servislerde.
+  const tab = await chrome.tabs.create({ url: match.url, active: false });
+  const tabId = tab.id!;
+  // KRİTİK: sekme HENÜZ about:blank olabilir — oraya enjekte edilen ajan,
+  // gerçek sayfa yüklenince yok olur (E2E'de yakalandı). Bu yüzden 'complete'
+  // beklenir; sonraki 'complete'lerde de yeniden enjekte edilir (SPA/redirect).
+  const inject = (): void => {
+    void chrome.scripting.executeScript({ target: { tabId }, func: shareFlowAgent })
+      .catch(() => undefined);
+  };
+  let injections = 0;
+  const onUpdated = (id: number, info: { status?: string }): void => {
+    if (id !== tabId || info.status !== 'complete') return;
+    if (++injections >= 3) chrome.tabs.onUpdated.removeListener(onUpdated);
+    inject();
+  };
+  chrome.tabs.onUpdated.addListener(onUpdated);
+  const current = await chrome.tabs.get(tabId).catch(() => null);
+  if (current?.status === 'complete') inject();
+  void logTakeover({ url: match.url.slice(0, 72), action: 'share-open', size: -1 });
+  // Sekme temizliği alarm ile — SW ölse bile alarm onu uyandırır (setTimeout ölür).
+  void chrome.alarms.create(`ruu-share-close-${tabId}`, { delayInMinutes: 0.5 });
+}
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  const m = alarm.name.match(/^ruu-share-close-(\d+)$/);
+  if (m) void chrome.tabs.remove(Number(m[1])).catch(() => undefined);
+});
+
 chrome.notifications.onButtonClicked.addListener((notificationId) => {
   const m = notificationId.match(/^ruu-dl-(\d+)$/);
   if (m) {
@@ -181,6 +270,14 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
       case 'pause-all': {
         await ensureOffscreen();
         void chrome.runtime.sendMessage({ ...raw, target: 'engine' }).catch(() => undefined);
+        break;
+      }
+      case 'share-fetch': {
+        await handleShareFetch(raw.url);
+        break;
+      }
+      case 'share-clicked': {
+        void logTakeover({ url: raw.label, action: 'share-auto', size: -1 });
         break;
       }
       case 'hello-panel': {

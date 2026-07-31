@@ -214,5 +214,8 @@
   },
   "errRenewMismatch": {
     "message": "yeni link aynı dosya değil"
+  },
+  "ruuBtn": {
+    "message": "Ruu ile indir"
   }
 }

@@ -214,5 +214,8 @@
   },
   "errRenewMismatch": {
     "message": "новая ссылка — не тот же файл"
+  },
+  "ruuBtn": {
+    "message": "Скачать через Ruu"
   }
 }

@@ -9,6 +9,7 @@ const options = {
     'offscreen': 'src/offscreen/engine.ts',
     'disk-worker': 'src/offscreen/disk-worker.ts',
     'sidepanel': 'src/sidepanel/main.ts',
+    'mail': 'src/content/mail.ts',
   },
   outdir: 'dist',
   bundle: true,

@@ -214,5 +214,8 @@
   },
   "errRenewMismatch": {
     "message": "नया लिंक वही फ़ाइल नहीं है"
+  },
+  "ruuBtn": {
+    "message": "Ruu से डाउनलोड"
   }
 }

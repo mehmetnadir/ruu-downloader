@@ -214,5 +214,8 @@
   },
   "errRenewMismatch": {
     "message": "el enlace nuevo no es el mismo archivo"
+  },
+  "ruuBtn": {
+    "message": "Descargar con Ruu"
   }
 }

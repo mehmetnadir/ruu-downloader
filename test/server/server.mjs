@@ -24,6 +24,26 @@ function patternChunk(start, len) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+  // Sahte paylaşım sayfası: onay → indir butonu → dosya (mail entegrasyonu E2E'si)
+  const sm = url.pathname.match(/^\/share\/(\d+)$/);
+  if (sm) {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(`<!doctype html>
+<html><body>
+<h1>Paylaşılan dosya: test-${sm[1]}mb.bin</h1>
+<button id="c">Onaylıyorum</button>
+<script>
+  document.getElementById('c').addEventListener('click', () => {
+    document.getElementById('c').remove();
+    const b = document.createElement('button');
+    b.textContent = 'Tümünü İndir';
+    b.addEventListener('click', () => { location.href = '/f/${sm[1]}?rate=30&share=1'; });
+    document.body.appendChild(b);
+  });
+</script>
+</body></html>`);
+    return;
+  }
+
   const m = url.pathname.match(/^\/f\/(\d+)$/);
   if (!m) {
     res.writeHead(404).end('yok');

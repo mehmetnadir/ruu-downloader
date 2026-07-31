@@ -242,6 +242,27 @@ const MB = 1024 * 1024;
   record('S7 süresi dolan link → yenile', ok, note);
 }
 
+// S8: PAYLAŞIM AKIŞI — sahte paylaşım sayfası: onay + indir otomatik tıklanır,
+// başlayan indirmeyi devralma yakalar (mail entegrasyonunun çekirdeği)
+{
+  const shareUrl = `http://localhost:${serverPort}/share/18`;
+  await evalIn(panel, `chrome.runtime.sendMessage({target:'sw',type:'share-fetch',url:${JSON.stringify(shareUrl)}}); 'sent'`);
+  let file = null;
+  const d1 = Date.now() + 60_000;
+  while (Date.now() < d1 && !file) {
+    await sleep(1000);
+    file = findFile(18 * MB);
+  }
+  const bad = file ? verifyPattern(file) : 'dosya yok';
+  let note = bad ?? 'onay+indir tıklandı, dosya bütün';
+  if (bad) {
+    const log = await evalIn(panel,
+      `chrome.storage.local.get({takeoverLog:[]}).then(s=>JSON.stringify(s.takeoverLog.map(e=>e.action)))`);
+    note = `${bad} — karar günlüğü: ${log}`;
+  }
+  record('S8 paylaşım sayfası otomasyonu', !bad, note);
+}
+
 // S5: CRASH-RESUME — indirme ortasında tarayıcıyı öldür, yeniden başlat, devam ettir (PRD F3)
 {
   const url = `http://localhost:${serverPort}/f/80?rate=2`;
