@@ -184,5 +184,26 @@
   },
   "privT": {
     "message": "Приватная загрузка"
+  },
+  "diagTitle": {
+    "message": "Последние решения"
+  },
+  "dTaken": {
+    "message": "перехвачена"
+  },
+  "dSmall": {
+    "message": "ниже порога"
+  },
+  "dScheme": {
+    "message": "создана сайтом (blob)"
+  },
+  "dDisabled": {
+    "message": "перехват выключен"
+  },
+  "dNotActive": {
+    "message": "не активна"
+  },
+  "dCancelFailed": {
+    "message": "не удалось отменить"
   }
 }

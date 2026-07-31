@@ -184,5 +184,26 @@
   },
   "privT": {
     "message": "निजी डाउनलोड"
+  },
+  "diagTitle": {
+    "message": "हाल के निर्णय"
+  },
+  "dTaken": {
+    "message": "संभाला गया"
+  },
+  "dSmall": {
+    "message": "सीमा से कम"
+  },
+  "dScheme": {
+    "message": "साइट-जनित (blob)"
+  },
+  "dDisabled": {
+    "message": "संभालना बंद"
+  },
+  "dNotActive": {
+    "message": "सक्रिय नहीं"
+  },
+  "dCancelFailed": {
+    "message": "रद्द नहीं हो सका"
   }
 }

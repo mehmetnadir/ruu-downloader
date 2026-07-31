@@ -184,5 +184,26 @@
   },
   "privT": {
     "message": "Privater Download"
+  },
+  "diagTitle": {
+    "message": "Letzte Übernahme-Entscheidungen"
+  },
+  "dTaken": {
+    "message": "übernommen"
+  },
+  "dSmall": {
+    "message": "unter Schwelle"
+  },
+  "dScheme": {
+    "message": "seitengeneriert (blob)"
+  },
+  "dDisabled": {
+    "message": "Übernahme aus"
+  },
+  "dNotActive": {
+    "message": "nicht aktiv"
+  },
+  "dCancelFailed": {
+    "message": "Abbruch fehlgeschlagen"
   }
 }

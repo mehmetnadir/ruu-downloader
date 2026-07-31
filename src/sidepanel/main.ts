@@ -136,6 +136,28 @@ setNotify.addEventListener('change', () => {
 setParty.addEventListener('change', () => save({ partyUrl: setParty.value.trim() || DEFAULTS.partyUrl }));
 setOpen.addEventListener('change', () => save({ openWhenDone: setOpen.checked }));
 
+// ── Devralma teşhis günlüğü ──────────────────────────────────────────────────
+const diagList = $('#diag-list');
+const escapeHtml = (s: string): string => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const DIAG_LABEL: Record<string, string> = {
+  taken: t('dTaken'), small: t('dSmall'), scheme: t('dScheme'),
+  disabled: t('dDisabled'), 'not-active': t('dNotActive'), 'cancel-failed': t('dCancelFailed'),
+};
+function renderDiag(log: Array<{ url: string; action: string; size?: number }>): void {
+  diagList.innerHTML = log.slice(0, 5).map((e) => {
+    const sz = e.size && e.size > 0 ? ` · ${fmtBytes(e.size)}` : '';
+    const cls = e.action === 'taken' ? 'ok' : 'skip';
+    return `<div class="diag-row ${cls}"><span class="diag-url" title="${escapeHtml(e.url)}">${escapeHtml(e.url)}</span><span class="diag-why">${DIAG_LABEL[e.action] ?? e.action}${sz}</span></div>`;
+  }).join('') || `<div class="diag-row skip"><span class="diag-why">—</span></div>`;
+}
+void chrome.storage.local.get({ takeoverLog: [] })
+  .then((s) => renderDiag(s['takeoverLog'] as Array<{ url: string; action: string; size?: number }>));
+chrome.storage.onChanged.addListener((ch, area) => {
+  if (area === 'local' && ch['takeoverLog']) {
+    renderDiag(ch['takeoverLog'].newValue as Array<{ url: string; action: string; size?: number }>);
+  }
+});
+
 // ── Yerel istatistik satırı ──────────────────────────────────────────────────
 const statsLine = $('#stats-line');
 function renderStats(s: { count: number; bytes: number; bestSpeed: number } | undefined): void {

@@ -184,5 +184,26 @@
   },
   "privT": {
     "message": "تنزيل خاص"
+  },
+  "diagTitle": {
+    "message": "قرارات التولّي الأخيرة"
+  },
+  "dTaken": {
+    "message": "تم التولّي"
+  },
+  "dSmall": {
+    "message": "دون الحد"
+  },
+  "dScheme": {
+    "message": "من إنشاء الموقع (blob)"
+  },
+  "dDisabled": {
+    "message": "التولّي متوقف"
+  },
+  "dNotActive": {
+    "message": "غير نشط"
+  },
+  "dCancelFailed": {
+    "message": "تعذّر الإلغاء"
   }
 }

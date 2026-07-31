@@ -184,5 +184,26 @@
   },
   "privT": {
     "message": "Private download"
+  },
+  "diagTitle": {
+    "message": "Recent takeover decisions"
+  },
+  "dTaken": {
+    "message": "taken over"
+  },
+  "dSmall": {
+    "message": "below threshold"
+  },
+  "dScheme": {
+    "message": "site-generated (blob) — not refetchable"
+  },
+  "dDisabled": {
+    "message": "takeover off"
+  },
+  "dNotActive": {
+    "message": "not active"
+  },
+  "dCancelFailed": {
+    "message": "could not cancel"
   }
 }

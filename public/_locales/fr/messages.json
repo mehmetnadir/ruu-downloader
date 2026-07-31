@@ -184,5 +184,26 @@
   },
   "privT": {
     "message": "Téléchargement privé"
+  },
+  "diagTitle": {
+    "message": "Décisions récentes"
+  },
+  "dTaken": {
+    "message": "interceptée"
+  },
+  "dSmall": {
+    "message": "sous le seuil"
+  },
+  "dScheme": {
+    "message": "générée par le site (blob)"
+  },
+  "dDisabled": {
+    "message": "interception désactivée"
+  },
+  "dNotActive": {
+    "message": "inactive"
+  },
+  "dCancelFailed": {
+    "message": "annulation impossible"
   }
 }

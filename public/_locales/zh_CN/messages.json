@@ -184,5 +184,26 @@
   },
   "privT": {
     "message": "私密下载"
+  },
+  "diagTitle": {
+    "message": "最近的接管决定"
+  },
+  "dTaken": {
+    "message": "已接管"
+  },
+  "dSmall": {
+    "message": "低于阈值"
+  },
+  "dScheme": {
+    "message": "站点生成 (blob) — 无法重取"
+  },
+  "dDisabled": {
+    "message": "接管已关闭"
+  },
+  "dNotActive": {
+    "message": "非活动"
+  },
+  "dCancelFailed": {
+    "message": "无法取消"
   }
 }

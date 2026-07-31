@@ -184,5 +184,26 @@
   },
   "privT": {
     "message": "プライベートダウンロード"
+  },
+  "diagTitle": {
+    "message": "最近の引き継ぎ判定"
+  },
+  "dTaken": {
+    "message": "引き継ぎ済み"
+  },
+  "dSmall": {
+    "message": "しきい値未満"
+  },
+  "dScheme": {
+    "message": "サイト生成 (blob)"
+  },
+  "dDisabled": {
+    "message": "引き継ぎオフ"
+  },
+  "dNotActive": {
+    "message": "非アクティブ"
+  },
+  "dCancelFailed": {
+    "message": "キャンセル不可"
   }
 }

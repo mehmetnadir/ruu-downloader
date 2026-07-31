@@ -2,6 +2,7 @@
  * Service Worker — sadece yönlendirici. Motor offscreen'de yaşar (PRD parça 1).
  */
 import { DEFAULT_CATEGORY_NAMES, routeByType } from './engine/foldering';
+import { decideTakeover } from './engine/takeover';
 import { applyDownload, EMPTY_STATS, type Stats } from './engine/stats';
 import type { Msg } from './engine/types';
 
@@ -72,25 +73,35 @@ function isOwn(url: string): boolean {
   return true;
 }
 
+/** Teşhis: son devralma kararları — "neden devralmadı?" her zaman cevaplı. */
+async function logTakeover(entry: Record<string, unknown>): Promise<void> {
+  const cur = (await chrome.storage.local.get({ takeoverLog: [] }))['takeoverLog'] as unknown[];
+  cur.unshift({ ...entry, t: Date.now() });
+  await chrome.storage.local.set({ takeoverLog: cur.slice(0, 8) });
+}
+
 chrome.downloads.onCreated.addListener((item) => {
   void (async () => {
-    if (!settings.takeover) return;
-    const url = item.finalUrl || item.url;
-    if (!/^https?:/i.test(url)) return; // blob/data/file şemaları bizim teslimlerimiz
-    if (isOwn(url)) return;
-    if (item.state !== 'in_progress') return;
-    const size = item.totalBytes ?? -1;
-    if (size > 0 && size < settings.takeoverMinMB * 1024 * 1024) return; // küçükler native kalsın
+    const decision = decideTakeover(item, settings, isOwn);
+    const shortUrl = decision.url.length > 72 ? `${decision.url.slice(0, 69)}…` : decision.url;
+    if (decision.action === 'skip') {
+      if (decision.reason !== 'own') {
+        void logTakeover({ url: shortUrl, action: decision.reason, size: item.totalBytes });
+      }
+      return;
+    }
     try {
       await chrome.downloads.cancel(item.id);
       await chrome.downloads.erase({ id: item.id });
     } catch {
+      void logTakeover({ url: shortUrl, action: 'cancel-failed', size: item.totalBytes });
       return; // iptal edemedik → dokunma, native devam etsin
     }
+    void logTakeover({ url: shortUrl, action: 'taken', size: item.totalBytes });
     const hint = item.filename ? item.filename.split(/[\\/]/).pop() : undefined;
     await ensureOffscreen();
     void chrome.runtime.sendMessage({
-      target: 'engine', type: 'add', url, filenameHint: hint,
+      target: 'engine', type: 'add', url: decision.url, filenameHint: hint,
     } satisfies Msg).catch(() => undefined);
   })();
 });

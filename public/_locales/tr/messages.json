@@ -184,5 +184,26 @@
   },
   "privT": {
     "message": "Gizli indirme"
+  },
+  "diagTitle": {
+    "message": "Son devralma kararları"
+  },
+  "dTaken": {
+    "message": "devralındı"
+  },
+  "dSmall": {
+    "message": "eşik altı"
+  },
+  "dScheme": {
+    "message": "site-içi üretim (blob) — yeniden çekilemez"
+  },
+  "dDisabled": {
+    "message": "devralma kapalı"
+  },
+  "dNotActive": {
+    "message": "aktif değil"
+  },
+  "dCancelFailed": {
+    "message": "iptal edilemedi"
   }
 }
