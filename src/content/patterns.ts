@@ -29,7 +29,7 @@ export function normalizeLabel(text: string): string {
 
 /** Onay/indir butonu kalıpları (normalleştirilmiş metinle eşleşir). */
 export const ACTION_PATTERN =
-  /(tumunu indir|hepsini indir|indir|download all|download|indirmeyi baslat|onayliyorum|onayla|kabul ediyorum|kabul|accept|i agree|continue|devam)/;
+  /(tumunu indir|hepsini indir|yine de indir|indirmeyi baslat|indir|download all|download anyway|download all files|get your files|download|onayliyorum|onayla|kabul ediyorum|tumunu kabul et|kabul et|kabul|accept all|accept|i agree|agree|continue|devam et|devam)/;
 
 export function isActionLabel(text: string): boolean {
   return ACTION_PATTERN.test(normalizeLabel(text));

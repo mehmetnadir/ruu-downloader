@@ -165,11 +165,15 @@ function celebrate(downloadId: number): void {
 function shareFlowAgent(): void {
   // DİKKAT: kalıplar NORMALLEŞTİRİLMİŞ metinle eşleşir — JS'te /indir/i Türkçe
   // "İndir"i eşleştirmez (U+0130 → "i"+U+0307). Saha bug'ı, testli.
-  const PATTERNS = /(tumunu indir|hepsini indir|indir|download all|download|indirmeyi baslat|onayliyorum|onayla|kabul ediyorum|kabul|accept|i agree|continue|devam)/;
+  const PATTERNS = /(tumunu indir|hepsini indir|yine de indir|indirmeyi baslat|indir|download all|download anyway|download all files|get your files|download|onayliyorum|onayla|kabul ediyorum|tumunu kabul et|kabul et|kabul|accept all|accept|i agree|agree|continue|devam et|devam)/;
   const norm = (s: string): string =>
     s.replace(/ı/g, 'i').replace(/İ/g, 'I')
       .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  const clicked = new Set<string>();
+  // DİKKAT: tekilleştirme ELEMENT bazlı olmalı — gerçek sayfalarda AYNI metinli
+  // birden fazla onay düğmesi olabiliyor (Lifebox'ta iki "Onaylıyorum"); metne
+  // göre tekilleştirmek ikinci onayı atlayıp akışı kilitliyordu.
+  const clicked = new WeakSet<HTMLElement>();
+  let clicks = 0;
   let ticks = 0;
   const tick = (): void => {
     ticks++;
@@ -181,9 +185,9 @@ function shareFlowAgent(): void {
         const text = (el.textContent ?? '').trim();
         if (!text || text.length > 60 || el.offsetParent === null) continue;
         if (!PATTERNS.test(norm(text))) continue;
-        const key = norm(text);
-        if (clicked.has(key)) continue;
-        clicked.add(key);
+        if (clicked.has(el)) continue;
+        clicked.add(el);
+        clicks++;
         el.click();
         try {
           void chrome.runtime.sendMessage({
@@ -194,7 +198,7 @@ function shareFlowAgent(): void {
       }
     } catch { /* sayfa DOM'u değişebilir; döngü ölmemeli */ }
     // ZORUNLU: bir sonraki tur HER DURUMDA planlanır (tıklama hatası akışı öldürmesin)
-    if (ticks < 10) setTimeout(tick, 1200);
+    if (ticks < 14 && clicks < 6) setTimeout(tick, 1200);
   };
   setTimeout(tick, 900);
 }

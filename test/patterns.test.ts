@@ -50,3 +50,22 @@ describe('isActionLabel (Türkçe büyük-İ tuzağı)', () => {
     expect(isActionLabel('Sil')).toBe(false);
   });
 });
+
+describe('gerçek servis buton etiketleri', () => {
+  it('Drive virüs uyarısı, WeTransfer onayı, OneDrive indir', () => {
+    expect(isActionLabel('Yine de indir')).toBe(true);      // Drive TR
+    expect(isActionLabel('Download anyway')).toBe(true);    // Drive EN
+    expect(isActionLabel('I agree')).toBe(true);            // WeTransfer
+    expect(isActionLabel('Accept all')).toBe(true);         // çerez onayı
+    expect(isActionLabel('Tümünü kabul et')).toBe(true);
+    expect(isActionLabel('Download')).toBe(true);           // OneDrive/WeTransfer
+    expect(isActionLabel('Devam et')).toBe(true);
+  });
+
+  it('tehlikeli/alakasız butonlar hâlâ eşleşmiyor', () => {
+    expect(isActionLabel('Sil')).toBe(false);
+    expect(isActionLabel('Hesabı kapat')).toBe(false);
+    expect(isActionLabel('Ücretsiz Kaydol')).toBe(false);
+    expect(isActionLabel('Reddet')).toBe(false);
+  });
+});
