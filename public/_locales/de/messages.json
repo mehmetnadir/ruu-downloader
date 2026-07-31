@@ -205,5 +205,14 @@
   },
   "dCancelFailed": {
     "message": "Abbruch fehlgeschlagen"
+  },
+  "renewT": {
+    "message": "Neuer Link — dort weitermachen"
+  },
+  "renewPh": {
+    "message": "Frischen Link für den abgelaufenen Download einfügen"
+  },
+  "errRenewMismatch": {
+    "message": "neuer Link ist nicht dieselbe Datei"
   }
 }

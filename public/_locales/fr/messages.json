@@ -205,5 +205,14 @@
   },
   "dCancelFailed": {
     "message": "annulation impossible"
+  },
+  "renewT": {
+    "message": "Nouveau lien — reprendre où c’était"
+  },
+  "renewPh": {
+    "message": "Collez un lien frais pour le téléchargement expiré"
+  },
+  "errRenewMismatch": {
+    "message": "le nouveau lien n’est pas le même fichier"
   }
 }

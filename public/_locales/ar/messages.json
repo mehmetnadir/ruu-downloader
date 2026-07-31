@@ -205,5 +205,14 @@
   },
   "dCancelFailed": {
     "message": "تعذّر الإلغاء"
+  },
+  "renewT": {
+    "message": "رابط جديد — تابع من حيث توقف"
+  },
+  "renewPh": {
+    "message": "الصق رابطًا جديدًا للتنزيل المنتهي"
+  },
+  "errRenewMismatch": {
+    "message": "الرابط الجديد ليس الملف نفسه"
   }
 }

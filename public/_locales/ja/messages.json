@@ -205,5 +205,14 @@
   },
   "dCancelFailed": {
     "message": "キャンセル不可"
+  },
+  "renewT": {
+    "message": "新しいリンク — 続きから再開"
+  },
+  "renewPh": {
+    "message": "期限切れダウンロードの新リンクを貼り付け"
+  },
+  "errRenewMismatch": {
+    "message": "新しいリンクは同じファイルではありません"
   }
 }

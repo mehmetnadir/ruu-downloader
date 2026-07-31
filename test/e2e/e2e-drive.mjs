@@ -199,6 +199,49 @@ const MB = 1024 * 1024;
     ok ? 'dosya indi, geçmiş temiz' : (bad ?? `state=${st}, geçmişte iz: ${historyHit}`));
 }
 
+// S7: LİNKİ YENİLE — imzalı URL süresi dolar, yeni link MEVCUT ilerlemeyle sürer (acı #1)
+{
+  const urlA = `http://localhost:${serverPort}/f/25?rate=20&key=exp1&failAfterReq=4`;
+  const urlB = `http://localhost:${serverPort}/f/25?rate=20&key=fresh1`;
+  await evalIn(panel, `chrome.runtime.sendMessage({target:'sw',type:'add',url:${JSON.stringify(urlA)}}); 'sent'`);
+  const offscreen = await pageCdp('offscreen.html');
+  // 4 istekten sonra 403 → iş error'a düşmeli
+  let info = null;
+  const d1 = Date.now() + 40_000;
+  while (Date.now() < d1) {
+    await sleep(700);
+    info = JSON.parse(await evalIn(offscreen,
+      `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(urlA)});` +
+      `return JSON.stringify(j? {st:j.state, id:j.id, dl:(j.alloc?j.alloc.downloadedBytes():0)} : null)})()`));
+    if (info && (info.st === 'error' || info.st === 'done')) break;
+  }
+  let ok = false;
+  let note = `link-expiry state=${info?.st}`;
+  if (info && info.st === 'error' && info.dl > 0) {
+    const dlAtFail = info.dl;
+    await evalIn(panel,
+      `chrome.runtime.sendMessage({target:'sw',type:'renew',jobId:${JSON.stringify(info.id)},url:${JSON.stringify(urlB)}}); 'ok'`);
+    const d2 = Date.now() + 40_000;
+    let st = '';
+    while (Date.now() < d2) {
+      await sleep(700);
+      st = await evalIn(offscreen,
+        `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.id===${JSON.stringify(info.id)});` +
+        `return j? j.state : 'yok'})()`);
+      if (st === 'done' || st === 'error') break;
+    }
+    let file = null;
+    for (let i = 0; i < 20 && !file; i++) { await sleep(500); file = findFile(25 * MB); }
+    const bad = file ? verifyPattern(file) : 'dosya yok';
+    ok = st === 'done' && !bad;
+    note = ok
+      ? `403'te ${Math.round(dlAtFail / MB)}MB vardı, yeni linkle tamamlandı`
+      : (bad ?? `renew sonrası state=${st}`);
+  }
+  offscreen.close();
+  record('S7 süresi dolan link → yenile', ok, note);
+}
+
 // S5: CRASH-RESUME — indirme ortasında tarayıcıyı öldür, yeniden başlat, devam ettir (PRD F3)
 {
   const url = `http://localhost:${serverPort}/f/80?rate=2`;

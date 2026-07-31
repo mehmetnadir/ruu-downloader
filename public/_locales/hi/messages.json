@@ -205,5 +205,14 @@
   },
   "dCancelFailed": {
     "message": "रद्द नहीं हो सका"
+  },
+  "renewT": {
+    "message": "नया लिंक — वहीं से जारी"
+  },
+  "renewPh": {
+    "message": "समाप्त डाउनलोड का नया लिंक चिपकाएँ"
+  },
+  "errRenewMismatch": {
+    "message": "नया लिंक वही फ़ाइल नहीं है"
   }
 }

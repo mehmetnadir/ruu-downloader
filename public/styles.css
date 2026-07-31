@@ -91,6 +91,10 @@ body {
   transition: border-color var(--dur-micro) var(--ease-out);
 }
 .add-row input:focus { border-color: var(--accent); }
+.add-row input.renew {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
 .primary {
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--accent); color: var(--warm-950);

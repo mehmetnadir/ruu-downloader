@@ -205,5 +205,14 @@
   },
   "dCancelFailed": {
     "message": "iptal edilemedi"
+  },
+  "renewT": {
+    "message": "Yeni link — kaldığı yerden devam"
+  },
+  "renewPh": {
+    "message": "Süresi dolan indirmenin yeni linkini yapıştır"
+  },
+  "errRenewMismatch": {
+    "message": "yeni link aynı dosya değil"
   }
 }

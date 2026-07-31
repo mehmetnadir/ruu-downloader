@@ -73,7 +73,7 @@ class Job {
   priv = false; // gizli: geçmişe yazılmaz, istatistiğe girmez, kart kaybolur
 
   constructor(
-    readonly url: string,
+    public url: string,
     readonly connections: number,
     readonly filenameHint?: string,
   ) {}
@@ -375,6 +375,34 @@ class Job {
     broadcast();
   }
 
+  /**
+   * Süresi dolan link kurtarma (kullanıcı acısı #1): yeni URL doğrulanır
+   * (boyut + ETag aynı olmalı), MEVCUT aralıklarla kaldığı yerden devam edilir.
+   */
+  async renew(newUrl: string): Promise<void> {
+    if (this.state !== 'error' && this.state !== 'paused') return;
+    this.state = 'probing';
+    this.error = undefined;
+    broadcast();
+    try {
+      const probe = await fetch(newUrl, {
+        headers: { Range: 'bytes=0-0' }, credentials: 'include', cache: 'no-store',
+      });
+      const total = parseTotal(probe);
+      const newEtag = probe.headers.get('etag') ?? undefined;
+      probe.body?.cancel().catch(() => undefined);
+      if (probe.status !== 206 || total !== this.size) throw new Error('errRenewMismatch');
+      if (this.etag && newEtag && this.etag !== newEtag) throw new Error('errRenewMismatch');
+      this.url = newUrl;
+      this.sequentialErrors = 0;
+      this.needsRevalidate = false;
+      if (!this.worker) await this.initDisk(this.size!, false);
+      this.beginDownloading();
+    } catch (err) {
+      this.fail(err);
+    }
+  }
+
   resume(): void {
     if (this.state !== 'paused') return;
     this.sequentialErrors = 0;
@@ -484,6 +512,7 @@ class Job {
       claims: (this.alloc?.claims ?? []).map((c) => ({
         s: c.start, e: c.end, w: c.written, a: c.active,
       })),
+      ranges: this.alloc?.completed() ?? [],
       error: this.error,
       native: this.native,
       downloadId: this.downloadId,
@@ -596,5 +625,6 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
     case 'query': broadcast(); break;
     case 'delivered': void jobs.get(raw.jobId)?.delivered(raw.ok, raw.error, raw.downloadId); break;
     case 'settings': maxRetries = Math.min(10, Math.max(0, raw.maxRetries)); break;
+    case 'renew': void jobs.get(raw.jobId)?.renew(raw.url); break;
   }
 });

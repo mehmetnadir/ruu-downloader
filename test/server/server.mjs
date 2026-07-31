@@ -14,6 +14,7 @@ import http from 'node:http';
 
 const PORT = Number(process.argv[2] ?? process.env.PORT ?? 8917);
 const CHUNK = 64 * 1024;
+const reqCounts = new Map(); // key → istek sayısı (süresi-dolan-link simülasyonu)
 
 function patternChunk(start, len) {
   const buf = Buffer.allocUnsafe(len);
@@ -30,6 +31,18 @@ const server = http.createServer(async (req, res) => {
   }
   const size = Number(m[1]) * 1024 * 1024;
   const rate = Number(url.searchParams.get('rate') ?? 0) * 1024 * 1024; // B/s
+
+  // ?key=X&failAfterReq=N → aynı key'e N istekten sonra 403 HTML (imzalı URL süresi doldu)
+  const key = url.searchParams.get('key');
+  const failAfterReq = Number(url.searchParams.get('failAfterReq') ?? 0);
+  if (key && failAfterReq > 0) {
+    const c = (reqCounts.get(key) ?? 0) + 1;
+    reqCounts.set(key, c);
+    if (c > failAfterReq) {
+      res.writeHead(403, { 'Content-Type': 'text/html' }).end('<html>link expired</html>');
+      return;
+    }
+  }
   const noRange = url.searchParams.get('noRange') === '1';
   const extra = Number(url.searchParams.get('extra') ?? 0);
   const dropAfter = Number(url.searchParams.get('dropAfter') ?? 0);

@@ -1,5 +1,22 @@
 # PRD — Parça 3: Ürün Yol Haritası (Nadir'in istek listesi, 2026-07-30)
 
+## Kullanıcı Acıları Araştırması (2026-07-31 — tur pusulası)
+
+Gerçek kullanıcı şikayetlerinden (CWS yorumları, IDM forumları) çıkan sıralı acılar:
+
+1. **Süresi dolan linkler** (EN BÜYÜK acı): imzalı/geçici CDN URL'leri resume'da ölüyor;
+   kullanıcı %95'te kalan dosyayı baştan indirmek zorunda kalıyor.
+   → **Ruu çözümü (Tur 11): "linki yenile"** — hatalı işe yeni URL yapıştır, ETag/boyut
+   doğrulanır, MEVCUT aralıklarla kaldığı yerden devam. Rakiplerde zayıf, bizde doğal
+   (aralık günlüğü zaten var).
+2. **%95-99'da çöken indirme** → crash-resume + ack günlüğü ile bizde çözülü ✓
+3. **Devralma güvenilmez / ayar kaybolması / Chrome barı gizlenemiyor** (FDM şikayetleri)
+   → teşhis günlüğü + storage.local kalıcılığı + setUiOptions bizde ✓
+4. **İkonda ilerleme yok** ("indirmeyi kaybediyorum") → **Tur 11: action badge**
+   (aktif sayaç + tekil işte %) — ucuz, yüksek algı değeri.
+5. Karanlık mod yok / kötü yerelleştirme / reklam-izleme (Chrono şikayeti)
+   → bizde tema + 11 dil + sıfır telemetri ✓ (mağaza metninde vurgulanacak).
+
 > Durum: YAŞAYAN BELGE — her madde kendi dalgasında detaylandırılır.
 > Fizibilite notları dürüst platform sınırlarını içerir.
 

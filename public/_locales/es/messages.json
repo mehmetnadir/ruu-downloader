@@ -205,5 +205,14 @@
   },
   "dCancelFailed": {
     "message": "no se pudo cancelar"
+  },
+  "renewT": {
+    "message": "Enlace nuevo — continuar donde quedó"
+  },
+  "renewPh": {
+    "message": "Pega un enlace nuevo para la descarga caducada"
+  },
+  "errRenewMismatch": {
+    "message": "el enlace nuevo no es el mismo archivo"
   }
 }

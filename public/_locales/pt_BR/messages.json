@@ -205,5 +205,14 @@
   },
   "dCancelFailed": {
     "message": "não foi possível cancelar"
+  },
+  "renewT": {
+    "message": "Novo link — continuar de onde parou"
+  },
+  "renewPh": {
+    "message": "Cole um link novo para o download expirado"
+  },
+  "errRenewMismatch": {
+    "message": "o novo link não é o mesmo arquivo"
   }
 }

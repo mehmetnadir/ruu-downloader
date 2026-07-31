@@ -161,6 +161,15 @@ chrome.notifications.onButtonClicked.addListener((notificationId) => {
 });
 
 chrome.runtime.onMessage.addListener((raw: Msg) => {
+  // İkon rozeti: motorun panel yayınlarını SW de dinler (kullanıcı acısı #4 —
+  // "indirmeyi kaybediyorum"). Aktif iş sayısı ikonda görünür.
+  if (raw.target === 'panel' && raw.type === 'jobs') {
+    const active = raw.jobs.filter((j) =>
+      j.state === 'downloading' || j.state === 'probing' || j.state === 'finalizing').length;
+    void chrome.action.setBadgeText({ text: active ? String(active) : '' }).catch(() => undefined);
+    void chrome.action.setBadgeBackgroundColor({ color: '#e8a33d' }).catch(() => undefined);
+    return;
+  }
   if (raw.target !== 'sw') return;
   void (async () => {
     switch (raw.type) {
@@ -168,6 +177,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
       case 'pause':
       case 'resume':
       case 'cancel':
+      case 'renew':
       case 'pause-all': {
         await ensureOffscreen();
         void chrome.runtime.sendMessage({ ...raw, target: 'engine' }).catch(() => undefined);

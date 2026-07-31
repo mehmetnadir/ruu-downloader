@@ -50,14 +50,29 @@ function send(msg: Msg): void {
 }
 
 let privateMode = false;
+let renewTarget: string | null = null;
+
+function setRenewMode(jobId: string | null): void {
+  renewTarget = jobId;
+  urlInput.classList.toggle('renew', jobId !== null);
+  urlInput.placeholder = jobId !== null ? t('renewPh') : t('addPh');
+  if (jobId !== null) urlInput.focus();
+}
 
 function addFromInput(): void {
   const url = urlInput.value.trim();
   if (!url) return;
-  // bağlantı sayısı: motor cihaza göre otomatik seçer
-  send({ target: 'sw', type: 'add', url, priv: privateMode || undefined });
+  if (renewTarget !== null) {
+    // süresi dolan işe yeni link — kaldığı yerden devam
+    send({ target: 'sw', type: 'renew', jobId: renewTarget, url });
+    setRenewMode(null);
+  } else {
+    // bağlantı sayısı: motor cihaza göre otomatik seçer
+    send({ target: 'sw', type: 'add', url, priv: privateMode || undefined });
+  }
   urlInput.value = '';
 }
+urlInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') setRenewMode(null); });
 
 addBtn.addEventListener('click', addFromInput);
 urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addFromInput(); });
@@ -276,6 +291,9 @@ function actionButtons(job: JobSnapshot): string {
   let out = '';
   if (job.state === 'downloading') out += btn('pause', 'id', job.id, t('pause'), icons.pause);
   else if (job.state === 'paused') out += btn('resume', 'id', job.id, t('resume'), icons.play);
+  if (job.state === 'error' && !job.native) {
+    out += btn('renew', 'id', job.id, t('renewT'), icons.refresh);
+  }
   if (job.state === 'done' && job.downloadId !== undefined && !job.native) {
     out += btn('open', 'dlid', job.downloadId, t('openFile'), icons.open);
     out += btn('show', 'dlid', job.downloadId, t('showFolder'), icons.show);
@@ -330,17 +348,19 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
       Math.min(SEG_BUCKETS - 1, Math.floor((byte / size) * SEG_BUCKETS));
     const fillPer = new Float32Array(SEG_BUCKETS);
     const activeSet = new Set<number>();
-    for (const c of job.claims) {
-      if (c.w > 0) {
-        const s = bucketOf(c.s);
-        const e = bucketOf(c.s + c.w - 1);
-        for (let b = s; b <= e; b++) fillPer[b] = 1;
-        // uç bucket kısmi olabilir; basit yaklaşım: uçta oran uygula
-        const bucketSize = size / SEG_BUCKETS;
-        fillPer[e] = Math.min(1, ((c.s + c.w) - e * bucketSize) / bucketSize);
-        if (s === e) fillPer[s] = Math.min(1, c.w / bucketSize);
+    // Birleştirilmiş (çakışmasız) aralıklar → her bucket'a kapladığı oran yazılır.
+    const bucketSize = size / SEG_BUCKETS;
+    for (const [rs, re] of job.ranges) {
+      const s = bucketOf(rs);
+      const e = bucketOf(re - 1);
+      for (let b = s; b <= e; b++) {
+        const bStart = b * bucketSize;
+        const covered = Math.min(re, bStart + bucketSize) - Math.max(rs, bStart);
+        fillPer[b] = Math.min(1, fillPer[b]! + covered / bucketSize);
       }
-      if (c.a) activeSet.add(bucketOf(c.s + c.w));
+    }
+    for (const c of job.claims) {
+      if (c.a) activeSet.add(bucketOf(Math.min(size - 1, c.s + c.w)));
     }
     for (let b = 0; b < SEG_BUCKETS; b++) {
       const f = ref.buckets[b]!;
@@ -392,6 +412,10 @@ document.body.addEventListener('click', (e) => {
   const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
   if (!btn) return;
   const act = btn.dataset['act']!;
+  if (act === 'renew') {
+    setRenewMode(btn.dataset['id']!);
+    return;
+  }
   if (act === 'open' || act === 'show') {
     const dlid = Number(btn.dataset['dlid']);
     try {

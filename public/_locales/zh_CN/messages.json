@@ -205,5 +205,14 @@
   },
   "dCancelFailed": {
     "message": "无法取消"
+  },
+  "renewT": {
+    "message": "新链接 — 从断点继续"
+  },
+  "renewPh": {
+    "message": "为过期下载粘贴新链接"
+  },
+  "errRenewMismatch": {
+    "message": "新链接不是同一个文件"
   }
 }

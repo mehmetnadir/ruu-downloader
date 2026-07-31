@@ -23,6 +23,7 @@ export interface JobSnapshot {
   speed: number; // bytes/sec
   connections: number;
   claims: ClaimSnapshot[];
+  ranges: Array<[number, number]>; // birleştirilmiş tamamlanan aralıklar (segment haritası)
   error?: string;
   native?: boolean;
   downloadId?: number; // teslim sonrası chrome.downloads kimliği (Aç / Göster için)
@@ -39,12 +40,14 @@ export type Msg =
   | { target: 'engine'; type: 'query' }
   | { target: 'engine'; type: 'delivered'; jobId: string; ok: boolean; error?: string; downloadId?: number }
   | { target: 'engine'; type: 'settings'; maxRetries: number }
+  | { target: 'engine'; type: 'renew'; jobId: string; url: string }
   // engine/panel → sw
   | { target: 'sw'; type: 'add'; url: string; connections?: number; filenameHint?: string; priv?: boolean }
   | { target: 'sw'; type: 'pause'; jobId: string }
   | { target: 'sw'; type: 'resume'; jobId: string }
   | { target: 'sw'; type: 'cancel'; jobId: string }
   | { target: 'sw'; type: 'pause-all' }
+  | { target: 'sw'; type: 'renew'; jobId: string; url: string }
   | { target: 'sw'; type: 'hello-panel' }
   | { target: 'sw'; type: 'deliver'; jobId: string; blobUrl: string; filename: string; size: number; topSpeed: number; priv?: boolean }
   | { target: 'sw'; type: 'native-fallback'; jobId: string; url: string }
