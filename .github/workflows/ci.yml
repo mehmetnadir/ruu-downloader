@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Package sanity
+        run: |
+          node scripts/package.mjs
+          # Yayın paketi E2E-only izinleri TAŞIMAMALI
+          if unzip -p out/*.zip manifest.json | grep -q 'localhost'; then
+            echo "HATA: yayın paketinde localhost eşleşmesi var"; exit 1
+          fi
+          if unzip -l out/*.zip | grep -q '\.map'; then
+            echo "HATA: yayın paketinde sourcemap var"; exit 1
+          fi
+
+  e2e:
+    runs-on: ubuntu-latest
+    # E2E gerçek Chrome gerektirir; sabit portlar yüzünden ara sıra flaky
+    # olabildiği için CI'da bilgi amaçlı çalışır, ana gate'i düşürmez.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Chrome kur
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      - name: E2E (headless)
+        env:
+          HEADLESS: '1'
+          CHROME: chrome
+        run: ./test/e2e/run.sh

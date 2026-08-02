@@ -294,5 +294,11 @@
   },
   "errBlocked": {
     "message": "tarayıcı güvenlik taraması engelledi"
+  },
+  "histTitle": {
+    "message": "Önceki indirmeler"
+  },
+  "histClear": {
+    "message": "Listeyi temizle"
   }
 }

@@ -297,6 +297,18 @@ const MB = 1024 * 1024;
   record('S10 tam otomatik (tıklama yok)', !bad, bad ?? 'mail açıldı, dosya kendi indi');
 }
 
+// S11: KALICI GEÇMİŞ — tamamlanan indirme storage'a yazılır, gizli olan YAZILMAZ
+{
+  const hist = JSON.parse(await evalIn(panel,
+    `chrome.storage.local.get({history:[]}).then(s=>JSON.stringify(s.history))`));
+  const names = hist.map((e) => e.name).join(',');
+  // S1/S2/S3/S4 normal indirmeleri geçmişte olmalı; S6'nın gizli 12MB'ı OLMAMALI
+  const hasNormal = hist.length > 0;
+  const privLeaked = hist.some((e) => e.size === 12 * MB);
+  record('S11 kalıcı geçmiş (gizli hariç)', hasNormal && !privLeaked,
+    privLeaked ? 'GİZLİ İNDİRME GEÇMİŞE SIZDI' : `${hist.length} kayıt: ${names.slice(0, 60)}`);
+}
+
 // S5: CRASH-RESUME — indirme ortasında tarayıcıyı öldür, yeniden başlat, devam ettir (PRD F3)
 {
   const url = `http://localhost:${serverPort}/f/80?rate=2`;

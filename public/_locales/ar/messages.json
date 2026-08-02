@@ -294,5 +294,11 @@
   },
   "errBlocked": {
     "message": "حظره فحص أمان المتصفح"
+  },
+  "histTitle": {
+    "message": "تنزيلات سابقة"
+  },
+  "histClear": {
+    "message": "مسح القائمة"
   }
 }

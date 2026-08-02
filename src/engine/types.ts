@@ -58,7 +58,7 @@ export type Msg =
   | { target: 'sw'; type: 'beam-pair'; pairing: { relay: string; pairId: string; keyB64: string } }
   | { target: 'sw'; type: 'beam-unpair' }
   | { target: 'sw'; type: 'hello-panel' }
-  | { target: 'sw'; type: 'deliver'; jobId: string; blobUrl: string; filename: string; size: number; topSpeed: number; priv?: boolean }
+  | { target: 'sw'; type: 'deliver'; jobId: string; blobUrl: string; filename: string; size: number; topSpeed: number; priv?: boolean; origin?: string; sender?: string }
   | { target: 'sw'; type: 'native-fallback'; jobId: string; url: string }
   | { target: 'sw'; type: 'keepawake'; on: boolean }
   // engine → panel

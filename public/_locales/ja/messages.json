@@ -294,5 +294,11 @@
   },
   "errBlocked": {
     "message": "ブラウザの安全性チェックによりブロック"
+  },
+  "histTitle": {
+    "message": "以前のダウンロード"
+  },
+  "histClear": {
+    "message": "リストを消去"
   }
 }

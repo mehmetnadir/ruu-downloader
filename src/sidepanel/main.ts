@@ -1,5 +1,6 @@
 import type { JobSnapshot, Msg } from '../engine/types';
 import { DEFAULT_MODE, type ServiceMode } from '../content/modes';
+import type { HistoryEntry } from '../engine/history';
 import { SERVICES } from '../content/services';
 import { icons } from './icons';
 import { initBeamUi } from './beam-ui';
@@ -153,6 +154,40 @@ setNotify.addEventListener('change', () => {
 });
 setParty.addEventListener('change', () => save({ partyUrl: setParty.value.trim() || DEFAULTS.partyUrl }));
 setOpen.addEventListener('change', () => save({ openWhenDone: setOpen.checked }));
+
+// ── Kalıcı indirme geçmişi ───────────────────────────────────────────────────
+// Chrome'un indirme balonunu gizlemeyi öneriyoruz; kendi geçmişimizi tutmamak
+// kullanıcıyı iki arayüzden birden mahrum bırakırdı (denetim bulgusu C5).
+const histSection = $('#hist-section');
+const histList = $('#hist-list');
+
+async function renderHistory(): Promise<void> {
+  const entries = (await chrome.storage.local.get({ history: [] }))['history'] as HistoryEntry[];
+  if (entries.length === 0) { histSection.hidden = true; return; }
+  histSection.hidden = false;
+  // Dosya hâlâ diskte mi? Silinmişse üstü çizili göster — yalan söyleme.
+  const live = await chrome.downloads.search({}).catch(() => []);
+  const exists = new Map(live.map((d) => [d.id, d.exists !== false && d.state === 'complete']));
+  histList.innerHTML = entries.map((e) => {
+    const when = new Date(e.at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+    const meta = [fmtBytes(e.size), when, e.origin, e.sender].filter(Boolean).join(' · ');
+    const gone = exists.get(e.id) === false;
+    const actions = gone ? '' :
+      btn('open', 'dlid', e.id, t('openFile'), icons.open) + btn('show', 'dlid', e.id, t('showFolder'), icons.show);
+    return `<div class="hist-row${gone ? ' gone' : ''}" role="listitem">` +
+      `<span class="hist-name" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</span>` +
+      `<span class="hist-meta">${escapeHtml(meta)}</span>` +
+      `<span class="actions">${actions}</span></div>`;
+  }).join('');
+}
+
+$('#hist-clear').addEventListener('click', () => {
+  void chrome.storage.local.set({ history: [] }).then(renderHistory);
+});
+void renderHistory();
+chrome.storage.onChanged.addListener((ch, area) => {
+  if (area === 'local' && ch['history']) void renderHistory();
+});
 
 // ── Beam: telefon → bu bilgisayar ────────────────────────────────────────────
 initBeamUi($('#beam-body'));

@@ -294,5 +294,11 @@
   },
   "errBlocked": {
     "message": "ब्राउज़र सुरक्षा जाँच ने रोका"
+  },
+  "histTitle": {
+    "message": "पिछले डाउनलोड"
+  },
+  "histClear": {
+    "message": "सूची साफ़ करें"
   }
 }

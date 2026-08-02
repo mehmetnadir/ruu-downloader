@@ -5,8 +5,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-CDP_PORT="${CDP_PORT:-9345}"
-SRV_PORT="${SRV_PORT:-8945}"
+# Sabit port çakışması testleri flaky yapıyordu (bağımsız denetimde yakalandı):
+# artık boş port aranır ve önceki koşumların artıkları temizlenir.
+free_port() {
+  node -e "const n=require('net');const s=n.createServer();s.listen(0,()=>{console.log(s.address().port);s.close()})"
+}
+pkill -f 'ruu-e2e-profile' 2>/dev/null || true
+CDP_PORT="${CDP_PORT:-$(free_port)}"
+SRV_PORT="${SRV_PORT:-$(free_port)}"
 PROFILE="$(mktemp -d /tmp/ruu-e2e-profile.XXXXXX)"
 DLDIR="$(mktemp -d /tmp/ruu-e2e-dl.XXXXXX)"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"

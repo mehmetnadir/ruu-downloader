@@ -294,5 +294,11 @@
   },
   "errBlocked": {
     "message": "blocked by browser safety check"
+  },
+  "histTitle": {
+    "message": "Earlier downloads"
+  },
+  "histClear": {
+    "message": "Clear list"
   }
 }

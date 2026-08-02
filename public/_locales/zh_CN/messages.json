@@ -294,5 +294,11 @@
   },
   "errBlocked": {
     "message": "被浏览器安全检查拦截"
+  },
+  "histTitle": {
+    "message": "早前的下载"
+  },
+  "histClear": {
+    "message": "清空列表"
   }
 }

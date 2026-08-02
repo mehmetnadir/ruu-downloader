@@ -294,5 +294,11 @@
   },
   "errBlocked": {
     "message": "bloqué par le contrôle de sécurité"
+  },
+  "histTitle": {
+    "message": "Téléchargements précédents"
+  },
+  "histClear": {
+    "message": "Vider la liste"
   }
 }

@@ -5,6 +5,7 @@ import { BEAM_ALARM, loadState, pollOnce, saveState } from './beam/client';
 import { matchShareLink } from './content/patterns';
 import { DEFAULT_CATEGORY_NAMES, routeByType } from './engine/foldering';
 import { decideTakeover } from './engine/takeover';
+import { addEntry, type HistoryEntry } from './engine/history';
 import { applyDownload, EMPTY_STATS, type Stats } from './engine/stats';
 import type { Msg } from './engine/types';
 
@@ -141,8 +142,20 @@ async function ensureOffscreen(): Promise<void> {
   pushEngineSettings();
 }
 
-interface Delivery { jobId: string; size: number; topSpeed: number; priv: boolean }
+interface Delivery { jobId: string; size: number; topSpeed: number; priv: boolean; origin?: string; sender?: string }
 const deliveries = new Map<number, Delivery>(); // chrome downloadId → teslim bilgisi
+
+/** Kalıcı geçmiş — gizli indirmeler ASLA yazılmaz. */
+async function recordHistory(id: number, d: Delivery, filename: string): Promise<void> {
+  if (d.priv) return;
+  const cur = (await chrome.storage.local.get({ history: [] }))['history'] as HistoryEntry[];
+  await chrome.storage.local.set({
+    history: addEntry(cur, {
+      id, name: filename.split(/[\\/]/).pop() ?? '', size: d.size,
+      at: Date.now(), origin: d.origin, sender: d.sender,
+    }),
+  });
+}
 
 async function recordStats(size: number, topSpeed: number): Promise<void> {
   const cur = (await chrome.storage.local.get({ stats: EMPTY_STATS }))['stats'] as Stats;
@@ -485,7 +498,10 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
             filename: routeByType(raw.filename, settings.typeFolders, CATEGORY_NAMES),
             conflictAction: 'uniquify',
           });
-          deliveries.set(id, { jobId: raw.jobId, size: raw.size, topSpeed: raw.topSpeed, priv: raw.priv ?? false });
+          deliveries.set(id, {
+            jobId: raw.jobId, size: raw.size, topSpeed: raw.topSpeed,
+            priv: raw.priv ?? false, origin: raw.origin, sender: raw.sender,
+          });
         } catch (err) {
           void chrome.runtime.sendMessage({
             target: 'engine', type: 'delivered', jobId: raw.jobId,
@@ -541,7 +557,9 @@ chrome.downloads.onChanged.addListener((delta) => {
       } satisfies Msg).catch(() => undefined);
       void recordStats(delivery.size, delivery.topSpeed);
       void chrome.downloads.search({ id: delta.id }).then((items) => {
-        celebrate(delta.id, items[0]?.filename ?? '', delivery.size);
+        const filename = items[0]?.filename ?? '';
+        void recordHistory(delta.id, delivery, filename);
+        celebrate(delta.id, filename, delivery.size);
       }).catch(() => celebrate(delta.id, '', delivery.size));
     }
   } else if (delta.state?.current === 'interrupted') {

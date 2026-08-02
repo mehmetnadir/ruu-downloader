@@ -349,7 +349,7 @@ class Job {
     send({
       target: 'sw', type: 'deliver', jobId: this.id, blobUrl: this.blobUrl,
       filename: this.filename, size: this.size ?? file.size, topSpeed: this.topSpeed,
-      priv: this.priv,
+      priv: this.priv, origin: this.origin, sender: this.sender,
     });
   }
 

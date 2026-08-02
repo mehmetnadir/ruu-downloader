@@ -294,5 +294,11 @@
   },
   "errBlocked": {
     "message": "von der Sicherheitsprüfung blockiert"
+  },
+  "histTitle": {
+    "message": "Frühere Downloads"
+  },
+  "histClear": {
+    "message": "Liste leeren"
   }
 }
