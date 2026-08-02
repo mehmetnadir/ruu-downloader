@@ -255,6 +255,10 @@ $('#onboard-no').addEventListener('click', () => {
   onboard.hidden = true;
 });
 
+function hostOf(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+
 function fmtBytes(n: number): string {
   if (n >= 1 << 30) return `${(n / (1 << 30)).toFixed(2)} GB`;
   if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;
@@ -389,8 +393,15 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
     ref.stats.textContent = `%${Math.floor(pct * 100)}`;
   } else if (job.state === 'error') {
     ref.stats.textContent = terr(job.error);
-  } else if (job.state === 'done' && job.native) {
-    ref.stats.textContent = t('wNative');
+  } else if (job.state === 'done') {
+    // Köken: ne zaman · nereden · kimden (hepsi yerel)
+    const when = job.completedAt
+      ? new Date(job.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '';
+    const from = job.origin ?? hostOf(job.url);
+    ref.stats.textContent = [when, from, job.sender, job.native ? t('wNative') : '']
+      .filter(Boolean).join(' · ');
+    ref.stats.title = job.url;
   } else {
     ref.stats.textContent = '';
   }

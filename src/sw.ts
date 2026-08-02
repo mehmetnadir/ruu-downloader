@@ -74,6 +74,13 @@ function isOwn(url: string): boolean {
   return true;
 }
 
+/** Paylaşım akışından gelen köken bilgisi (kısa ömürlü). */
+let pendingOrigin: { name: string; sender?: string; until: number } | null = null;
+function takeOrigin(): { origin?: string; sender?: string } {
+  if (!pendingOrigin || Date.now() > pendingOrigin.until) return {};
+  return { origin: pendingOrigin.name, sender: pendingOrigin.sender };
+}
+
 /** Teşhis: son devralma kararları — "neden devralmadı?" her zaman cevaplı. */
 async function logTakeover(entry: Record<string, unknown>): Promise<void> {
   const cur = (await chrome.storage.local.get({ takeoverLog: [] }))['takeoverLog'] as unknown[];
@@ -107,6 +114,7 @@ chrome.downloads.onCreated.addListener((item) => {
     await ensureOffscreen();
     void chrome.runtime.sendMessage({
       target: 'engine', type: 'add', url: decision.url, filenameHint: hint,
+      ...takeOrigin(),
     } satisfies Msg).catch(() => undefined);
   })();
 });
@@ -207,8 +215,11 @@ function shareFlowAgent(): void {
           return; // döngüyü durdur — tıklanacak bir şey yok
         }
       }
+      // DİKKAT: bazı siteler indirme düğmesini href="#" olan <a> ile yapıyor
+      // (Filebin "Download files") — seçici dar tutulunca hiç aday bulunmuyordu.
+      // Güvenlik metin kalıbından gelir, seçiciden değil.
       const els = [
-        ...document.querySelectorAll<HTMLElement>('button, a[download], a[href*="download"], [role="button"]'),
+        ...document.querySelectorAll<HTMLElement>('button, a, [role="button"], [class*="download"]'),
       ];
       for (const el of els) {
         const text = (el.textContent ?? '').trim();
@@ -224,6 +235,24 @@ function shareFlowAgent(): void {
           }).catch(() => undefined);
         } catch { /* extension context yenilendi — akış yine de sürer */ }
         break; // her turda tek tık — sayfa yeniden çizilsin
+      }
+      // SON ÇARE (5. turdan sonra): aksiyon düğmesi işe yaramadıysa sayfadaki
+      // doğrudan dosya bağlantısını dene. Filebin gibi sitelerde indirme
+      // "Download files" menüsü açıyor, asıl link dosya listesinde duruyor.
+      if (ticks >= 5 && clicks < 2) {
+        const FILE_EXT = /\.(zip|rar|7z|tar|gz|bin|iso|dmg|pkg|exe|msi|apk|pdf|mp4|mkv|mp3|epub|docx?|xlsx?|pptx?)(\?|$)/i;
+        const link = [...document.querySelectorAll<HTMLAnchorElement>('a[href]')]
+          .find((a) => !clicked.has(a) && (a.hasAttribute('download') || FILE_EXT.test(a.href)));
+        if (link) {
+          clicked.add(link);
+          clicks++;
+          link.click();
+          try {
+            void chrome.runtime.sendMessage({
+              target: 'sw', type: 'share-clicked', label: `dosya: ${link.href.split('/').pop()?.slice(0, 30)}`,
+            }).catch(() => undefined);
+          } catch { /* context yenilendi */ }
+        }
       }
     } catch { /* sayfa DOM'u değişebilir; döngü ölmemeli */ }
     // ZORUNLU: bir sonraki tur HER DURUMDA planlanır (tıklama hatası akışı öldürmesin)
@@ -258,7 +287,7 @@ function notifyMail(
 
 async function handleShareFetch(
   rawUrl: string,
-  ctx: { reqId?: string; mailTabId?: number } = {},
+  ctx: { reqId?: string; mailTabId?: number; sender?: string } = {},
 ): Promise<void> {
   const match = matchShareLink(rawUrl);
   if (!match) return;
@@ -280,6 +309,7 @@ async function handleShareFetch(
     await ensureOffscreen();
     void chrome.runtime.sendMessage({
       target: 'engine', type: 'add', url: match.url,
+      origin: match.name, sender: ctx.sender,
     } satisfies Msg).catch(() => undefined);
     void logTakeover({ url: match.url.slice(0, 72), action: 'taken', size: -1 });
     return;
@@ -295,6 +325,8 @@ async function handleShareFetch(
   // gerçek sayfa yüklenince yok olur (E2E'de yakalandı). Bu yüzden 'complete'
   // beklenir; sonraki 'complete'lerde de yeniden enjekte edilir (SPA/redirect).
   shareTabs.set(tabId, { ...ctx, windowId: win.id });
+  // Devralma sırasında köken bilgisi eklenebilsin diye servis adı hatırlanır
+  pendingOrigin = { name: match.name, sender: ctx.sender, until: Date.now() + 120_000 };
   // DİKKAT: allFrames:true TEK çağrıda, erişilemeyen bir alt çerçeve yüzünden
   // TÜM enjeksiyonu reject edebiliyor (WeTransfer'de 5 iframe var; ana belgeye
   // hiç enjekte olmuyordu). Bu yüzden ana çerçeve ve alt çerçeveler AYRI çağrılır.
@@ -375,7 +407,7 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
         break;
       }
       case 'share-fetch': {
-        await handleShareFetch(raw.url, { reqId: raw.reqId, mailTabId: sender.tab?.id });
+        await handleShareFetch(raw.url, { reqId: raw.reqId, mailTabId: sender.tab?.id, sender: raw.sender });
         break;
       }
       case 'share-clicked': {

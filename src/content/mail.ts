@@ -49,13 +49,30 @@ const autoStarted = new Set<string>();
 let serviceModes: Record<string, ServiceMode> = {};
 let globalAuto = false;
 
-function startFlow(url: string, btn?: HTMLButtonElement): void {
+/**
+ * Maildeki gönderen — SADECE yerelde saklanır, hiçbir yere gönderilmez
+ * (uzak telemetri yok kararı). Gmail ve Outlook DOM'unda gönderen adresi
+ * standart özniteliklerde durur; bulunamazsa boş geçilir.
+ */
+function findSender(from: HTMLElement): string | undefined {
+  let node: HTMLElement | null = from;
+  for (let up = 0; node && up < 12; up++, node = node.parentElement) {
+    const el = node.querySelector<HTMLElement>('span[email], [data-hovercard-id*="@"], a[href^="mailto:"]');
+    const val = el?.getAttribute('email')
+      ?? el?.getAttribute('data-hovercard-id')
+      ?? el?.getAttribute('href')?.replace(/^mailto:/, '');
+    if (val?.includes('@')) return val.slice(0, 80);
+  }
+  return undefined;
+}
+
+function startFlow(url: string, btn?: HTMLButtonElement, sender?: string): void {
   const reqId = `r${Date.now()}${Math.floor(Math.random() * 1e4)}`;
   if (btn) {
     pending.set(reqId, btn);
     setState(btn, 'work', t('shWorking'));
   }
-  void chrome.runtime.sendMessage({ target: 'sw', type: 'share-fetch', url, reqId })
+  void chrome.runtime.sendMessage({ target: 'sw', type: 'share-fetch', url, reqId, sender })
     .catch(() => btn && setState(btn, 'err', t('shNoAction')));
 }
 
@@ -91,7 +108,7 @@ function inject(a: HTMLAnchorElement): void {
     const key = autoKey(a.href);
     if (autoStarted.has(key) || a.offsetParent === null) return;
     autoStarted.add(key);
-    startFlow(a.href);
+    startFlow(a.href, undefined, findSender(a));
     return;
   }
   // Aynı hedefe birden çok link olabilir (logo + metin + ham URL) — tek düğme yeter
@@ -104,7 +121,7 @@ function inject(a: HTMLAnchorElement): void {
   btn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    startFlow(a.href, btn);
+    startFlow(a.href, btn, findSender(a));
   });
   a.after(btn);
 }

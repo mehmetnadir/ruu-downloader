@@ -71,6 +71,9 @@ class Job {
   private topSpeed = 0;
   downloadId?: number;
   priv = false; // gizli: geçmişe yazılmaz, istatistiğe girmez, kart kaybolur
+  completedAt?: number;
+  origin?: string;
+  sender?: string;
 
   constructor(
     public url: string,
@@ -353,6 +356,7 @@ class Job {
       await dir.removeEntry(this.id).catch(() => undefined);
       await dir.removeEntry(`${this.id}.meta`).catch(() => undefined);
       this.state = 'done';
+      this.completedAt = Date.now();
       if (this.priv) {
         // gizli iş: kart kısa süre sonra panelden de silinir — iz kalmaz
         setTimeout(() => { jobs.delete(this.id); broadcast(); }, 6000);
@@ -517,6 +521,9 @@ class Job {
       native: this.native,
       downloadId: this.downloadId,
       priv: this.priv || undefined,
+      completedAt: this.completedAt,
+      origin: this.origin,
+      sender: this.sender,
     };
   }
 }
@@ -614,6 +621,8 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
       const auto = autoTuneConnections(collectHints());
       const job = new Job(raw.url, Math.min(8, Math.max(1, raw.connections ?? auto)), raw.filenameHint);
       job.priv = raw.priv ?? false;
+      job.origin = raw.origin;
+      job.sender = raw.sender;
       jobs.set(job.id, job);
       void job.start();
       break;
