@@ -31,9 +31,10 @@ async function seal(keyB64, plain) {
 }
 
 function decodePairing(s) {
-  if (!s?.startsWith('ruu:')) return null;
+  const at = s?.indexOf('ruu:') ?? -1;
+  if (at < 0) return null;
   try {
-    const p = JSON.parse(new TextDecoder().decode(b64u.dec(s.slice(4))));
+    const p = JSON.parse(new TextDecoder().decode(b64u.dec(s.slice(at + 4))));
     return p.relay && p.pairId && p.keyB64 ? p : null;
   } catch { return null; }
 }
@@ -133,6 +134,13 @@ const shared = q.get('url') ?? q.get('text');
 if (shared) {
   $('#url').value = shared;
   if (pairing) void send(shared); // eşleşmişse doğrudan yolla
+}
+
+// QR doğrudan bu sayfayı açtıysa eşleştirme fragment'te gelir (#ruu:...)
+// Fragment sunucuya gönderilmez → anahtar röleye ulaşmaz.
+if (!pairing && location.hash.includes('ruu:')) {
+  const p = decodePairing(location.hash.slice(location.hash.indexOf('ruu:')));
+  if (p) { setPairing(p); history.replaceState(null, '', '/app/'); }
 }
 
 render();

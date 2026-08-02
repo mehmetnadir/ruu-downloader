@@ -20,6 +20,15 @@ const MAX_ITEMS = 20;
 const TTL_SECONDS = 900;
 const MAX_BODY = 4096;
 
+/** PWA varlıkları deploy sırasında buraya gömülür (ayrı hosting yok). */
+const PWA = /*__PWA_ASSETS__*/{};
+const MIME = {
+  'index.html': 'text/html; charset=utf-8',
+  'app.js': 'text/javascript; charset=utf-8',
+  'manifest.webmanifest': 'application/manifest+json',
+  'sw.js': 'text/javascript; charset=utf-8',
+};
+
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
@@ -38,6 +47,26 @@ export default {
 
     const url = new URL(request.url);
     if (url.pathname === '/health') return json({ ok: true });
+
+    // Telefon uygulaması (PWA) — /app yolundan sunulur
+    if (url.pathname === '/app' || url.pathname === '/app/') {
+      return new Response(PWA['index.html'], {
+        headers: { 'content-type': MIME['index.html'], ...cors },
+      });
+    }
+    if (url.pathname.startsWith('/app/')) {
+      const name = url.pathname.slice(5);
+      if (PWA[name]) {
+        return new Response(PWA[name], {
+          headers: {
+            'content-type': MIME[name] ?? 'text/plain; charset=utf-8',
+            // Service worker kapsamı /app/ ile sınırlı kalsın
+            ...(name === 'sw.js' ? { 'service-worker-allowed': '/app/' } : {}),
+            ...cors,
+          },
+        });
+      }
+    }
 
     const m = url.pathname.match(/^\/p\/([A-Za-z0-9_-]{16,64})$/);
     if (!m) return json({ error: 'not found' }, 404);

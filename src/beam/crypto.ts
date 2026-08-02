@@ -74,15 +74,21 @@ export async function open(keyB64: string, env: Envelope): Promise<string | null
   }
 }
 
-/** QR / elle kopyalama için tek satırlık eşleştirme dizesi. */
+/**
+ * QR içeriği. Telefonun kamera uygulaması bunu okuyunca doğrudan PWA'yı açsın
+ * diye TAM URL kullanılır; eşleştirme yükü fragment'te (#) taşınır — fragment
+ * sunucuya GÖNDERİLMEZ, yani anahtar röleye asla ulaşmaz.
+ */
 export function encodePairing(p: Pairing): string {
-  return `ruu:${btoa(JSON.stringify(p)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+  const payload = btoa(JSON.stringify(p)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${p.relay}/app/#ruu:${payload}`;
 }
 
 export function decodePairing(s: string): Pairing | null {
-  if (!s.startsWith('ruu:')) return null;
+  const at = s.indexOf('ruu:');
+  if (at < 0) return null; // hem 'ruu:...' hem 'https://…/app/#ruu:...' kabul edilir
   try {
-    const json = new TextDecoder().decode(b64u.dec(s.slice(4)) as BufferSource);
+    const json = new TextDecoder().decode(b64u.dec(s.slice(at + 4)) as BufferSource);
     const p = JSON.parse(json) as Pairing;
     if (!p.relay || !p.pairId || !p.keyB64) return null;
     return p;

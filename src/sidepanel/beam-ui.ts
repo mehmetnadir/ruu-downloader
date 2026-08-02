@@ -47,6 +47,11 @@ export function initBeamUi(container: HTMLElement): void {
     const wrap = document.createElement('div');
     wrap.className = 'beam-qr';
     wrap.append(drawQr(encodePairing(state.pairing)));
+    const hint = document.createElement('p');
+    hint.className = 'svc-desc';
+    hint.style.textAlign = 'center';
+    hint.textContent = `${RELAY}/app`; // telefonda elle açmak isteyen için
+    wrap.append(hint);
     const row = document.createElement('div');
     row.className = 'beam-state';
     row.innerHTML = `<span class="ok">${t('beamPaired')} · ${t('beamWaiting')}</span>`;

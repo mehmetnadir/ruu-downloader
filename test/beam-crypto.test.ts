@@ -39,11 +39,23 @@ describe('Beam kripto', () => {
     expect(e1.data).not.toBe(e2.data); // aynı düz metin, farklı şifreli çıktı
   });
 
-  it('eşleştirme dizesi kodla/çöz turu', async () => {
+  it('QR içeriği doğrudan PWA adresi; anahtar fragment\'te (sunucuya gitmez)', async () => {
     const p = await createPairing('https://relay.test');
     const s = encodePairing(p);
-    expect(s.startsWith('ruu:')).toBe(true);
+    expect(s.startsWith('https://relay.test/app/#ruu:')).toBe(true);
+    // Anahtar '#' SONRASINDA olmalı — fragment sunucuya gönderilmez
+    expect(s.split('#')[0]).not.toContain(p.keyB64.slice(0, 10));
     expect(decodePairing(s)).toEqual(p);
+  });
+
+  it('hem tam URL hem ham "ruu:" dizesi çözülür', async () => {
+    const p = await createPairing('https://relay.test');
+    const payload = encodePairing(p).split('#')[1]!;
+    expect(decodePairing(payload)).toEqual(p);      // ham
+    expect(decodePairing(encodePairing(p))).toEqual(p); // tam URL
+  });
+
+  it('bozuk girdi null döner', async () => {
     expect(decodePairing('başka-şey')).toBeNull();
     expect(decodePairing('ruu:bozuk!!')).toBeNull();
   });

@@ -52,8 +52,15 @@ if (!ns) {
   console.log('KV mevcut:', ns.id);
 }
 
-// 2) Worker yükle (ES module + KV binding)
-const script = readFileSync(new URL('./worker.js', import.meta.url), 'utf8');
+// 2) PWA varlıklarını worker'a göm (ayrı hosting gerekmesin)
+const pwaFiles = ['index.html', 'app.js', 'manifest.webmanifest', 'sw.js'];
+const assets = Object.fromEntries(pwaFiles.map((f) => [
+  f, readFileSync(new URL(`./pwa/${f}`, import.meta.url), 'utf8'),
+]));
+
+// 3) Worker yükle (ES module + KV binding)
+const script = readFileSync(new URL('./worker.js', import.meta.url), 'utf8')
+  .replace('/*__PWA_ASSETS__*/{}', JSON.stringify(assets));
 const metadata = {
   main_module: 'worker.js',
   compatibility_date: '2026-01-01',
