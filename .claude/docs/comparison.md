@@ -1,42 +1,117 @@
 # Ruu Downloader — Bağımsız Karşılaştırma Raporu
 
-> Amaç: pazarlama değil, **dürüst durum tespiti**. Her iddia ya üründe ölçüldü ya da
-> kaynak linkiyle verildi. Ruu'nun eksikleri de aynı tabloda.
-> Hazırlık: 2026-08-02 · Rakip verileri araştırma ajanının bulgularıyla dolduruluyor.
+> Amaç: pazarlama değil, **dürüst durum tespiti**. Rakip verileri 2 Ağustos 2026'da
+> Chrome Web Store, AMO, GitHub API ve resmî sitelerden çekildi; doğrulanamayan her
+> alan "veri yok" olarak işaretlendi. Ruu'nun eksikleri de aynı belgede.
 
-## Ruu'nun ölçülen gerçekleri (bu depodan, komutla doğrulanabilir)
+## 1. Özet: kategorinin fotoğrafı
 
-| Ölçüm | Değer | Nasıl doğrulanır |
+| Ürün | Kullanıcı | Puan | Masaüstü gerekir mi | Segmentli indirme | Chrome barını gizler | Telemetri |
+|---|---|---|---|---|---|---|
+| IDM Integration Module | 19.000.000 | 4,0 | **Evet** (ücretli, Windows) | Evet (IDM'de, 32'ye kadar) | veri yok | Beyan: yok |
+| Free Download Manager | 3.000.000 | 4,2 | **Evet** | Evet (FDM'de) | veri yok | Beyan: yok |
+| Chrono Download Manager | 800.000 | 4,4 | Hayır | **Hayır** | **Evet** (`downloads.ui`) | **Var — Google Analytics** |
+| DownThemAll! | 200.000 | 3,9 | Hayır | Hayır (toplu indirici) | veri yok | Yok (Mozilla onaylı) |
+| Turbo Download Manager 3rd | 100.000 | **3,6** | Hayır | **Evet** (3 thread) | **Hayır** | Beyan: yok |
+| Simple Mass Downloader | 100.000 | 4,6 | Hayır | Hayır | veri yok | Beyan: yok |
+| Download Master (Westbyte) | 100.000 | 3,8 | Evet | Evet (DM'de) | veri yok | Beyan: yok |
+| Ninja Download Manager | 10.000 | 4,2 | Evet | veri yok | veri yok | **Beyan yok** |
+| **Ruu Downloader** | **0 (yayınlanmadı)** | — | **Hayır** | **Evet (8'e kadar, work-stealing)** | **Evet** | **Yok (kodda tek dış istek yok)** |
+
+## 2. Üç gerçek pazar boşluğu
+
+### Boşluk 1 — "Hız istiyorsan masaüstü kur"
+İlk iki ürün **22 milyon kullanıcı** topluyor ve ikisi de native host + masaüstü
+uygulama zorunlu kılıyor. Saf eklenti tarafında segmentasyon yapan **tek** ürün
+Turbo Download Manager: 3,6 puan, yorumlarda "resume çalışmıyor" şikayetleri.
+En büyük saf eklenti Chrono (800K) ise hiç segmentasyon yapmıyor — Chrome'un
+indirme API'sinin üzerine kurulmuş bir yönetim katmanı.
+
+### Boşluk 2 — Segmentasyon + Chrome barını gizleme aynı üründe yok
+- Chrono: barı gizler ✓, segmentasyon ✗
+- Turbo DM: segmentasyon ✓, `downloads.ui` izni manifestinde **yok** ✗
+- **Ruu: ikisi de var** (v0.4.0'da doğrulandı)
+
+### Boşluk 3 — "Hızlı ve kanıtlanabilir şekilde temiz" pozisyonu boş
+- **Chrono**: mağaza kartında "veri toplanmıyor" yazıyor, kendi gizlilik
+  politikası Google Analytics kullandığını söylüyor. Bağımsız denetim (Koi
+  Security) "Medium Risk": bilinen XSS açıkları olan jQuery 2.1.0, kod
+  obfuscation, `clipboardRead/Write`, 14 izin.
+- **FDM**: "açık kaynak" diyor ama v5.0'dan beri kaynak yayınlanmıyor; 2020-2022
+  arası resmî site Linux kullanıcılarına **backdoor'lu .deb** dağıttı (parolalar,
+  kripto cüzdanları, bulut kimlik bilgileri sızdı), 3 yıl fark edilmedi.
+- **JDownloader**: kurulum paketinde opsiyonel adware.
+- **Ninja**: gizlilik beyanı hiç yok, 6 yıldır güncellenmiyor.
+- Temiz olan tek ürün **DownThemAll** — ama hızlandırıcı değil.
+
+## 3. Ruu'nun ölçülen gerçekleri (komutla doğrulanabilir)
+
+| Ölçüm | Değer | Doğrulama |
 |---|---|---|
-| Birim testi | 72 geçiyor | `npm test` |
+| Birim testi | 77 geçiyor | `npm test` |
 | E2E senaryosu | 10/10 (headful + headless) | `./test/e2e/run.sh` |
-| Gerçek servis saha testi | 5 servis (Lifebox, WeTransfer, Gofile, Catbox, Filebin) | `test/field/` |
+| Gerçek servis saha testi | 5 servis, byte-byte doğrulandı | `test/field/` |
 | Tanınan paylaşım servisi | 28 | `src/content/services.ts` |
 | Dil | 11 (RTL dahil) | `public/_locales/` |
-| Manifest izni | 11 + `*://*/*` | `public/manifest.json` |
 | Paket boyutu | 60 KB | `out/*.zip` |
-| Çalışma zamanı bağımlılığı | 0 | `package.json` |
-| Kaynak satırı | ~2.750 (TypeScript) | `find src -name '*.ts' \| xargs wc -l` |
-| Uzak telemetri | Yok | Kodda tek bir dış istek yok (indirilen URL hariç) |
-| Masaüstü uygulama gereksinimi | Yok | Saf MV3 |
+| Çalışma zamanı bağımlılığı | 0 (üçüncü taraf JS kütüphanesi yok) | `package.json` |
+| Uzak istek | Yalnızca kullanıcının indirdiği URL | kaynak taraması |
 
-## Ruu'nun bilinen eksikleri (dürüstlük bölümü)
+**Rakiplerin başaramadığı yerde neredeyiz:**
+- Turbo DM'in en çok şikayet edilen özelliği (resume) bizde E2E ile kanıtlı:
+  tarayıcı SIGKILL ile öldürülüyor, iş kaldığı yerden devam edip byte-byte
+  doğrulanıyor (senaryo S5).
+- Chrono'nun yapamadığı segmentasyon + Turbo DM'in yapamadığı bar gizleme birlikte.
+- Chrono'nun jQuery 2.1.0'ı gibi bir üçüncü taraf yükü yok — sıfır bağımlılık.
 
-1. **Kullanıcı tabanı yok** — henüz yayınlanmadı; olgun rakiplerin milyonlarca
-   kullanıcısı ve yıllarca saha testi var. Bizde 5 servis gerçek linkle
-   doğrulandı, 20 servis yalnızca desen düzeyinde.
+## 4. Ruu'nun eksikleri (dürüstlük bölümü)
+
+1. **Kullanıcı tabanı sıfır** — rakiplerin milyonlarca kullanıcısı ve yıllarca
+   saha testi var. Bizde 5 servis gerçek linkle doğrulandı, 20 servis yalnızca
+   desen düzeyinde.
 2. **Video/stream indirme yok** — bilinçli kapsam kararı, ama IDM/FDM
-   kullanıcılarının önemli bir bölümü tam olarak bunu istiyor.
-3. **Kuyruk & zamanlama UI yok** — veri modeli hazır, arayüz henüz yok.
-4. **Torrent/magnet yok** — kapsam dışı.
-5. **P2P ve telefon aktarımı yolda** — röle canlı, istemciler yazılmadı.
-6. **Bant genişliği sınırlama yok** — planlı.
-7. **Tarayıcı desteği yalnızca Chromium** — Firefox portu yapılmadı.
+   kullanıcılarının önemli bir kısmı tam olarak bunu arıyor.
+3. **Torrent/magnet yok** — kapsam dışı (FDM ve JDownloader'da var).
+4. **Kuyruk & zamanlama arayüzü yok** — veri modeli hazır, UI yok.
+   (Not: bu özellik rakip eklentilerin hiçbirinde de doğrulanamadı; yalnızca
+   masaüstü FDM/XDM'de var.)
+5. **Bant genişliği sınırlama yok.**
+6. **Yalnızca Chromium** — Firefox portu yok (DownThemAll'ın güçlü olduğu yer).
+7. **Dil sayısında Chrono önde** (52 vs 11).
+8. **P2P / telefon aktarımı yolda** — röle canlı, istemciler yazılıyor.
 
-## Rakip tablosu
+## 5. Konumlandırma tezi
 
-_(araştırma ajanının raporuyla doldurulacak)_
+> Kategoride 22 milyon kişi hız için masaüstü uygulama kurmaya razı olmuş.
+> Saf eklenti tarafında bu hızı veren tek ürün düşük puanlı ve resume'u bozuk.
+> En popüler saf eklenti hızlandırma yapmıyor ve analytics topluyor.
+>
+> **Ruu'nun iddiası:** masaüstü kurulumu olmadan gerçek segmentli hız, çökmeye
+> dayanan resume, ve doğrulanabilir sıfır telemetri — üçü bir arada.
 
-## Pazar boşluğu tezi
+## 6. Kaynaklar
 
-_(araştırma ajanının bulgularıyla netleşecek)_
+Chrome Web Store sayfaları (2 Ağu 2026): [IDM](https://chromewebstore.google.com/detail/idm-integration-module/ngpampappnmepgilojfohadhhmbhlaek) ·
+[FDM](https://chromewebstore.google.com/detail/free-download-manager/ahmpjcflkgiildlgicmcieglgoilbfdp) ·
+[Chrono](https://chromewebstore.google.com/detail/chrono-download-manager/mciiogijehkdemklbdcbfkefimifhecn) ·
+[Turbo DM](https://chromewebstore.google.com/detail/turbo-download-manager-3r/pabnknalmhfecdheflmcaehlepmhjlaa) ·
+[DownThemAll](https://chromewebstore.google.com/detail/downthemall/nljkibfhlpcnanjgbnlnbjecgicbjkge) ·
+[Simple Mass Downloader](https://chromewebstore.google.com/detail/simple-mass-downloader/abdkkegmcbiomijcbdaodaflgehfffed)
+
+Güvenlik/denetim: [Koi Security — Chrono raporu](https://dex.koi.security/reports/chrome/mciiogijehkdemklbdcbfkefimifhecn/0.13.5) ·
+[Securelist — FDM Linux backdoor](https://securelist.com/backdoored-free-download-manager-linux-malware/110465/) ·
+[BleepingComputer — FDM 3 yıl malware dağıttı](https://www.bleepingcomputer.com/news/security/free-download-manager-site-redirected-linux-users-to-malware-for-years/)
+
+Kaynak kod: [Turbo DM (MPL-2.0)](https://github.com/inbasic/turbo-download-manager-v2) ·
+[DownThemAll (GPL-2.0)](https://github.com/downthemall/downthemall) ·
+[aria2](https://github.com/aria2/aria2) · [Motrix](https://github.com/agalwood/Motrix)
+
+Referans: [chrome.downloads API](https://developer.chrome.com/docs/extensions/reference/api/downloads) ·
+[IDM dinamik segmentasyon](https://www.internetdownloadmanager.com/support/segmentation.html) ·
+[Chrono gizlilik politikası](https://www.chronodownloader.net/privacy.html)
+
+### Rapor sınırlılıkları
+- chrome-stats.com ve extpose.com 403 döndü → tarihsel trend verisi toplanamadı.
+- CWS kullanıcı sayıları Google tarafından yuvarlanır (100.000 / 3.000.000 gibi).
+- Manifest sürümü yalnızca Turbo DM ve Chrono için birincil kaynaktan doğrulandı.
+- IDM fiyatı üçüncü taraf satıcılardan alındı, resmî sayfadan değil.

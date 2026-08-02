@@ -6,3 +6,4 @@
 | [prd-02-mvp-ui.md](prd-02-mvp-ui.md) | MVP özellik listesi (kabul kriterli), Side Panel eskizi, test altyapısı | ONAYLANDI (2026-07-30) | UI/motor implementasyonundan önce |
 | [prd-03-roadmap.md](prd-03-roadmap.md) | Nadir'in 13 maddelik istek listesi + fizibilite + dalga sırası | YAŞAYAN | Yeni özellik dalgası planlarken |
 | [store-listing.md](store-listing.md) | CWS yayın paketi: ad/açıklama (EN+TR), izin gerekçeleri, gizlilik formu cevapları, görsel listesi, kontrol listesi | HAZIR | Mağaza formunu doldururken |
+| [comparison.md](comparison.md) | Bağımsız rakip karşılaştırması: 13 eklenti + 7 masaüstü, pazar boşluğu analizi, Ruu'nun eksikleri | GÜNCEL (2026-08-02) | Konumlandırma/mağaza metni yazarken |
