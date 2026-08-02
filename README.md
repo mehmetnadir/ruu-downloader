@@ -36,7 +36,11 @@ modern web platform primitives — no native app, no companion daemon, no ads, n
 
 - ⚡ **Dynamic segmented engine** — 1-8 connections tuned to your device & network;
   when a connection frees up it *steals* half of the largest in-flight segment, so one
-  slow mirror never drags the download.
+  slow mirror never drags the download. Honest caveat: parallel connections help most
+  when the server throttles **per connection** (typical of file-sharing hosts — measured
+  ~2-3× on one such host). Against a fast HTTP/2 CDN that already saturates your line,
+  expect little or no gain: the browser multiplexes those "connections" onto one
+  transport, and an extension cannot change that.
 - 💾 **Crash-proof resume** — acknowledged byte ranges are journaled; even a hard
   browser crash resumes byte-exact, with ETag/Last-Modified validation.
 - 🔗 **Expired-link rescue** — signed CDN URL died at 95%? Paste a fresh link;
@@ -101,18 +105,23 @@ Chrome 137+ removed `--load-extension` (E2E loads via CDP `Extensions.loadUnpack
 
 ## Testing
 
-Nothing ships untested — 43 unit tests plus a one-command E2E harness that drives a
+Nothing ships untested — 83 unit tests plus a one-command E2E harness that drives a
 real Chromium against a throttled, fault-injecting local server:
 
 ```bash
 npm test              # unit
-./test/e2e/run.sh     # 7 scenarios: segmented integrity, connection drops,
+./test/e2e/run.sh     # 10 scenarios: segmented integrity, connection drops,
                       # native fallback, takeover, private downloads,
-                      # hard-crash resume, expired-link renewal
+                      # hard-crash resume, expired-link renewal,
+                      # share-page automation, expired-share warning,
+                      # fully automatic mail flow
 HEADLESS=1 ./test/e2e/run.sh   # CI mode
 ```
 
-Every scenario verifies the downloaded file **byte-by-byte**.
+Every scenario verifies the downloaded file **byte-by-byte**. Known gap: the
+harness uses fixed ports and has been observed to flake (an independent run
+reported 9/10 plus one harness crash). Making it deterministic and adding CI is
+tracked work, not done.
 
 ## Roadmap
 
@@ -121,8 +130,8 @@ Every scenario verifies the downloaded file **byte-by-byte**.
   starts the transfer automatically.
 - 📱 **Ruu Beam** — see it on your phone, download it on your PC: share-target PWA →
   encrypted relay → Web Push to the extension.
-- ⏰ **Queues & scheduling** — bandwidth windows, recurring downloads (data model is
-  already in place).
+- ⏰ **Queues & scheduling** — bandwidth windows, recurring downloads. Designed in
+  the PRD; **not implemented yet**.
 - 👁 **In-panel previews** — peek at images/video/archives *before* the download
   finishes (OPFS makes this possible).
 - 🔎 Share-link resolvers (WeTransfer, Dropbox, OneDrive), per-site connection
