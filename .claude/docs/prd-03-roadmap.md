@@ -434,3 +434,79 @@ sürüm 153'te geldi — çok yeni).
 PAKE yalnızca "telefona 4 kelime yaz" akışı eklenirse gerekir; o gün gelirse
 balanced PAKE (CPace — CFRG'nin seçtiği) kullanılacak, SPAKE2 değil.
 ⚠️ Tarayıcıda olgun/denetlenmiş JS PAKE paketi **yok**.
+
+
+## Tarayıcı içi indirmenin FİZİKSEL tavanı (Chromium kaynak kodundan, 2026-08-02)
+
+Bu bölüm "neden IDM kadar hızlı olamayız" sorusunun kaynaklı cevabı.
+
+### 1. Host başına 6 bağlantı — aşılamaz
+
+`net/socket/client_socket_pool_manager.cc`: `g_max_sockets_per_group = {6, 255}`.
+Yeni socket pool (Happy Eyeballs V3) aynı: `kDefaultMaxStreamSocketsPerGroup = 6`.
+- Grup anahtarı `scheme://host:port` + network anonymization key.
+- Yükseltme yolu YOK: `set_max_sockets_per_group_for_test()` yalnız test API'si;
+  kurumsal politika sadece **proxy** limitini değiştirir; crbug 85323
+  ("configurable connections-per-host") **WontFix**; `chrome.sockets.tcp`
+  Platform Apps API'si, MV3'e kapalı.
+- **Uygulandı:** `MAX_CONNECTIONS = 6` (önceden 8'e izin veriyorduk — 8 istek
+  6 aktif + 2 kuyrukta demekti, ek fayda yoktu).
+- IDM ham soket açtığı için 16-32 bağlantı kurabiliyor. Bu, saf eklenti
+  mimarisinin kapatılamaz farkı.
+
+### 2. HTTP/2'de kazanç sıfır DEĞİL — ama 2,5× ile sınırlı
+
+Chrome origin başına tek H2 bağlantısı açar (RFC 9113 §9.1), N Range isteği
+N stream olur. Chromium'un akış kontrol pencereleri SABİT, auto-tuning yok:
+`kSpdyStreamMaxRecvWindowSize = 6 MB`, `kSpdySessionMaxRecvWindowSize = 15 MB`
+(QUIC'te birebir aynı). Türetilen tavan: tek stream `6 MB/RTT`, tüm oturum
+`15 MB/RTT` → **3+ paralel stream teorik olarak 2,5× kazandırabilir**, sonrası
+sert tavan. Yani H2'de segmentasyon anlamsız değil, ama IDM'in H1'deki
+avantajının çok altında. (Bu türetilmiş bir üst sınır — ölçülmedi.)
+
+Alt not: farklı hostname'ler ayrı 6'lık kota alır (H1); H2'de IP-based
+connection coalescing bu kaçışı iptal eder.
+
+### 3. Segmentasyonun GERÇEKTEN kazandığı yer
+
+nginx dokümanı birebir: *"The limit is set per a request, and so if a client
+simultaneously opens two connections, the overall rate will be twice as much."*
+→ **Bağlantı başına hız kısan sunucularda N bağlantı = N × limit.** Paylaşım
+hostlarının tipik davranışı bu (Lifebox ölçümümüz: bağlantı başına ~250 KB/s,
+4 bağlantıyla ~2-3×). AWS S3 ve Google Cloud Storage de paralel ranged GET
+öneriyor. Hızlı HTTP/2 CDN'de ise kazanç yok denecek kadar az.
+
+**Konumlandırma sonucu:** "her yerde hızlı" iddiası savunulamaz; "bağlantı
+başına kısan sunucularda hızlı" iddiası ölçümle desteklenir. README güncellendi.
+
+### 4. Offscreen ömrü: bugün sınırsız, ama Chrome kısıtlamayı PLANLIYOR
+
+`extensions/browser/api/offscreen/lifetime_enforcer_factories.cc`: BLOBS,
+WORKERS, WEB_RTC → `EmptyLifetimeEnforcer` (süresiz). Yalnız AUDIO_PLAYBACK
+30 sn. **Ama** kaynak kodda yorum var: *"This enforcement can be added on an
+as-appropriate basis"* ve Chrome DevRel (2023-02) ileride "more checks"
+ekleyeceklerini duyurdu. **Mimarimizin en kırılgan bağımlılığı bu** — kalıcı
+durum OPFS'te tutulduğu için doküman kapansa bile resume çalışır, ama uzun
+indirmelerde kesinti riski var.
+
+### 5. Teslim yolu: doğru olanı yapıyoruz
+
+`FileSystemAccessFileHandleImpl::AsBlob()` → OPFS handle'dan `getFile()` ile
+alınan blob **dosya destekli**, byte kopyalanmaz (RAM maliyeti ~0). Bizim
+yolumuz bu. Yapılmaması gereken: `new Blob([arrayBuffer…])` — 64-bit masaüstünde
+2 GiB'a kadar RAM'de tutulur, sonrası üçüncü bir disk kopyası olur.
+Disk maliyeti yine de 2× (OPFS + Downloads) — README'de artık yazıyor.
+
+### 6. Safe Browsing bizi de kapsıyor (iyi haber)
+
+`check_client_download_request.cc`: `blob:` şeması **bilinçli olarak**
+whitelist'te — teslim yolumuz download protection'ı atlamıyor. Kullanıcı için
+güvenlik artı; ürün için: engellenen indirme sessizce takılıyordu, artık
+`danger` durumu yakalanıp bildiriliyor (`errBlocked`, 11 dilde).
+
+### 7. Depolama kotası
+
+Varsayılan kota = toplam diskin %60'ı (0.8 havuz × 0.75 origin). `unlimitedStorage`
+kotayı ve eviction'ı kaldırıyor (kaynak kodda doğrulandı: `IsStorageUnlimited`
+→ `kNoLimit`) — biz bu izne zaten sahibiz. Saha raporları çelişkili olduğu için
+`navigator.storage.persist()` de çağrılıyor (kemer + askı).

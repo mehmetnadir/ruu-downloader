@@ -10,7 +10,7 @@
  * yalnızca runtime mesajlaşması. Ayarlar SW'den 'settings' mesajıyla gelir.
  */
 import { RangeAllocator, type Claim } from '../engine/allocator';
-import { autoTuneConnections, collectHints } from '../engine/autotune';
+import { autoTuneConnections, collectHints, MAX_CONNECTIONS } from '../engine/autotune';
 import { mergeRange, parseMeta, reconcileRanges, type JobMeta } from '../engine/manifest';
 import { failThreshold } from '../engine/retry';
 import {
@@ -638,7 +638,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
   switch (raw.type) {
     case 'add': {
       const auto = autoTuneConnections(collectHints());
-      const job = new Job(raw.url, Math.min(8, Math.max(1, raw.connections ?? auto)), raw.filenameHint);
+      const job = new Job(raw.url, Math.min(MAX_CONNECTIONS, Math.max(1, raw.connections ?? auto)), raw.filenameHint);
       job.priv = raw.priv ?? false;
       job.origin = raw.origin;
       job.sender = raw.sender;

@@ -22,7 +22,7 @@ for (const el of document.querySelectorAll<HTMLInputElement>('[data-i18n-ph]')) 
   el.placeholder = t(el.dataset['i18nPh']!);
 }
 /** Motor hata anahtarlarını yerelleştir; bilinmeyenler ham geçer. */
-const ERR_KEYS = new Set(['errChanged', 'errCancelled', 'errAllDown', 'errDelivery']);
+const ERR_KEYS = new Set(['errChanged', 'errCancelled', 'errAllDown', 'errDelivery', 'errBlocked']);
 const terr = (err: string | undefined): string =>
   err && ERR_KEYS.has(err) ? t(err) : (err ?? '');
 

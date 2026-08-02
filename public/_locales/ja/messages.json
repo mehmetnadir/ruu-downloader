@@ -291,5 +291,8 @@
   },
   "beamWaiting": {
     "message": "リンク待ち…"
+  },
+  "errBlocked": {
+    "message": "ブラウザの安全性チェックによりブロック"
   }
 }

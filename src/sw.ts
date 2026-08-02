@@ -511,6 +511,22 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
 chrome.downloads.onChanged.addListener((delta) => {
   const delivery = deliveries.get(delta.id);
   if (!delivery) return;
+  // Safe Browsing teslim yolumuzu DA tarar (Chromium: blob: şeması bilinçli
+  // olarak whitelist'te). Tehlikeli bulunursa indirme askıya alınır —
+  // sessizce takılı kalmasın, kullanıcıya söyle.
+  const danger = delta.danger?.current;
+  if (danger && danger !== 'safe' && danger !== 'accepted') {
+    deliveries.delete(delta.id);
+    void chrome.runtime.sendMessage({
+      target: 'engine', type: 'delivered', jobId: delivery.jobId,
+      ok: false, error: 'errBlocked',
+    } satisfies Msg).catch(() => undefined);
+    void chrome.notifications.create({
+      type: 'basic', iconUrl: 'icons/icon128.png',
+      title: 'Ruu', message: t('errBlocked'),
+    }).catch(() => undefined);
+    return;
+  }
   if (delta.state?.current === 'complete') {
     deliveries.delete(delta.id);
     if (delivery.priv) {

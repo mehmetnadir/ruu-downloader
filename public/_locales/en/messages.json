@@ -291,5 +291,8 @@
   },
   "beamWaiting": {
     "message": "Waiting for links…"
+  },
+  "errBlocked": {
+    "message": "blocked by browser safety check"
   }
 }

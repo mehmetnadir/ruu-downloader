@@ -291,5 +291,8 @@
   },
   "beamWaiting": {
     "message": "Bağlantı bekleniyor…"
+  },
+  "errBlocked": {
+    "message": "tarayıcı güvenlik taraması engelledi"
   }
 }

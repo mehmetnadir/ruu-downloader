@@ -291,5 +291,8 @@
   },
   "beamWaiting": {
     "message": "بانتظار الروابط…"
+  },
+  "errBlocked": {
+    "message": "حظره فحص أمان المتصفح"
   }
 }

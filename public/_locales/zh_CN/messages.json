@@ -291,5 +291,8 @@
   },
   "beamWaiting": {
     "message": "等待链接…"
+  },
+  "errBlocked": {
+    "message": "被浏览器安全检查拦截"
   }
 }

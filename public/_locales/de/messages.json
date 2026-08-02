@@ -291,5 +291,8 @@
   },
   "beamWaiting": {
     "message": "Warte auf Links…"
+  },
+  "errBlocked": {
+    "message": "von der Sicherheitsprüfung blockiert"
   }
 }
