@@ -164,3 +164,57 @@ kullanım alanları:
 WebRTC ile AKTAR (hızlı). PairDrop dahil olgun çözümler bu kalıbı kullanıyor.
 Ruu'da: panelde QR → telefon okur → WebRTC kurulur → büyük dosya uçar; ağ yoksa
 kullanıcıya "QR akışına düş" seçeneği (yavaş ama çalışır) sunulur.
+
+
+## Faz 5 derinleşmesi — "QR yoğunluğunu artırabilir miyiz?" (2026-08-02)
+
+Hesap aracı: `node beam/qr-capacity.mjs` (parametreleri değiştirip denenebilir).
+
+### Fikirlerin bilgi-teorisi süzgecinden geçmiş hali
+
+| Fikir | Gerçek etki | Neden |
+|---|---|---|
+| **Renk katmanları (RGB)** | **≈3× — GERÇEK ÇARPAN** | Her modül 3 bağımsız kanalda bit taşır. HCC2D ölçümü: 15.048 bit/inç² (renkli) vs 5.016 (mono). Bedeli: %15-38 çözme maliyeti + kalibrasyon paleti yer kaplar, otomatik beyaz dengesi bozabilir |
+| **Modül başına çok seviye** (4 gri/parlaklık seviyesi) | ≈2× | Her modül 1 yerine 2 bit. SNR'ye çok duyarlı, blur'da ilk bozulan |
+| **Yüksek kare hızı** (60→120 Hz ekran + 120 fps kamera) | ≈2× | Doğrudan zaman ekseninde çarpan |
+| **QR'ı büyütmek** | ~1× (sınırda) | Duvar kamera: her modüle ≥2-3 kamera pikseli gerekir (Nyquist). 1080p ile ~200-330 modül tavanı; QR v40 zaten 177. 4K kamera ile ~2× açılabilir |
+| **Ekranı bölgelere ayırmak** | **1× (kazanç yok)** | Toplam piksel alanı sabit; her parça kendi hizalama desenini tekrar eder → net KAYIP. Kazancı hızda değil dayanıklılıkta |
+| **QR'ın yönü (4 yön)** | **+2 bit/kare (çarpan DEĞİL)** | Bir sembolün taşıdığı bilgi = log2(durum sayısı). 4 yön = 2 bit. Kare zaten ~23.600 bit taşıyor → katkı %0,008 |
+| **"30 kareyi birleştirmek"** | **1× (zaten öyle çalışıyor)** | Fountain code tam olarak bunu yapar: kareler tek bir dosyanın kodlanmış parçalarıdır, alıcı yeterince kare toplayınca kurar. Kare *sayısı* zaten çarpan; aynı kareleri "birleştirmek" ek bilgi üretmez — bilgi kaynağı ekranın taşıdığı bit sayısıdır |
+
+**Kritik ayrım:** çarpan olan şey **sembol başına ayırt edilebilir durum sayısını**
+artıran her şeydir (renk, seviye, modül sayısı, kare sayısı). Yön/rotasyon gibi
+"kare düzeyinde etiketler" toplanır, çarpılmaz.
+
+### Bileşik tavan (hesaplandı)
+
+| Senaryo | Hız | 1 GB |
+|---|---|---|
+| Bugünkü tipik (mono, 30 fps, elde) | 63 KB/s | 4,6 saat |
+| Sahada ölçülen rekor (mono, 60 fps, sabit) | 142 KB/s | 2,1 saat |
+| + renk (3×) | 401 KB/s | 44 dk |
+| + renk + 120 Hz | 755 KB/s | 23 dk |
+| + renk + 120 Hz + 4 seviye | 1,3 MB/s | 13 dk |
+| Laboratuvar tavanı (bozulma sıfır) | 1,8 MB/s | 9 dk |
+| **WebRTC yerel ağ** | **12-60 MB/s** | **~1 dk** |
+
+Literatürle tutarlı: bir çalışma bozulma giderildiğinde **7,67 Mbps** ulaşılabilir
+kapasite ölçmüş (~960 KB/s) — bizim "renk + 120 Hz" satırımızla aynı mertebede.
+
+**Sonuç:** fikirler doğru yönde ve bileşik **~5-10× kazanç** gerçekçi. Ama optik
+kanal, radyo kanalının ~50 katı dar kalmaya devam ediyor. QR akışı "P2P'den hızlı"
+olamaz; değeri **sıfır altyapı + air-gap gizliliği**.
+
+### Kendi format fikrimiz — ne zaman mantıklı?
+
+Kendi kod formatımızı yazmak (renk + seviye + fountain, QR'ın hizalama israfı
+olmadan) teorik ~3-6× getirir. Ama: ISO QR'ın olgun çözücüleri (BarcodeDetector
+donanım hızlandırmalı) yerine kendi çözücümüzü yazmak demek — JS/WASM'da 120 fps
+çözme ciddi iş. Karar: **v1'de standart QR** (eşleştirme için fazlasıyla yeterli),
+kendi format Ar-Ge'si ayrı bir yan proje olarak değerlendirilir.
+
+### Ruu için pratik plan (değişmedi)
+
+1. QR = **eşleştirme kanalı** (birkaç yüz byte, anında, sıfır altyapı) ✓
+2. WebRTC = **veri kanalı** (büyük dosyalar)
+3. Ağ hiç yoksa → QR akışına düş (küçük dosyalar, renk katmanı v2'de)
