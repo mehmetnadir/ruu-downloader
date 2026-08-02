@@ -201,8 +201,7 @@ https://github.com/mehmetnadir/ruu-downloader
 | `alarms` | "Close automation windows reliably and schedule cleanup that survives service worker suspension." |
 | `power` | "Prevent the system from sleeping while a download is in progress." |
 | `scripting` | "On recognized file-sharing pages the user explicitly chose, click the consent/download button to start the transfer." |
-| `tabs` (windows) | "Open and close the temporary share-page window used to start a download." |
-| `declarativeNetRequestWithHostAccess` | "Set Referer/Origin headers required by some CDNs for the file the user is downloading." |
+| `windows`/`tabs` (izin gerektirmez) | "Open and close the temporary share-page window used to start a download." |
 | host_permissions `*://*/*` | "Download files from any host the user chooses, using HTTP Range requests. Ruu never requests a URL the user didn't initiate." |
 | Uzak kod kullanıyor mu | **Hayır** — tüm kod pakette |
 | Veri topluyor mu | **Hayır** — hiçbir kategori işaretlenmez |

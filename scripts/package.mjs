@@ -12,6 +12,12 @@ execSync('node scripts/build.mjs', { stdio: 'inherit', env: { ...process.env, RU
 const manifestPath = 'dist/manifest.json';
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 manifest.version = version;
+// E2E için eklenen localhost eşleşmesi YAYIN paketinde bulunmamalı:
+// gereksiz izin yüzeyi = mağaza inceleme riski.
+for (const cs of manifest.content_scripts ?? []) {
+  cs.matches = cs.matches.filter((m) => !/localhost|127\.0\.0\.1/.test(m));
+}
+manifest.name = 'Ruu Downloader';
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
 mkdirSync('out', { recursive: true });
