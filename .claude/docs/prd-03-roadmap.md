@@ -102,3 +102,65 @@ parametreleri yok sayılarak tekilleştirilmiş.
 5. Lucide ikon seti (inline, ISC)
 6. Segment haritası: 48 sabit bucket, node yeniden kurulmaz (opacity güncellenir)
 7. A11y hızlı kazanımlar: aria-label, aria-live, focus-visible, reduced-motion tam kapsama
+
+
+## Faz 4-5: Cihazdan cihaza aktarım (2026-08-02 araştırması)
+
+### CWS politikası — P2P serbest mi? EVET (koşullu)
+
+Mağaza politikası **teknolojiyi değil içeriği** kısıtlar. WebRTC tabanlı P2P dosya
+paylaşımı serbest (FastShare, P2P File Transfer gibi eklentiler yayında; PairDrop/
+Snapdrop ekosistemi yaygın), hatta torrent istemcisine köprü kuran eklentiler bile
+mağazada. YASAK olan: telif korumalı içeriğe yetkisiz erişimi kolaylaştırmak, kripto
+madenciliği, yasa dışı faaliyet. Ruu'nun konumlandırması (verimlilik aracı, video
+ripper yok, torrent yok) bu çizginin güvenli tarafında. Beam/P2P eklerken de aynı
+çizgi korunacak: eşleştirilmiş KENDİ cihazların arasında transfer, içerik indeksi yok.
+
+### Faz 4 — WebRTC P2P (OS bağımsız)
+
+Evet, OS bağımsız: WebRTC tarayıcıda çalışır (Chrome/Firefox/Safari, Android/iOS/
+masaüstü). Karşı taraf uygulama kurmaz, bir web sayfası açar.
+
+**Kopmaya dayanıklı devam — mimarimiz buna zaten hazır:**
+Ruu'nun motoru "ack'lenmiş aralık günlüğü + OPFS positioned write" üzerine kurulu.
+P2P'de aynı model uygulanır: gönderen dosyayı sabit boyutlu parçalara böler, alıcı
+her parçayı OPFS'e KENDİ ofsetine yazar ve ack'ler; bağlantı koptuğunda alıcı
+"bende olmayan aralıklar" listesini gönderir, gönderen sadece onları yollar.
+- Parça boyutu: 64-256 KB (DataChannel mesaj sınırı ve ack maliyeti dengesi)
+- Akış kontrolü: `bufferedAmountLowThreshold` (backpressure — motorumuzdaki
+  reader-park mantığının WebRTC karşılığı)
+- Kimlik: dosya hash'i (SHA-256) + boyut → yeniden bağlanınca aynı transfer tanınır
+- Yeniden bağlanma: ICE restart; sinyalleşme rölesi zaten var (Beam Worker)
+- Doğrulama: parça bazlı hash → sessiz bozulma imkânsız
+
+### Faz 5 — QR optik akış (Nadir'in fikri) — GERÇEK ama nişi farklı
+
+Fikir gerçek ve sahada uygulanmış: animasyonlu QR + **fountain code** (kayıp
+toleranslı kodlama; ACK gerekmez, alıcı yeterince kare toplayınca dosyayı kurar).
+2026 ölçümleri: 60 FPS ekran → **~128 KB/s elde tutarken, ~190 KB/s sabitlenmiş**
+cihazlarda (önceki nesil ~4 KB/s'e göre 30 kat sıçrama).
+
+**Ama hız karşılaştırması acımasız:**
+
+| Yol | Gerçekçi hız | 1 GB dosya |
+|---|---|---|
+| QR optik akış (60 FPS, fountain) | ~0,13-0,19 MB/s | **~1,5-2 saat** |
+| WebRTC (yerel ağ) | ~12-100 MB/s | ~10-90 saniye |
+| USB-C kablo | ~300+ MB/s | ~3 saniye |
+
+Fiziksel tavan: ekran tazeleme (60-120 Hz) × kare başına QR kapasitesi (v40-L
+≈ 2,9 KB) × kamera decode başarımı. "Saniyede 100 kare" ekran+kamera senkronu ve
+motion blur yüzünden pratikte 60'ı geçmez; 120 Hz ekran + 120 fps kamera ile
+teorik 2 kat. Yani QR, P2P'den HIZLI OLAMAZ — fizik izin vermiyor.
+
+**QR'ın gerçek üstünlüğü hız değil, BAĞIMSIZLIK:** ağ yok, eşleştirme yok, hesap
+yok, Bluetooth yok, izin yok (kamera hariç), tam air-gap, tam gizlilik. Doğru
+kullanım alanları:
+1. **Beam eşleştirmesi** (birkaç yüz byte) — anında, mükemmel uyum ✓ (planda)
+2. Küçük dosya/metin/anahtar aktarımı (<5 MB) — kabul edilebilir süre
+3. Ağın olmadığı/yasak olduğu ortamlar (hava boşluklu sistemler, kısıtlı kurum ağı)
+
+**Doğru mimari = ikisi birlikte:** QR ile EŞLEŞTİR (saniyeler, sıfır altyapı) →
+WebRTC ile AKTAR (hızlı). PairDrop dahil olgun çözümler bu kalıbı kullanıyor.
+Ruu'da: panelde QR → telefon okur → WebRTC kurulur → büyük dosya uçar; ağ yoksa
+kullanıcıya "QR akışına düş" seçeneği (yavaş ama çalışır) sunulur.
