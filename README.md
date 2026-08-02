@@ -4,8 +4,8 @@
 
 **The download manager Chrome deserves — segmented speed, unkillable resume, zero telemetry.**
 
-[![CI-ready E2E](https://img.shields.io/badge/E2E-7%2F7%20scenarios-7fb069)](test/e2e/run.sh)
-[![Unit tests](https://img.shields.io/badge/unit-43%20passing-7fb069)](test/)
+[![CI-ready E2E](https://img.shields.io/badge/E2E-10%20scenarios-7fb069)](test/e2e/run.sh)
+[![Unit tests](https://img.shields.io/badge/unit-83%20passing-7fb069)](test/)
 [![Languages](https://img.shields.io/badge/i18n-11%20languages-e8a33d)](public/_locales/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-e8a33d)](LICENSE)
 [![Privacy](https://img.shields.io/badge/telemetry-zero-16130f)](PRIVACY.md)
@@ -29,7 +29,7 @@ modern web platform primitives — no native app, no companion daemon, no ads, n
 | Parallel connections | 1 | fixed split | **dynamic + work-stealing** |
 | Survives browser crash | ❌ | ❌ | **✓ byte-exact resume** |
 | Expired link recovery | restart from 0% | restart from 0% | **✓ paste new link, keep progress** |
-| Merge wait at the end | — | "merging segments…" | **none — positioned writes** |
+| Segment merge step | — | "merging segments…" | **none — positioned writes** (a single hand-off copy to your Downloads folder remains) |
 | Telemetry | — | often | **zero** |
 
 ## Features

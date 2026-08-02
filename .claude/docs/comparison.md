@@ -48,14 +48,14 @@ indirme API'sinin üzerine kurulmuş bir yönetim katmanı.
 
 | Ölçüm | Değer | Doğrulama |
 |---|---|---|
-| Birim testi | 77 geçiyor | `npm test` |
-| E2E senaryosu | 10/10 (headful + headless) | `./test/e2e/run.sh` |
-| Gerçek servis saha testi | 5 servis, byte-byte doğrulandı | `test/field/` |
+| Birim testi | 83 geçiyor | `npm test` |
+| E2E senaryosu | 10 senaryo; ⚠️ **deterministik değil** — bağımsız koşumda 9/10 ve bir harness çökmesi raporlandı | `./test/e2e/run.sh` |
+| Gerçek servis saha testi | 5 servis (3'ü otomatik harness: gofile/catbox/filebin; 2'si elle: Lifebox/WeTransfer). **Kalan 23 servis yalnızca desen düzeyinde** | `test/field/` |
 | Tanınan paylaşım servisi | 28 | `src/content/services.ts` |
 | Dil | 11 (RTL dahil) | `public/_locales/` |
-| Paket boyutu | 60 KB | `out/*.zip` |
-| Çalışma zamanı bağımlılığı | 0 (üçüncü taraf JS kütüphanesi yok) | `package.json` |
-| Uzak istek | Yalnızca kullanıcının indirdiği URL | kaynak taraması |
+| Paket boyutu | 71 KB (v0.4.1) | `out/*.zip` |
+| Çalışma zamanı bağımlılığı | **1** (`qrcode-generator`, MIT — QR üretimi) | `package.json` |
+| Uzak istek | İndirilen URL'ler + (yalnız telefon eşleştirilmişse) Beam rölesi, dakikada bir | kaynak taraması |
 
 **Rakiplerin başaramadığı yerde neredeyiz:**
 - Turbo DM'in en çok şikayet edilen özelliği (resume) bizde E2E ile kanıtlı:

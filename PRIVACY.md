@@ -7,9 +7,20 @@ _Last updated: 2026-07-31_
 ## Data collection
 
 Ruu Downloader does **not** collect, transmit, sell, or share any data.
-There are no analytics, no telemetry, no remote logging, and no third-party
-services. The extension makes network requests **only** to the URLs you
-choose to download.
+There are no analytics, no telemetry, no remote logging, and no advertising.
+
+### Network requests Ruu makes
+
+1. **The URLs you choose to download.** Nothing else is fetched by the engine.
+2. **Ruu Beam relay — only if you pair a phone.** If (and only if) you scan the
+   pairing QR code, the extension polls a relay
+   (`https://ruu-beam.nadir-zai-proxy.workers.dev`) once per minute for links
+   your phone sent you. What the relay can see: the pairing ID (a random string
+   you generated) and an encrypted blob. What it **cannot** see: the links —
+   they are encrypted with AES-GCM using a 256-bit key that exists only on your
+   two devices. The key travels in the QR code's URL fragment, which browsers
+   never transmit to a server. Queued items expire after 15 minutes. Unpair at
+   any time and polling stops immediately.
 
 ## Local data
 
