@@ -341,3 +341,28 @@ Bizim akışımızda kamera **telefonda** (PWA) olduğu için bu sorun Faz 5'e k
 4. **5a** QR eşleştirme genişletme (ICE ufrag+pwd taşı — HKDF ile TÜRETME:
    SDP munging yasaklanıyor, Chrome PSA 2025-04)
 5. **5b** QR akış: kapsam dışı (Nadir kararı) — yalnızca kontrol kanalı
+
+
+## QR optik akış — ARŞİV (kapsam dışı, ama bulgular saklandı)
+
+Konu Nadir kararıyla kapatıldı. Derin araştırmadan çıkan ve ileride işe yarayabilecek
+üç bulgu:
+
+1. **RaptorQ patentleri doldu.** Qualcomm'un IETF beyanındaki iki verilmiş US patenti
+   (7,139,960 ve 7,451,377) **Kasım/Aralık 2024'te süresi doldu**; ayrıca Qualcomm
+   kablosuz-WAN dışı cihazlar için "dava açmama" taahhüdü vermiş. 2026-07'de MIT
+   lisanslı `@raptorqr/raptorq-wasm` yayımlandı (~%0 overhead, LT'nin %15-35'ine karşı).
+   İleride büyük veriyi kayıp toleranslı taşımak gerekirse (P2P'de bile) hazır.
+2. **Renk kullanmayın — ölçüm net.** HiQ akademik ölçümü: renkli QR kapasiteyi 3×
+   artırıyor ama çözme süresini **4,45×** uzatıyor → net KAYIP; kare başına başarısızlık
+   >%50. cimbar projesi 8-renkli modunu bu yüzden **kaldırdı**. Kazanç istiyorsanız
+   doğru yol **uzamsal çoğullama** (ekranda yan yana 2-4 mono QR) — kalibrasyon
+   sorunu yok, ölçülmüş 4× kazanç.
+3. **Kare senkronu 2:1 kuralı.** Ekranın QR değiştirme hızı, kameranın yakalama
+   hızının en fazla yarısı olmalı (1:2'de throughput sıfıra düşüyor, MobiSys'16
+   ölçümü). 30 fps kamera → en fazla 12-15 QR/s.
+
+Ayrıca kalıcı not: **jsQR fiilen ölü** (2021'den beri commit yok, gürültülü karede
+560 ms); QR çözme gerekirse `zxing-wasm`. **BarcodeDetector Chromium türevlerinde
+Windows/Linux'ta yok** (resmî Chrome'a 2025'te eklendi) → her zaman probe edip
+`getSupportedFormats()` ile doğrula.
