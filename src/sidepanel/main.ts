@@ -1,4 +1,6 @@
 import type { JobSnapshot, Msg } from '../engine/types';
+import { DEFAULT_MODE, type ServiceMode } from '../content/modes';
+import { SERVICES } from '../content/services';
 import { icons } from './icons';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T;
@@ -150,6 +152,58 @@ setNotify.addEventListener('change', () => {
 });
 setParty.addEventListener('change', () => save({ partyUrl: setParty.value.trim() || DEFAULTS.partyUrl }));
 setOpen.addEventListener('change', () => save({ openWhenDone: setOpen.checked }));
+
+// ── Paylaşım servisleri: kapalı / sor / otomatik ─────────────────────────────
+const svcList = $('#svc-list');
+const MODE_LABEL: Record<ServiceMode, string> = {
+  off: t('mOff'), ask: t('mAsk'), auto: t('mAuto'),
+};
+let svcModes: Record<string, ServiceMode> = {};
+
+function renderServices(): void {
+  svcList.innerHTML = SERVICES.map((svc) => {
+    const cur = svcModes[svc.id] ?? DEFAULT_MODE;
+    const opts = (['off', 'ask', 'auto'] as ServiceMode[])
+      .map((m) => `<option value="${m}"${m === cur ? ' selected' : ''}>${MODE_LABEL[m]}</option>`)
+      .join('');
+    // 'unaccel' servisler hızlandırılamaz → otomatik seçeneği anlamsız değil
+    // (sayfayı yine açar) ama kullanıcı bilsin diye ad yanında işaret var
+    const mark = svc.kind === 'unaccel' ? ' <span class="svc-mark">•</span>' : '';
+    return `<div class="svc-row"><span class="svc-name">${svc.name}${mark}</span>` +
+      `<select class="svc-mode" data-svc="${svc.id}" aria-label="${svc.name}">${opts}</select></div>`;
+  }).join('');
+}
+
+void chrome.storage.local.get({ serviceModes: {} }).then((s) => {
+  svcModes = (s['serviceModes'] ?? {}) as Record<string, ServiceMode>;
+  renderServices();
+});
+
+svcList.addEventListener('change', (e) => {
+  const sel = e.target as HTMLSelectElement;
+  if (!sel.classList.contains('svc-mode')) return;
+  svcModes = { ...svcModes, [sel.dataset['svc']!]: sel.value as ServiceMode };
+  save({ serviceModes: svcModes });
+});
+
+const setAll = (mode: ServiceMode): void => {
+  svcModes = Object.fromEntries(SERVICES.map((s) => [s.id, mode]));
+  save({ serviceModes: svcModes });
+  renderServices();
+};
+$('#svc-all-auto').addEventListener('click', () => setAll('auto'));
+$('#svc-all-ask').addEventListener('click', () => setAll('ask'));
+
+// Öneri: telemetri YOK — kullanıcı GitHub'da hazır doldurulmuş bir issue açar
+$('#svc-suggest').addEventListener('click', () => {
+  const body = encodeURIComponent(
+    'Servis adı:\n\nÖrnek paylaşım linki (isteğe bağlı):\n\nNotlar:\n',
+  );
+  void chrome.tabs.create({
+    url: 'https://github.com/mehmetnadir/ruu-downloader/issues/new' +
+      `?title=${encodeURIComponent('Servis önerisi: ')}&body=${body}&labels=service-request`,
+  });
+});
 
 // ── Devralma teşhis günlüğü ──────────────────────────────────────────────────
 const diagList = $('#diag-list');

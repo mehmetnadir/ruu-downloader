@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "جارٍ العمل…"
+  },
+  "ntTab": {
+    "message": "فتح تبويب \"تم التنزيل\""
+  },
+  "svcTitle": {
+    "message": "خدمات المشاركة"
+  },
+  "svcDesc": {
+    "message": "إيقاف · اسأل · تلقائي"
+  },
+  "mOff": {
+    "message": "إيقاف"
+  },
+  "mAsk": {
+    "message": "اسأل"
+  },
+  "mAuto": {
+    "message": "تلقائي"
+  },
+  "svcAllAuto": {
+    "message": "الكل تلقائي"
+  },
+  "svcAllAsk": {
+    "message": "الكل اسأل"
+  },
+  "svcSuggest": {
+    "message": "اقترح خدمة"
   }
 }

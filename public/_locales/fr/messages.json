@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "En cours…"
+  },
+  "ntTab": {
+    "message": "Ouvrir un onglet « terminé »"
+  },
+  "svcTitle": {
+    "message": "Services de partage"
+  },
+  "svcDesc": {
+    "message": "Désactivé · Demander · Automatique"
+  },
+  "mOff": {
+    "message": "Désactivé"
+  },
+  "mAsk": {
+    "message": "Demander"
+  },
+  "mAuto": {
+    "message": "Auto"
+  },
+  "svcAllAuto": {
+    "message": "Tout en Auto"
+  },
+  "svcAllAsk": {
+    "message": "Tout en Demander"
+  },
+  "svcSuggest": {
+    "message": "Suggérer un service"
   }
 }

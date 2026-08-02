@@ -81,6 +81,7 @@
       <option value="silent" data-i18n="ntSilent"></option>
       <option value="notify" data-i18n="ntNotify"></option>
       <option value="party" data-i18n="ntParty"></option>
+      <option value="tab" data-i18n="ntTab"></option>
     </select>
   </label>
   <label class="set-row" id="party-row" hidden>
@@ -99,6 +100,16 @@
     </span>
     <input type="checkbox" id="set-open">
   </label>
+  <div class="svc">
+    <div class="diag-title" data-i18n="svcTitle"></div>
+    <p class="svc-desc" data-i18n="svcDesc"></p>
+    <div class="svc-bulk">
+      <button id="svc-all-auto" class="btn-ghost" data-i18n="svcAllAuto"></button>
+      <button id="svc-all-ask" class="btn-ghost" data-i18n="svcAllAsk"></button>
+      <button id="svc-suggest" class="btn-ghost" data-i18n="svcSuggest"></button>
+    </div>
+    <div id="svc-list"></div>
+  </div>
   <div class="diag">
     <div class="diag-title" data-i18n="diagTitle"></div>
     <div id="diag-list"></div>

@@ -5,6 +5,7 @@
  * süresi dolmuş linkte kırmızı uyarı. Kullanıcı eklentinin işi takip ettiğini
  * anlık görür. Sayfa verisi OKUNMAZ, yalnızca link href'leri eşlenir.
  */
+import { autoKey, modeFor, type ServiceMode } from './modes';
 import { matchShareLink } from './patterns';
 
 const MARK = 'data-ruu-btn';
@@ -43,6 +44,20 @@ border:2px solid rgba(232,163,61,.9);border-top-color:transparent;animation:ruu-
 `;
 
 const pending = new Map<string, HTMLButtonElement>();
+/** Bu sekmede otomatik başlatılan linkler — aynı transfer iki kez inmesin. */
+const autoStarted = new Set<string>();
+let serviceModes: Record<string, ServiceMode> = {};
+let globalAuto = false;
+
+function startFlow(url: string, btn?: HTMLButtonElement): void {
+  const reqId = `r${Date.now()}${Math.floor(Math.random() * 1e4)}`;
+  if (btn) {
+    pending.set(reqId, btn);
+    setState(btn, 'work', t('shWorking'));
+  }
+  void chrome.runtime.sendMessage({ target: 'sw', type: 'share-fetch', url, reqId })
+    .catch(() => btn && setState(btn, 'err', t('shNoAction')));
+}
 
 function injectStyle(): void {
   if (document.getElementById('ruu-style')) return;
@@ -66,6 +81,19 @@ function inject(a: HTMLAnchorElement): void {
   const match = matchShareLink(a.href);
   if (!match) return;
   a.setAttribute(MARK, '1');
+  const mode = modeFor(match.service, serviceModes, globalAuto);
+  if (mode === 'off') return;
+
+  if (mode === 'auto') {
+    // TAM OTOMATİK: kullanıcı bu servisi otomatiğe aldı — link görülür görülmez in.
+    // Güvenlik: yalnızca GÖRÜNÜR link, sekme başına tek kez, izleme parametreleri
+    // yok sayılarak tekilleştirilmiş.
+    const key = autoKey(a.href);
+    if (autoStarted.has(key) || a.offsetParent === null) return;
+    autoStarted.add(key);
+    startFlow(a.href);
+    return;
+  }
   // Aynı hedefe birden çok link olabilir (logo + metin + ham URL) — tek düğme yeter
   if (document.querySelector(`[data-ruu-for="${CSS.escape(a.href)}"]`)) return;
 
@@ -76,11 +104,7 @@ function inject(a: HTMLAnchorElement): void {
   btn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const reqId = `r${Date.now()}${Math.floor(Math.random() * 1e4)}`;
-    pending.set(reqId, btn);
-    setState(btn, 'work', t('shWorking'));
-    void chrome.runtime.sendMessage({ target: 'sw', type: 'share-fetch', url: a.href, reqId })
-      .catch(() => setState(btn, 'err', t('shNoAction')));
+    startFlow(a.href, btn);
   });
   a.after(btn);
 }
@@ -113,5 +137,15 @@ const observer = new MutationObserver(() => {
 });
 
 injectStyle();
-scan(document);
-observer.observe(document.body, { childList: true, subtree: true });
+// Modlar yüklendikten SONRA tara — 'auto' servisler ilk taramada kaçmasın
+void chrome.storage.local.get({ serviceModes: {}, globalAuto: false }).then((s) => {
+  serviceModes = (s['serviceModes'] ?? {}) as Record<string, ServiceMode>;
+  globalAuto = Boolean(s['globalAuto']);
+  scan(document);
+  observer.observe(document.body, { childList: true, subtree: true });
+});
+chrome.storage.onChanged.addListener((ch, area) => {
+  if (area !== 'local') return;
+  if (ch['serviceModes']) serviceModes = (ch['serviceModes'].newValue ?? {}) as Record<string, ServiceMode>;
+  if (ch['globalAuto']) globalAuto = Boolean(ch['globalAuto'].newValue);
+});

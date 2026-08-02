@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "Arbeitet…"
+  },
+  "ntTab": {
+    "message": "\"Fertig\"-Tab öffnen"
+  },
+  "svcTitle": {
+    "message": "Freigabedienste"
+  },
+  "svcDesc": {
+    "message": "Aus · Fragen · Automatisch"
+  },
+  "mOff": {
+    "message": "Aus"
+  },
+  "mAsk": {
+    "message": "Fragen"
+  },
+  "mAuto": {
+    "message": "Auto"
+  },
+  "svcAllAuto": {
+    "message": "Alle auf Auto"
+  },
+  "svcAllAsk": {
+    "message": "Alle auf Fragen"
+  },
+  "svcSuggest": {
+    "message": "Dienst vorschlagen"
   }
 }

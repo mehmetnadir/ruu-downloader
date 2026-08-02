@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "処理中…"
+  },
+  "ntTab": {
+    "message": "「完了」タブを開く"
+  },
+  "svcTitle": {
+    "message": "共有サービス"
+  },
+  "svcDesc": {
+    "message": "オフ · 確認 · 自動"
+  },
+  "mOff": {
+    "message": "オフ"
+  },
+  "mAsk": {
+    "message": "確認"
+  },
+  "mAuto": {
+    "message": "自動"
+  },
+  "svcAllAuto": {
+    "message": "すべて自動"
+  },
+  "svcAllAsk": {
+    "message": "すべて確認"
+  },
+  "svcSuggest": {
+    "message": "サービスを提案"
   }
 }

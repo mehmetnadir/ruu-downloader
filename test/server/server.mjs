@@ -25,6 +25,17 @@ function patternChunk(start, len) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   // Sahte paylaşım sayfası: onay → indir butonu → dosya (mail entegrasyonu E2E'si)
+  // Sahte mail sayfası: içinde paylaşım linki olan bir e-posta (auto mod testi)
+  const mm = url.pathname.match(/^\/mail\/(\d+)$/);
+  if (mm) {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(`<!doctype html>
+<html><body><h2>Dosya paylaşıldı</h2>
+<p>İndirme bağlantısı:
+<a href="http://localhost:${PORT}/share/${mm[1]}">http://localhost:${PORT}/share/${mm[1]}</a></p>
+</body></html>`);
+    return;
+  }
+
   // Süresi dolmuş paylaşım sayfası (uyarı akışı testi)
   if (url.pathname === '/share-expired') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(

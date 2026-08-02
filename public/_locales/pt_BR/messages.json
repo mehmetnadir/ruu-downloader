@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "Trabalhando…"
+  },
+  "ntTab": {
+    "message": "Abrir aba \"baixado\""
+  },
+  "svcTitle": {
+    "message": "Serviços de compartilhamento"
+  },
+  "svcDesc": {
+    "message": "Desligado · Perguntar · Automático"
+  },
+  "mOff": {
+    "message": "Desligado"
+  },
+  "mAsk": {
+    "message": "Perguntar"
+  },
+  "mAuto": {
+    "message": "Auto"
+  },
+  "svcAllAuto": {
+    "message": "Tudo em Auto"
+  },
+  "svcAllAsk": {
+    "message": "Tudo em Perguntar"
+  },
+  "svcSuggest": {
+    "message": "Sugerir serviço"
   }
 }

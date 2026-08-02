@@ -25,7 +25,7 @@ const settings = {
   typeFolders: true,
   defaultExperience: false, // Chrome'un indirme balonunu gizle → Ruu varsayılan UI
   maxRetries: 1,
-  notifyMode: 'notify' as 'silent' | 'notify' | 'party',
+  notifyMode: 'notify' as 'silent' | 'notify' | 'party' | 'tab',
   partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   openWhenDone: false,
 };
@@ -135,8 +135,16 @@ async function recordStats(size: number, topSpeed: number): Promise<void> {
   await chrome.storage.local.set({ stats: applyDownload(cur, size, topSpeed) });
 }
 
-function celebrate(downloadId: number): void {
+function celebrate(downloadId: number, filename = '', size = 0): void {
   switch (settings.notifyMode) {
+    case 'tab': {
+      const base = filename.split(/[\\/]/).pop() ?? '';
+      void chrome.tabs.create({
+        url: `done.html?id=${downloadId}&n=${encodeURIComponent(base)}&s=${size}`,
+        active: true,
+      }).catch(() => undefined);
+      break;
+    }
     case 'silent':
       break;
     case 'party':
@@ -441,7 +449,9 @@ chrome.downloads.onChanged.addListener((delta) => {
         target: 'engine', type: 'delivered', jobId: delivery.jobId, ok: true, downloadId: delta.id,
       } satisfies Msg).catch(() => undefined);
       void recordStats(delivery.size, delivery.topSpeed);
-      celebrate(delta.id);
+      void chrome.downloads.search({ id: delta.id }).then((items) => {
+        celebrate(delta.id, items[0]?.filename ?? '', delivery.size);
+      }).catch(() => celebrate(delta.id, '', delivery.size));
     }
   } else if (delta.state?.current === 'interrupted') {
     deliveries.delete(delta.id);

@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "Trabajando…"
+  },
+  "ntTab": {
+    "message": "Abrir pestaña \"descargado\""
+  },
+  "svcTitle": {
+    "message": "Servicios de archivos"
+  },
+  "svcDesc": {
+    "message": "Apagado · Preguntar · Automático"
+  },
+  "mOff": {
+    "message": "Apagado"
+  },
+  "mAsk": {
+    "message": "Preguntar"
+  },
+  "mAuto": {
+    "message": "Auto"
+  },
+  "svcAllAuto": {
+    "message": "Todo en Auto"
+  },
+  "svcAllAsk": {
+    "message": "Todo en Preguntar"
+  },
+  "svcSuggest": {
+    "message": "Sugerir servicio"
   }
 }

@@ -10,6 +10,7 @@ const options = {
     'disk-worker': 'src/offscreen/disk-worker.ts',
     'sidepanel': 'src/sidepanel/main.ts',
     'mail': 'src/content/mail.ts',
+    'done': 'src/sidepanel/done.ts',
   },
   outdir: 'dist',
   bundle: true,

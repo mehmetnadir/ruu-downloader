@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "Работаю…"
+  },
+  "ntTab": {
+    "message": "Открыть вкладку «скачано»"
+  },
+  "svcTitle": {
+    "message": "Сервисы обмена"
+  },
+  "svcDesc": {
+    "message": "Выкл · Спрашивать · Автоматически"
+  },
+  "mOff": {
+    "message": "Выкл"
+  },
+  "mAsk": {
+    "message": "Спрашивать"
+  },
+  "mAuto": {
+    "message": "Авто"
+  },
+  "svcAllAuto": {
+    "message": "Все на Авто"
+  },
+  "svcAllAsk": {
+    "message": "Все на Спрашивать"
+  },
+  "svcSuggest": {
+    "message": "Предложить сервис"
   }
 }

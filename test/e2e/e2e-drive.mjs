@@ -280,6 +280,23 @@ const MB = 1024 * 1024;
     clickedWrongly ? `expired sayfada tıklama yapıldı: ${log}` : 'tıklanmadı, uyarı yolu izlendi');
 }
 
+// S10: TAM OTOMATİK — servis 'auto' modda; mail açılır açılmaz kullanıcı hiçbir
+// şeye tıklamadan indirme başlar ve dosya bütün iner
+{
+  await evalIn(panel, `chrome.storage.local.set({serviceModes:{test:'auto'}, takeoverLog:[]}); 'ok'`);
+  await sleep(600);
+  await browser.call('Target.createTarget', { url: `http://localhost:${serverPort}/mail/22` });
+  let file = null;
+  const dA = Date.now() + 70_000;
+  while (Date.now() < dA && !file) {
+    await sleep(1200);
+    file = findFile(22 * MB);
+  }
+  const bad = file ? verifyPattern(file) : 'dosya yok';
+  await evalIn(panel, `chrome.storage.local.set({serviceModes:{}}); 'ok'`); // temizle
+  record('S10 tam otomatik (tıklama yok)', !bad, bad ?? 'mail açıldı, dosya kendi indi');
+}
+
 // S5: CRASH-RESUME — indirme ortasında tarayıcıyı öldür, yeniden başlat, devam ettir (PRD F3)
 {
   const url = `http://localhost:${serverPort}/f/80?rate=2`;

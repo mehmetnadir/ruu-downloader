@@ -165,6 +165,19 @@ body {
   padding: 4px 7px; font-size: 12px; max-width: 120px;
 }
 
+.svc { padding: 10px 0 4px; border-top: 1px solid var(--border); }
+.svc-desc { margin: 0 0 8px; font-size: 11px; color: var(--muted); }
+.svc-bulk { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.svc-bulk .btn-ghost { border: 1px solid var(--border); padding: 4px 9px; font-size: 11px; }
+.svc-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
+.svc-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svc-mark { color: var(--muted); }
+.svc-mode {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 2px 5px; font-size: 11px; flex-shrink: 0;
+}
+#svc-list { max-height: 260px; overflow-y: auto; }
+
 .diag { padding: 9px 0 6px; border-top: 1px solid var(--border); }
 .diag-title { font-size: 10px; letter-spacing: 0.9px; color: var(--muted); font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
 .diag-row { display: flex; justify-content: space-between; gap: 8px; font-size: 10.5px; padding: 2px 0; }

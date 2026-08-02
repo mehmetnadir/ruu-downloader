@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "Çalışıyor…"
+  },
+  "ntTab": {
+    "message": "\"İndirildi\" sekmesi aç"
+  },
+  "svcTitle": {
+    "message": "Paylaşım servisleri"
+  },
+  "svcDesc": {
+    "message": "Kapalı · Sor (mailde düğme) · Otomatik (kendi başlar)"
+  },
+  "mOff": {
+    "message": "Kapalı"
+  },
+  "mAsk": {
+    "message": "Sor"
+  },
+  "mAuto": {
+    "message": "Otomatik"
+  },
+  "svcAllAuto": {
+    "message": "Hepsini Otomatik yap"
+  },
+  "svcAllAsk": {
+    "message": "Hepsini Sor yap"
+  },
+  "svcSuggest": {
+    "message": "Servis öner"
   }
 }

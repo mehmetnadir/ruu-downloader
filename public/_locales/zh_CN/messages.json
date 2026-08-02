@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "处理中…"
+  },
+  "ntTab": {
+    "message": "打开\"已下载\"标签页"
+  },
+  "svcTitle": {
+    "message": "分享服务"
+  },
+  "svcDesc": {
+    "message": "关闭 · 询问 · 自动"
+  },
+  "mOff": {
+    "message": "关闭"
+  },
+  "mAsk": {
+    "message": "询问"
+  },
+  "mAuto": {
+    "message": "自动"
+  },
+  "svcAllAuto": {
+    "message": "全部自动"
+  },
+  "svcAllAsk": {
+    "message": "全部询问"
+  },
+  "svcSuggest": {
+    "message": "推荐服务"
   }
 }

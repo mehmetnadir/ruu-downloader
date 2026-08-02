@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "Working…"
+  },
+  "ntTab": {
+    "message": "Open a \"downloaded\" tab"
+  },
+  "svcTitle": {
+    "message": "Share services"
+  },
+  "svcDesc": {
+    "message": "Off · Ask (button in mail) · Auto (starts by itself)"
+  },
+  "mOff": {
+    "message": "Off"
+  },
+  "mAsk": {
+    "message": "Ask"
+  },
+  "mAuto": {
+    "message": "Auto"
+  },
+  "svcAllAuto": {
+    "message": "Set all to Auto"
+  },
+  "svcAllAsk": {
+    "message": "Set all to Ask"
+  },
+  "svcSuggest": {
+    "message": "Suggest a service"
   }
 }

@@ -73,6 +73,26 @@ Alternatifler elendi: Chrome'un yerleşik "cihaza gönder" özelliğinin uzantı
 Telegram-bot köprüsü bağımlılık getiriyor. Beam ayrı iş paketi (ruu-beam/): PWA +
 Worker + uzantı push modülü. Sıra: çekirdek turlar bitince.
 
+## Otomatik indirme mimarisi (2026-08-02) — üç faz
+
+Hedef: "WeTransfer linki geldi → hemen insin → Downloads'a kaydedilsin →
+'dosyanız indirildi' sekmesi açılsın." Mesele **maili ne zaman gördüğümüz**.
+
+| Faz | Kapsam | Durum |
+|---|---|---|
+| **1 — Mail sekmesi açıkken** | Gmail/Outlook açıkken content script linki görür; servis 'auto' modda ise kullanıcı hiçbir şeye tıklamadan akış başlar. Bitince notifyMode='tab' ile "indirildi" sekmesi açılır. | **BİTTİ** (E2E S10) |
+| **2 — Mail kapalıyken (Gmail API)** | Uzantı, kullanıcının izniyle (chrome.identity + gmail.readonly) yeni mailleri yoklar; sekme açık olmasa da linki yakalar. Alarm ile 2-5 dk periyot. Not: hassas kapsam → CWS'te ek doğrulama süreci; TAMAMEN opt-in, bağlanmazsa özellik kapalı. | Sonraki |
+| **3 — Telefondan (Ruu Beam)** | Telefonda maili gören kullanıcı linki paylaşır → şifreli röle → PC iner. Röle CANLI (ruu-beam.workers.dev). PWA + uzantı istemcisi kaldı. | Röle bitti |
+
+**Neden Faz 2 doğrudan yapılmadı:** Gmail API hassas kapsam gerektirir ve
+mağaza incelemesini ağırlaştırır. Faz 1 çoğu senaryoyu (kullanıcı zaten
+mailine bakıyorken) çözer; Faz 2 "bilgisayar açık ama mail kapalı" boşluğunu
+kapatır ve isteğe bağlı kalır.
+
+**Servis modu modeli:** her servis için Kapalı / Sor / Otomatik (varsayılan Sor).
+'auto' bilinçli opt-in: yalnızca GÖRÜNÜR link, sekme başına tek kez, izleme
+parametreleri yok sayılarak tekilleştirilmiş.
+
 ## Bu dalganın kapsamı (onaylı sayılır — Nadir talep etti)
 
 1. Keyed renderer (animasyon sıfırlanma bug'ının kökten çözümü)

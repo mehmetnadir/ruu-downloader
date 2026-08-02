@@ -246,5 +246,32 @@
   },
   "shWorking": {
     "message": "काम जारी…"
+  },
+  "ntTab": {
+    "message": "\"डाउनलोड हुआ\" टैब खोलें"
+  },
+  "svcTitle": {
+    "message": "शेयर सेवाएँ"
+  },
+  "svcDesc": {
+    "message": "बंद · पूछें · स्वचालित"
+  },
+  "mOff": {
+    "message": "बंद"
+  },
+  "mAsk": {
+    "message": "पूछें"
+  },
+  "mAuto": {
+    "message": "ऑटो"
+  },
+  "svcAllAuto": {
+    "message": "सभी ऑटो"
+  },
+  "svcAllAsk": {
+    "message": "सभी पूछें"
+  },
+  "svcSuggest": {
+    "message": "सेवा सुझाएँ"
   }
 }
