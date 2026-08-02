@@ -300,5 +300,11 @@
   },
   "histClear": {
     "message": "Liste leeren"
+  },
+  "errDigest": {
+    "message": "Datei hat die Integritätsprüfung nicht bestanden"
+  },
+  "verified": {
+    "message": "geprüft"
   }
 }

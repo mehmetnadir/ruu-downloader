@@ -23,7 +23,7 @@ for (const el of document.querySelectorAll<HTMLInputElement>('[data-i18n-ph]')) 
   el.placeholder = t(el.dataset['i18nPh']!);
 }
 /** Motor hata anahtarlarını yerelleştir; bilinmeyenler ham geçer. */
-const ERR_KEYS = new Set(['errChanged', 'errCancelled', 'errAllDown', 'errDelivery', 'errBlocked']);
+const ERR_KEYS = new Set(['errChanged', 'errCancelled', 'errAllDown', 'errDelivery', 'errBlocked', 'errDigest']);
 const terr = (err: string | undefined): string =>
   err && ERR_KEYS.has(err) ? t(err) : (err ?? '');
 
@@ -438,8 +438,11 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
       ? new Date(job.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : '';
     const from = job.origin ?? hostOf(job.url);
-    ref.stats.textContent = [when, from, job.sender, job.native ? t('wNative') : '']
-      .filter(Boolean).join(' · ');
+    ref.stats.textContent = [
+      when, from, job.sender,
+      job.digestOk ? `✓ ${t('verified')}` : '',
+      job.native ? t('wNative') : '',
+    ].filter(Boolean).join(' · ');
     ref.stats.title = job.url;
   } else {
     ref.stats.textContent = '';

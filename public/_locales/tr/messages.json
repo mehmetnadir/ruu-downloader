@@ -300,5 +300,11 @@
   },
   "histClear": {
     "message": "Listeyi temizle"
+  },
+  "errDigest": {
+    "message": "dosya sunucunun bütünlük kontrolünden geçemedi"
+  },
+  "verified": {
+    "message": "doğrulandı"
   }
 }

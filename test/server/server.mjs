@@ -11,6 +11,7 @@
  * Kullanım: node test/server/server.mjs [port]   (varsayılan 8917)
  */
 import http from 'node:http';
+import { createHash } from 'node:crypto';
 
 const PORT = Number(process.argv[2] ?? process.env.PORT ?? 8917);
 const CHUNK = 64 * 1024;
@@ -82,6 +83,21 @@ const server = http.createServer(async (req, res) => {
       return;
     }
   }
+  // ?digest=1 → doğru sha-256, ?digest=bad → kasten yanlış (RFC 9530)
+  const digestMode = url.searchParams.get('digest');
+  let digestHeader;
+  if (digestMode) {
+    if (digestMode === 'bad') {
+      digestHeader = 'sha-256=:' + Buffer.alloc(32, 7).toString('base64') + ':';
+    } else {
+      const h = createHash('sha256');
+      for (let off = 0; off < size; off += CHUNK) {
+        h.update(patternChunk(off, Math.min(CHUNK, size - off)));
+      }
+      digestHeader = 'sha-256=:' + h.digest('base64') + ':';
+    }
+  }
+
   const noRange = url.searchParams.get('noRange') === '1';
   const extra = Number(url.searchParams.get('extra') ?? 0);
   const dropAfter = Number(url.searchParams.get('dropAfter') ?? 0);
@@ -106,6 +122,7 @@ const server = http.createServer(async (req, res) => {
       'Content-Range': `bytes ${start}-${end}/${size}`,
       'Accept-Ranges': 'bytes',
       'Content-Disposition': `attachment; filename="test-${m[1]}mb.bin"`,
+      ...(digestHeader ? { 'Repr-Digest': digestHeader } : {}),
     });
   } else {
     res.writeHead(200, {

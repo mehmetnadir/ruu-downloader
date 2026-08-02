@@ -300,5 +300,11 @@
   },
   "histClear": {
     "message": "清空列表"
+  },
+  "errDigest": {
+    "message": "文件未通过完整性校验"
+  },
+  "verified": {
+    "message": "已校验"
   }
 }

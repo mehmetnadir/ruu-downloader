@@ -300,5 +300,11 @@
   },
   "histClear": {
     "message": "مسح القائمة"
+  },
+  "errDigest": {
+    "message": "لم يجتز الملف فحص السلامة"
+  },
+  "verified": {
+    "message": "تم التحقق"
   }
 }

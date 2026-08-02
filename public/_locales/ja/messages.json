@@ -300,5 +300,11 @@
   },
   "histClear": {
     "message": "リストを消去"
+  },
+  "errDigest": {
+    "message": "ファイルの整合性チェックに失敗"
+  },
+  "verified": {
+    "message": "検証済み"
   }
 }

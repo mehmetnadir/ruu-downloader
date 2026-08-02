@@ -29,6 +29,7 @@ export interface JobSnapshot {
   downloadId?: number; // teslim sonrası chrome.downloads kimliği (Aç / Göster için)
   priv?: boolean; // gizli indirme: geçmişte iz bırakmaz
   completedAt?: number;   // teslim zamanı (epoch ms)
+  digestOk?: boolean;     // sunucu özeti doğrulandıysa true
   origin?: string;        // kaynak: servis adı ya da host
   sender?: string;        // maildeki gönderen (yalnız yerelde tutulur)
 }

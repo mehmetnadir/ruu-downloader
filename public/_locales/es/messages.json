@@ -300,5 +300,11 @@
   },
   "histClear": {
     "message": "Vaciar lista"
+  },
+  "errDigest": {
+    "message": "el archivo no pasó la verificación de integridad"
+  },
+  "verified": {
+    "message": "verificado"
   }
 }

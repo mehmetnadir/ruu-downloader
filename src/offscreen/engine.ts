@@ -11,6 +11,7 @@
  */
 import { RangeAllocator, type Claim } from '../engine/allocator';
 import { autoTuneConnections, collectHints, MAX_CONNECTIONS } from '../engine/autotune';
+import { bytesToBase64, digestMatches, parseDigestHeader, type ExpectedDigest } from '../engine/digest';
 import { mergeRange, parseMeta, reconcileRanges, type JobMeta } from '../engine/manifest';
 import { failThreshold } from '../engine/retry';
 import {
@@ -62,6 +63,9 @@ class Job {
   native = false;
   etag?: string;
   lastModified?: string;
+  /** Sunucu bir özet verdiyse indirme sonunda doğrulanır (yoksa hash hesaplanmaz). */
+  expectedDigest?: ExpectedDigest | null;
+  digestOk?: boolean;
 
   /** Ack'lenmiş (diske inmiş) aralıklar — meta'nın tek kaynağı. */
   private acked: Array<[number, number]> = [];
@@ -109,6 +113,7 @@ class Job {
       this.filename = pickFilename(this.url, probe.headers.get('content-disposition'), this.filenameHint);
       this.etag = probe.headers.get('etag') ?? undefined;
       this.lastModified = probe.headers.get('last-modified') ?? undefined;
+      this.expectedDigest = parseDigestHeader(probe.headers);
       const total = parseTotal(probe);
       probe.body?.cancel().catch(() => undefined);
 
@@ -344,6 +349,21 @@ class Job {
     });
     const dir = await jobsDir();
     const file = await (await dir.getFileHandle(this.id)).getFile();
+
+    // Sunucu özet verdiyse doğrula. Bozuk proxy/yanlış birleştirme sessizce
+    // geçemesin. Özet yoksa hash HESAPLANMAZ — karşılaştıracak referans yok.
+    if (this.expectedDigest) {
+      try {
+        const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+        this.digestOk = digestMatches(this.expectedDigest, bytesToBase64(digest));
+        if (!this.digestOk) {
+          this.fail(new Error('errDigest'));
+          return;
+        }
+      } catch {
+        this.digestOk = undefined; // hesaplanamadı (ör. bellek) — engelleme
+      }
+    }
     // slice: veri kopyalamadan MIME atar — boş MIME Chrome'un .txt eklemesine yol açıyor
     this.blobUrl = URL.createObjectURL(file.slice(0, file.size, 'application/octet-stream'));
     send({
@@ -529,6 +549,7 @@ class Job {
       downloadId: this.downloadId,
       priv: this.priv || undefined,
       completedAt: this.completedAt,
+      digestOk: this.digestOk,
       origin: this.origin,
       sender: this.sender,
     };

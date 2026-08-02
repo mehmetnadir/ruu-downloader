@@ -300,5 +300,11 @@
   },
   "histClear": {
     "message": "सूची साफ़ करें"
+  },
+  "errDigest": {
+    "message": "फ़ाइल अखंडता जाँच में विफल"
+  },
+  "verified": {
+    "message": "सत्यापित"
   }
 }

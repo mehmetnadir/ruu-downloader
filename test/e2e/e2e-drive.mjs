@@ -297,6 +297,26 @@ const MB = 1024 * 1024;
   record('S10 tam otomatik (tıklama yok)', !bad, bad ?? 'mail açıldı, dosya kendi indi');
 }
 
+// S12: BÜTÜNLÜK — sunucu özet verirse doğrulanır; YANLIŞ özet işi DÜŞÜRÜR
+{
+  const okUrl = `http://localhost:${serverPort}/f/8?rate=30&digest=1`;
+  const stOk = await addAndWait(okUrl, 'S12a', 40);
+  const badUrl = `http://localhost:${serverPort}/f/9?rate=30&digest=bad`;
+  const stBad = await addAndWait(badUrl, 'S12b', 40, 'error');
+  const off = await pageCdp('offscreen.html');
+  const okVerified = await evalIn(off,
+    `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(okUrl)});` +
+    `return j? String(j.digestOk) : 'yok'})()`);
+  const badErr = await evalIn(off,
+    `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(badUrl)});` +
+    `return j? String(j.error) : 'yok'})()`);
+  off.close();
+  const pass = stOk === 'done' && okVerified === 'true' && stBad === 'error' && badErr === 'errDigest';
+  record('S12 sunucu özeti doğrulama', pass,
+    pass ? 'doğru özet ✓ doğrulandı, yanlış özet reddedildi'
+         : `ok=${stOk}/${okVerified} bad=${stBad}/${badErr}`);
+}
+
 // S11: KALICI GEÇMİŞ — tamamlanan indirme storage'a yazılır, gizli olan YAZILMAZ
 {
   const hist = JSON.parse(await evalIn(panel,

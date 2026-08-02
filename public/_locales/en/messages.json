@@ -300,5 +300,11 @@
   },
   "histClear": {
     "message": "Clear list"
+  },
+  "errDigest": {
+    "message": "file failed the server's integrity check"
+  },
+  "verified": {
+    "message": "verified"
   }
 }
