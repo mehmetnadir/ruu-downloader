@@ -234,5 +234,17 @@
   },
   "dUnaccel": {
     "message": "non accélérable"
+  },
+  "shExpired": {
+    "message": "Ce lien a expiré"
+  },
+  "shNoAction": {
+    "message": "Bouton de téléchargement introuvable"
+  },
+  "shStarted": {
+    "message": "Téléchargement lancé"
+  },
+  "shWorking": {
+    "message": "En cours…"
   }
 }

@@ -25,6 +25,14 @@ function patternChunk(start, len) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   // Sahte paylaşım sayfası: onay → indir butonu → dosya (mail entegrasyonu E2E'si)
+  // Süresi dolmuş paylaşım sayfası (uyarı akışı testi)
+  if (url.pathname === '/share-expired') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(
+      '<!doctype html><html><body><h1>Bu transferin süresi doldu</h1>' +
+      '<p>Dosyalar artık kullanılamaz.</p><button>Tümünü İndir</button></body></html>');
+    return;
+  }
+
   const sm = url.pathname.match(/^\/share\/(\d+)$/);
   if (sm) {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(`<!doctype html>

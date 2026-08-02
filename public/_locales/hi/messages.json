@@ -234,5 +234,17 @@
   },
   "dUnaccel": {
     "message": "तेज़ नहीं"
+  },
+  "shExpired": {
+    "message": "यह लिंक समाप्त हो चुका है"
+  },
+  "shNoAction": {
+    "message": "डाउनलोड बटन नहीं मिला"
+  },
+  "shStarted": {
+    "message": "डाउनलोड शुरू"
+  },
+  "shWorking": {
+    "message": "काम जारी…"
   }
 }

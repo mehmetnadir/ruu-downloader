@@ -234,5 +234,17 @@
   },
   "dUnaccel": {
     "message": "无法加速"
+  },
+  "shExpired": {
+    "message": "此链接已过期"
+  },
+  "shNoAction": {
+    "message": "未找到下载按钮"
+  },
+  "shStarted": {
+    "message": "下载已开始"
+  },
+  "shWorking": {
+    "message": "处理中…"
   }
 }

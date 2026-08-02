@@ -263,6 +263,23 @@ const MB = 1024 * 1024;
   record('S8 paylaşım sayfası otomasyonu', !bad, note);
 }
 
+// S9: SÜRESİ DOLMUŞ PAYLAŞIM — tıklamak yerine kullanıcı uyarılır, dosya inmez
+{
+  const url = `http://localhost:${serverPort}/share-expired`;
+  await evalIn(panel, `chrome.storage.local.set({takeoverLog:[]}); chrome.runtime.sendMessage({target:'sw',type:'share-fetch',url:${JSON.stringify(url)}}); 'sent'`);
+  let log = '[]';
+  const dE = Date.now() + 30_000;
+  while (Date.now() < dE) {
+    await sleep(1000);
+    log = await evalIn(panel,
+      `chrome.storage.local.get({takeoverLog:[]}).then(s=>JSON.stringify(s.takeoverLog.map(e=>e.action)))`);
+    if (log.includes('share-auto')) break; // yanlışlıkla tıkladıysa hemen bitir
+  }
+  const clickedWrongly = log.includes('share-auto');
+  record('S9 süresi dolmuş link uyarısı', !clickedWrongly,
+    clickedWrongly ? `expired sayfada tıklama yapıldı: ${log}` : 'tıklanmadı, uyarı yolu izlendi');
+}
+
 // S5: CRASH-RESUME — indirme ortasında tarayıcıyı öldür, yeniden başlat, devam ettir (PRD F3)
 {
   const url = `http://localhost:${serverPort}/f/80?rate=2`;

@@ -83,12 +83,15 @@ async function logTakeover(entry: Record<string, unknown>): Promise<void> {
 
 chrome.downloads.onCreated.addListener((item) => {
   void (async () => {
-    const decision = decideTakeover(item, settings, isOwn);
+    // Paylaşım akışı açıksa kullanıcı zaten "Ruu ile indir" dedi → eşiği atla
+    const decision = decideTakeover(item, settings, isOwn, shareTabs.size > 0);
     const shortUrl = decision.url.length > 72 ? `${decision.url.slice(0, 69)}…` : decision.url;
     if (decision.action === 'skip') {
       if (decision.reason !== 'own') {
         void logTakeover({ url: shortUrl, action: decision.reason, size: item.totalBytes });
       }
+      // Devralmasak bile indirme BAŞLADI — paylaşım sekmesi işini bitirdi
+      if (decision.reason !== 'own') closeShareTabsAfterDownload();
       return;
     }
     try {
@@ -99,6 +102,7 @@ chrome.downloads.onCreated.addListener((item) => {
       return; // iptal edemedik → dokunma, native devam etsin
     }
     void logTakeover({ url: shortUrl, action: 'taken', size: item.totalBytes });
+    closeShareTabsAfterDownload();
     const hint = item.filename ? item.filename.split(/[\\/]/).pop() : undefined;
     await ensureOffscreen();
     void chrome.runtime.sendMessage({
@@ -163,9 +167,14 @@ function celebrate(downloadId: number): void {
  * bir kez enjekte eder. Kapalı (closure'sız) olmak ZORUNDA — serialize edilir.
  */
 function shareFlowAgent(): void {
+  // Teşhis işareti: enjeksiyon gerçekten oldu mu? (aynı belgeye iki kez kurma)
+  const w = window as unknown as { __ruuAgent?: number };
+  if (w.__ruuAgent) return;
+  w.__ruuAgent = Date.now();
   // DİKKAT: kalıplar NORMALLEŞTİRİLMİŞ metinle eşleşir — JS'te /indir/i Türkçe
   // "İndir"i eşleştirmez (U+0130 → "i"+U+0307). Saha bug'ı, testli.
   const PATTERNS = /(tumunu indir|hepsini indir|yine de indir|indirmeyi baslat|indir|download all|download anyway|download all files|get your files|download|onayliyorum|onayla|kabul ediyorum|tumunu kabul et|kabul et|kabul|accept all|accept|i agree|agree|continue|devam et|devam)/;
+  const EXPIRED = /(link.{0,12}(suresi doldu|expired|no longer)|suresi (dolmus|doldu)|artik (kullanilamaz|mevcut degil)|transfer.{0,12}(expired|deleted)|no longer available|not found|bulunamadi|silinmis)/;
   const norm = (s: string): string =>
     s.replace(/ı/g, 'i').replace(/İ/g, 'I')
       .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -175,9 +184,21 @@ function shareFlowAgent(): void {
   const clicked = new WeakSet<HTMLElement>();
   let clicks = 0;
   let ticks = 0;
+  let expiredSent = false;
   const tick = (): void => {
     ticks++;
     try {
+      // Süresi dolmuş / silinmiş paylaşım: tıklamaya çalışmak yerine kullanıcıyı uyar
+      if (!expiredSent && ticks >= 2) {
+        const body = norm((document.body?.innerText ?? '').slice(0, 2500));
+        if (EXPIRED.test(body)) {
+          expiredSent = true;
+          try {
+            void chrome.runtime.sendMessage({ target: 'sw', type: 'share-expired' }).catch(() => undefined);
+          } catch { /* context yenilendi */ }
+          return; // döngüyü durdur — tıklanacak bir şey yok
+        }
+      }
       const els = [
         ...document.querySelectorAll<HTMLElement>('button, a[download], a[href*="download"], [role="button"]'),
       ];
@@ -203,7 +224,34 @@ function shareFlowAgent(): void {
   setTimeout(tick, 900);
 }
 
-async function handleShareFetch(rawUrl: string): Promise<void> {
+/**
+ * Açık paylaşım pencereleri: tabId → {reqId, mailTabId, windowId}.
+ * KRİTİK BULGU: arka plan SEKMESİNDE modern SPA'lar render EDİLMEZ (Chrome
+ * görünmeyen sekmede rAF'ı durdurur) — WeTransfer sayfasında hiç buton
+ * oluşmuyordu. Odaklanmamış küçük POPUP PENCERE ise normal render ediyor
+ * (sahada ölçüldü: 0 buton → 64 buton). Kullanıcının sekmesi de çalınmaz.
+ */
+const shareTabs = new Map<number, { reqId?: string; mailTabId?: number; windowId?: number }>();
+
+function closeShareTab(tabId: number, windowId?: number): void {
+  if (windowId !== undefined) void chrome.windows.remove(windowId).catch(() => undefined);
+  else void chrome.tabs.remove(tabId).catch(() => undefined);
+}
+
+function notifyMail(
+  info: { reqId?: string; mailTabId?: number; windowId?: number } | undefined,
+  state: 'working' | 'started' | 'expired' | 'noaction',
+): void {
+  if (!info?.reqId || info.mailTabId === undefined) return;
+  void chrome.tabs.sendMessage(info.mailTabId, {
+    target: 'mail', type: 'share-status', reqId: info.reqId, state,
+  }).catch(() => undefined);
+}
+
+async function handleShareFetch(
+  rawUrl: string,
+  ctx: { reqId?: string; mailTabId?: number } = {},
+): Promise<void> {
   const match = matchShareLink(rawUrl);
   if (!match) return;
   if (match.kind === 'unaccel') {
@@ -230,14 +278,25 @@ async function handleShareFetch(rawUrl: string): Promise<void> {
   }
   // Tier 3: paylaşım sayfasını arka planda aç + ajanı enjekte et; sitenin
   // başlattığı indirmeyi devralma yakalar. YALNIZCA tanınan servislerde.
-  const tab = await chrome.tabs.create({ url: match.url, active: false });
-  const tabId = tab.id!;
+  const win = await chrome.windows.create({
+    url: match.url, type: 'popup', focused: false, width: 520, height: 420,
+  }).catch(() => undefined);
+  const tabId = win?.tabs?.[0]?.id;
+  if (win === undefined || tabId === undefined) return;
   // KRİTİK: sekme HENÜZ about:blank olabilir — oraya enjekte edilen ajan,
   // gerçek sayfa yüklenince yok olur (E2E'de yakalandı). Bu yüzden 'complete'
   // beklenir; sonraki 'complete'lerde de yeniden enjekte edilir (SPA/redirect).
+  shareTabs.set(tabId, { ...ctx, windowId: win.id });
+  // DİKKAT: allFrames:true TEK çağrıda, erişilemeyen bir alt çerçeve yüzünden
+  // TÜM enjeksiyonu reject edebiliyor (WeTransfer'de 5 iframe var; ana belgeye
+  // hiç enjekte olmuyordu). Bu yüzden ana çerçeve ve alt çerçeveler AYRI çağrılır.
   const inject = (): void => {
-    void chrome.scripting.executeScript({ target: { tabId }, func: shareFlowAgent })
-      .catch(() => undefined);
+    void chrome.scripting.executeScript({
+      target: { tabId }, func: shareFlowAgent,
+    }).catch(() => undefined);
+    void chrome.scripting.executeScript({
+      target: { tabId, allFrames: true }, func: shareFlowAgent,
+    }).catch(() => undefined);
   };
   let injections = 0;
   const onUpdated = (id: number, info: { status?: string }): void => {
@@ -249,14 +308,33 @@ async function handleShareFetch(rawUrl: string): Promise<void> {
   const current = await chrome.tabs.get(tabId).catch(() => null);
   if (current?.status === 'complete') inject();
   void logTakeover({ url: match.url.slice(0, 72), action: 'share-open', size: -1 });
-  // Sekme temizliği alarm ile — SW ölse bile alarm onu uyandırır (setTimeout ölür).
-  void chrome.alarms.create(`ruu-share-close-${tabId}`, { delayInMinutes: 0.5 });
+  // Emniyet ağı: indirme hiç başlamazsa sekme 1 dk sonra kapanır (alarm SW ölse
+  // de uyanır). Normalde indirme başlar başlamaz kapatılır — aşağıda.
+  void chrome.alarms.create(`ruu-share-close-${tabId}`, { delayInMinutes: 1 });
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   const m = alarm.name.match(/^ruu-share-close-(\d+)$/);
-  if (m) void chrome.tabs.remove(Number(m[1])).catch(() => undefined);
+  if (!m) return;
+  const tabId = Number(m[1]);
+  const info = shareTabs.get(tabId);
+  if (info) {
+    notifyMail(info, 'noaction'); // hiç indirme başlamadı — kullanıcı bilsin
+    shareTabs.delete(tabId);
+  }
+  closeShareTab(tabId, info?.windowId);
 });
+
+/** İndirme başladı: paylaşım sekmelerini kapat, mail düğmesini yeşile çevir. */
+function closeShareTabsAfterDownload(): void {
+  if (shareTabs.size === 0) return;
+  for (const [tabId, info] of shareTabs) {
+    notifyMail(info, 'started');
+    void chrome.alarms.clear(`ruu-share-close-${tabId}`);
+    setTimeout(() => closeShareTab(tabId, info.windowId), 1200);
+  }
+  shareTabs.clear();
+}
 
 chrome.notifications.onButtonClicked.addListener((notificationId) => {
   const m = notificationId.match(/^ruu-dl-(\d+)$/);
@@ -265,7 +343,7 @@ chrome.notifications.onButtonClicked.addListener((notificationId) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((raw: Msg) => {
+chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
   // İkon rozeti: motorun panel yayınlarını SW de dinler (kullanıcı acısı #4 —
   // "indirmeyi kaybediyorum"). Aktif iş sayısı ikonda görünür.
   if (raw.target === 'panel' && raw.type === 'jobs') {
@@ -289,11 +367,27 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
         break;
       }
       case 'share-fetch': {
-        await handleShareFetch(raw.url);
+        await handleShareFetch(raw.url, { reqId: raw.reqId, mailTabId: sender.tab?.id });
         break;
       }
       case 'share-clicked': {
         void logTakeover({ url: raw.label, action: 'share-auto', size: -1 });
+        break;
+      }
+      case 'share-expired': {
+        const tabId = sender.tab?.id;
+        if (tabId !== undefined) {
+          const info = shareTabs.get(tabId);
+          notifyMail(info, 'expired');
+          shareTabs.delete(tabId);
+          void chrome.alarms.clear(`ruu-share-close-${tabId}`);
+          void chrome.notifications.create({
+            type: 'basic', iconUrl: 'icons/icon128.png',
+            title: 'Ruu', message: t('shExpired'),
+          }).catch(() => undefined);
+          // Süresi dolmuş: pencereyi kapat — bildirim + mail düğmesi zaten uyarıyor
+          closeShareTab(tabId, info?.windowId);
+        }
         break;
       }
       case 'hello-panel': {

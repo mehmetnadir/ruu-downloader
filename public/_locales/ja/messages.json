@@ -234,5 +234,17 @@
   },
   "dUnaccel": {
     "message": "高速化不可"
+  },
+  "shExpired": {
+    "message": "このリンクは期限切れです"
+  },
+  "shNoAction": {
+    "message": "ダウンロードボタンが見つかりません"
+  },
+  "shStarted": {
+    "message": "ダウンロード開始"
+  },
+  "shWorking": {
+    "message": "処理中…"
   }
 }

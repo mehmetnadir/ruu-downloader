@@ -18,10 +18,16 @@ export type TakeoverDecision =
   | { action: 'take'; url: string }
   | { action: 'skip'; reason: 'disabled' | 'scheme' | 'own' | 'small' | 'not-active'; url: string };
 
+/**
+ * @param forced Kullanıcı açıkça "Ruu ile indir" dedi (paylaşım akışı) —
+ *   boyut eşiği UYGULANMAZ. 2,6 KB'lık bir WeTransfer dosyası da Ruu'ya gelir;
+ *   aksi halde kullanıcı düğmeye bastığı halde Chrome indiriyor gibi görünür.
+ */
 export function decideTakeover(
   item: TakeoverItem,
   settings: TakeoverSettings,
   isOwn: (url: string) => boolean,
+  forced = false,
 ): TakeoverDecision {
   const url = item.finalUrl || item.url;
   if (!settings.takeover) return { action: 'skip', reason: 'disabled', url };
@@ -33,7 +39,7 @@ export function decideTakeover(
   if (isOwn(url)) return { action: 'skip', reason: 'own', url };
   if (item.state !== 'in_progress') return { action: 'skip', reason: 'not-active', url };
   const size = item.totalBytes ?? -1;
-  if (size > 0 && size < settings.takeoverMinMB * 1024 * 1024) {
+  if (!forced && size > 0 && size < settings.takeoverMinMB * 1024 * 1024) {
     return { action: 'skip', reason: 'small', url };
   }
   return { action: 'take', url };

@@ -234,5 +234,17 @@
   },
   "dUnaccel": {
     "message": "not accelerable"
+  },
+  "shExpired": {
+    "message": "This link has expired"
+  },
+  "shNoAction": {
+    "message": "Could not find a download button"
+  },
+  "shStarted": {
+    "message": "Download started"
+  },
+  "shWorking": {
+    "message": "Working…"
   }
 }

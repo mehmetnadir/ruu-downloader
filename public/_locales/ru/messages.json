@@ -234,5 +234,17 @@
   },
   "dUnaccel": {
     "message": "без ускорения"
+  },
+  "shExpired": {
+    "message": "Срок действия ссылки истёк"
+  },
+  "shNoAction": {
+    "message": "Кнопка загрузки не найдена"
+  },
+  "shStarted": {
+    "message": "Загрузка началась"
+  },
+  "shWorking": {
+    "message": "Работаю…"
   }
 }

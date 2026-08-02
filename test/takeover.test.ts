@@ -51,3 +51,18 @@ describe('decideTakeover', () => {
     expect(d).toEqual({ action: 'take', url: 'https://cdn.x.com/f.zip' });
   });
 });
+
+describe('forced (paylaşım akışı) devralma', () => {
+  it('kullanıcı "Ruu ile indir" dediyse eşik uygulanmaz — 2.6KB bile devralınır', () => {
+    const tiny = { url: 'https://x.com/f.zip', state: 'in_progress', totalBytes: 2662 };
+    expect(decideTakeover(tiny, S, notOwn)).toMatchObject({ action: 'skip', reason: 'small' });
+    expect(decideTakeover(tiny, S, notOwn, true)).toMatchObject({ action: 'take' });
+  });
+
+  it('forced olsa bile blob/kendi indirmemiz atlanır', () => {
+    expect(decideTakeover({ url: 'blob:https://x/1', state: 'in_progress' }, S, notOwn, true))
+      .toMatchObject({ action: 'skip', reason: 'scheme' });
+    expect(decideTakeover({ url: 'https://x.com/f', state: 'in_progress' }, S, () => true, true))
+      .toMatchObject({ action: 'skip', reason: 'own' });
+  });
+});

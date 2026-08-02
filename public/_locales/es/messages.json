@@ -234,5 +234,17 @@
   },
   "dUnaccel": {
     "message": "no acelerable"
+  },
+  "shExpired": {
+    "message": "Este enlace ha caducado"
+  },
+  "shNoAction": {
+    "message": "No se encontró el botón de descarga"
+  },
+  "shStarted": {
+    "message": "Descarga iniciada"
+  },
+  "shWorking": {
+    "message": "Trabajando…"
   }
 }

@@ -234,5 +234,17 @@
   },
   "dUnaccel": {
     "message": "nicht beschleunigbar"
+  },
+  "shExpired": {
+    "message": "Dieser Link ist abgelaufen"
+  },
+  "shNoAction": {
+    "message": "Kein Download-Button gefunden"
+  },
+  "shStarted": {
+    "message": "Download gestartet"
+  },
+  "shWorking": {
+    "message": "Arbeitet…"
   }
 }
