@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "Предложить сервис"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — телефон → этот компьютер"
+  },
+  "beamDesc": {
+    "message": "Отсканируйте телефоном; ссылки будут скачиваться здесь"
+  },
+  "beamPair": {
+    "message": "Показать код"
+  },
+  "beamPaired": {
+    "message": "Связано"
+  },
+  "beamUnpair": {
+    "message": "Отвязать"
+  },
+  "beamWaiting": {
+    "message": "Ожидание ссылок…"
   }
 }

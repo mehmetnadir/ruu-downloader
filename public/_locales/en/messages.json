@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "Suggest a service"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — phone → this computer"
+  },
+  "beamDesc": {
+    "message": "Scan with your phone; links you share will download here"
+  },
+  "beamPair": {
+    "message": "Show pairing code"
+  },
+  "beamPaired": {
+    "message": "Paired"
+  },
+  "beamUnpair": {
+    "message": "Unpair"
+  },
+  "beamWaiting": {
+    "message": "Waiting for links…"
   }
 }

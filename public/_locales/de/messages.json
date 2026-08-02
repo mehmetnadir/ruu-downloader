@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "Dienst vorschlagen"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — Handy → dieser PC"
+  },
+  "beamDesc": {
+    "message": "Mit dem Handy scannen; geteilte Links landen hier"
+  },
+  "beamPair": {
+    "message": "Kopplungscode zeigen"
+  },
+  "beamPaired": {
+    "message": "Gekoppelt"
+  },
+  "beamUnpair": {
+    "message": "Entkoppeln"
+  },
+  "beamWaiting": {
+    "message": "Warte auf Links…"
   }
 }

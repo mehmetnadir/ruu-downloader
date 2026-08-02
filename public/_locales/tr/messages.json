@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "Servis öner"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — telefon → bu bilgisayar"
+  },
+  "beamDesc": {
+    "message": "Telefonla okut; paylaştığın bağlantılar burada insin"
+  },
+  "beamPair": {
+    "message": "Eşleştirme kodunu göster"
+  },
+  "beamPaired": {
+    "message": "Eşleşti"
+  },
+  "beamUnpair": {
+    "message": "Eşleştirmeyi kaldır"
+  },
+  "beamWaiting": {
+    "message": "Bağlantı bekleniyor…"
   }
 }

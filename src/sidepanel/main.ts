@@ -2,6 +2,7 @@ import type { JobSnapshot, Msg } from '../engine/types';
 import { DEFAULT_MODE, type ServiceMode } from '../content/modes';
 import { SERVICES } from '../content/services';
 import { icons } from './icons';
+import { initBeamUi } from './beam-ui';
 
 const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T;
 
@@ -152,6 +153,9 @@ setNotify.addEventListener('change', () => {
 });
 setParty.addEventListener('change', () => save({ partyUrl: setParty.value.trim() || DEFAULTS.partyUrl }));
 setOpen.addEventListener('change', () => save({ openWhenDone: setOpen.checked }));
+
+// ── Beam: telefon → bu bilgisayar ────────────────────────────────────────────
+initBeamUi($('#beam-body'));
 
 // ── Paylaşım servisleri: kapalı / sor / otomatik ─────────────────────────────
 const svcList = $('#svc-list');

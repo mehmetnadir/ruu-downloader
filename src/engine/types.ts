@@ -55,6 +55,8 @@ export type Msg =
   | { target: 'sw'; type: 'share-clicked'; label: string }
   | { target: 'sw'; type: 'share-expired' }
   | { target: 'mail'; type: 'share-status'; reqId: string; state: 'working' | 'started' | 'expired' | 'noaction' }
+  | { target: 'sw'; type: 'beam-pair'; pairing: { relay: string; pairId: string; keyB64: string } }
+  | { target: 'sw'; type: 'beam-unpair' }
   | { target: 'sw'; type: 'hello-panel' }
   | { target: 'sw'; type: 'deliver'; jobId: string; blobUrl: string; filename: string; size: number; topSpeed: number; priv?: boolean }
   | { target: 'sw'; type: 'native-fallback'; jobId: string; url: string }

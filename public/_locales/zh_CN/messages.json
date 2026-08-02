@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "推荐服务"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — 手机 → 这台电脑"
+  },
+  "beamDesc": {
+    "message": "用手机扫码；分享的链接将在此下载"
+  },
+  "beamPair": {
+    "message": "显示配对码"
+  },
+  "beamPaired": {
+    "message": "已配对"
+  },
+  "beamUnpair": {
+    "message": "取消配对"
+  },
+  "beamWaiting": {
+    "message": "等待链接…"
   }
 }

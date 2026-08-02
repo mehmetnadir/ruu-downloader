@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "Suggérer un service"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — téléphone → cet ordinateur"
+  },
+  "beamDesc": {
+    "message": "Scannez avec le téléphone ; les liens arriveront ici"
+  },
+  "beamPair": {
+    "message": "Afficher le code"
+  },
+  "beamPaired": {
+    "message": "Appairé"
+  },
+  "beamUnpair": {
+    "message": "Dissocier"
+  },
+  "beamWaiting": {
+    "message": "En attente de liens…"
   }
 }

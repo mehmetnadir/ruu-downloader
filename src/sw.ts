@@ -1,6 +1,7 @@
 /**
  * Service Worker — sadece yönlendirici. Motor offscreen'de yaşar (PRD parça 1).
  */
+import { BEAM_ALARM, loadState, pollOnce, saveState } from './beam/client';
 import { matchShareLink } from './content/patterns';
 import { DEFAULT_CATEGORY_NAMES, routeByType } from './engine/foldering';
 import { decideTakeover } from './engine/takeover';
@@ -16,6 +17,11 @@ const CATEGORY_NAMES: Record<string, string> = Object.fromEntries(
 
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+});
+
+// Tarayıcı açılışında eşleşme varsa Beam yoklamasını yeniden kur
+void loadState().then((s) => {
+  if (s.pairing) void chrome.alarms.create(BEAM_ALARM, { periodInMinutes: 1 });
 });
 
 // ── Ayarlar (chrome.storage.local; UI panelde) ───────────────────────────────
@@ -353,7 +359,31 @@ async function handleShareFetch(
   void chrome.alarms.create(`ruu-share-close-${tabId}`, { delayInMinutes: 1 });
 }
 
+/**
+ * Beam yoklaması — MV3'te uzun bekleme YAPILAMAZ, bu yüzden alarm kullanılır
+ * (alarm SW'yi uyandırır; setTimeout uyandırmaz).
+ */
+async function beamPoll(): Promise<void> {
+  const state = await loadState();
+  if (!state.pairing) return;
+  const urls = await pollOnce(state);
+  await saveState(state);
+  if (urls.length === 0) return;
+  await ensureOffscreen();
+  for (const url of urls) {
+    markOwn(url);
+    void chrome.runtime.sendMessage({
+      target: 'engine', type: 'add', url, origin: 'Ruu Beam',
+    } satisfies Msg).catch(() => undefined);
+  }
+  void chrome.notifications.create({
+    type: 'basic', iconUrl: 'icons/icon128.png',
+    title: 'Ruu Beam', message: `${urls.length} bağlantı alındı`,
+  }).catch(() => undefined);
+}
+
 chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === BEAM_ALARM) { void beamPoll(); return; }
   const m = alarm.name.match(/^ruu-share-close-(\d+)$/);
   if (!m) return;
   const tabId = Number(m[1]);
@@ -428,6 +458,19 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
           // Süresi dolmuş: pencereyi kapat — bildirim + mail düğmesi zaten uyarıyor
           closeShareTab(tabId, info?.windowId);
         }
+        break;
+      }
+      case 'beam-pair': {
+        const state = await loadState();
+        await saveState({ ...state, pairing: raw.pairing, seen: [] });
+        // 1 dk periyot: MV3 alarm alt sınırı 30 sn; 1 dk hem güvenli hem yeterli
+        await chrome.alarms.create(BEAM_ALARM, { periodInMinutes: 1 });
+        void beamPoll();
+        break;
+      }
+      case 'beam-unpair': {
+        await chrome.storage.local.set({ beam: { seen: [] } });
+        await chrome.alarms.clear(BEAM_ALARM);
         break;
       }
       case 'hello-panel': {

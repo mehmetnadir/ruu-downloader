@@ -218,3 +218,126 @@ kendi format Ar-Ge'si ayrı bir yan proje olarak değerlendirilir.
 1. QR = **eşleştirme kanalı** (birkaç yüz byte, anında, sıfır altyapı) ✓
 2. WebRTC = **veri kanalı** (büyük dosyalar)
 3. Ağ hiç yoksa → QR akışına düş (küçük dosyalar, renk katmanı v2'de)
+
+
+## KARAR (2026-08-02): QR = veri kanalı DEĞİL, kontrol kanalı
+
+Nadir kararı: "QR ile veri aktarımı konusunu kapatalım, gerek yok. QR ile p2p
+başlatma, senkron etme ya da veri doğrulama gibi şeylere bakalım."
+
+Hesap zaten bunu söylüyordu: en iyi ihtimalle ~1,8 MB/s, WebRTC 12-60 MB/s.
+Dosya taşımak için QR yazmak, kazanmayacağımız bir yarışa girmek olurdu.
+**Kapsam dışı:** fountain-coded QR dosya akışı, renkli/çok katmanlı kod Ar-Ge'si,
+kendi kod formatımız.
+
+### QR'ın üç kalıcı rolü (hepsi küçük veri → QR'ın güçlü olduğu yer)
+
+**1. P2P başlatma (sinyalleşme)**
+WebRTC bağlantısı için gereken SDP teklifi birkaç KB — QR'a sığar. Bu, klasik
+"sinyalleşme sunucusu" bağımlılığını azaltır:
+- PC panelde teklifi (sıkıştırılmış SDP + ICE adayları) QR olarak gösterir
+- Telefon okur, cevabını üretir
+- Cevap dönüşü: telefonda ekran var ama PC'de kamera olmayabilir → cevap
+  röleye POST edilir (birkaç yüz byte, zaten canlı olan Beam Worker'ı kullanır)
+- Sonuç: **hassas veri (anahtar/SDP) hiçbir zaman düz metin olarak röleye gitmez**;
+  röle yalnızca şifreli cevabı taşır
+
+**2. Eşleştirme ve senkron**
+Bugünkü Beam modeli: QR = `relay + pairId + AES-GCM anahtarı`. Tek okutmada iki
+cihaz kalıcı olarak eşleşir; anahtar hiçbir sunucuya gitmez. Cihaz listesi,
+tercih senkronu gibi küçük durum aktarımları da aynı kanaldan.
+
+**3. Veri doğrulama (SAS — kısa doğrulama dizesi)**
+Transfer bittiğinde iki taraf dosya hash'inin (SHA-256) kısaltılmış halini
+gösterir; QR ya da 4-6 karakterlik kod olarak karşılaştırılır. Bu, ortadaki-adam
+saldırısına karşı insan-doğrulamalı katman ekler (magic-wormhole'un PAKE modeliyle
+aynı fikir). Ayrıca transferin bütünlüğünü kullanıcıya görünür kılar.
+
+### Beam mimarisi (güncel)
+
+```
+Telefon (PWA)                    Röle (CF Worker)              PC (uzantı)
+  QR okut  ─────────────────────────────────────────────►  QR göster (eşleştirme)
+  link paylaş → AES-GCM ile mühürle → POST /p/:id ──────►  alarms ile yokla
+                                                            → çöz → indirme kuyruğu
+  (Faz 4) WebRTC: SDP teklifi QR'dan, cevap röleden ────►  DataChannel → dosya
+```
+
+
+## P2P teknik araştırma sonuçları (2026-08-02) — uygulama kararları
+
+Derin araştırma + özgün ölçümler. Tam rapor: bu bölüm + `beam/qr-capacity.mjs`.
+
+### KARAR 1 — Sinyalleşme: KV DEĞİL, Durable Object
+
+**Mevcut Beam rölesi KV kullanıyor ve WebRTC için YETERSİZ:** Cloudflare KV free
+tier'da **1.000 yazma/gün** ve **aynı anahtara saniyede 1 yazma** sınırı var.
+Trickle ICE saniyede birden fazla aday üretir → limite çarpar.
+→ **Faz 4a: Durable Object + WebSocket Hibernation'a taşı** (2025-04'ten beri
+ücretsiz planda; hibernasyonda süre faturalanmıyor; ~83.000 eşleşme/gün kapasite).
+Mevcut düşük hacimli link-beam işi KV'de kalabilir.
+
+### KARAR 2 — DataChannel parametreleri (kaynak koddan doğrulandı)
+
+- **Chunk = 64 KiB** (`Math.min(pc.sctp.maxMessageSize, 65536)`). 256 KiB seçilmez:
+  Chrome'da RFC 8260 interleaving **kapalı** (`enable_message_interleaving = false`),
+  büyük mesaj association'ı ~220 fragment boyunca tekelleştirir.
+- **`bufferedAmountLowThreshold ≥ 128 KiB` + setTimeout polling fallback.**
+  TUZAK: Blink `bufferedAmount`'ı **100 KiB granülariteli** güncelliyor
+  (`sctp_data_channel.cc`), daha düşük eşikte olay HİÇ gelmeyebilir → kilitlenme.
+  Resmi WebRTC örneği bile bunu workaround yorumuyla kabul ediyor.
+- **Uygulama katmanı stop-and-wait ACK KULLANMA.** PairDrop'un 300-400 KB/s'te
+  takılmasının sebebi bu; `bufferedAmount` backpressure + 4-8 MB'da bir checkpoint.
+- Gerçekçi tavan: **~30 MB/s** (Chrome IPC/kripto darboğazı; aynı yığın native'de
+  >1 Gbps yapıyor). Paralel DataChannel hızlandırmaz — SCTP cwnd association başına.
+
+### KARAR 3 — Resume: kendi aralık günlüğümüz (croc'un heuristiği DEĞİL)
+
+croc "eksik parça"yı **tamamen sıfır blok** heuristiğiyle buluyor → meşru sıfır
+dolu chunk gereksiz yeniden gönderiliyor. Ruu'nun `mergeRange()` + `ranges` modeli
+zaten daha doğru; P2P'de aynen kullanılacak. Parça başına SHA-256 **bedava**:
+ölçüm 1.160 MB/s (64 KiB chunk) — WebRTC tavanının 40 katı.
+
+### KARAR 4 — ICE restart DataChannel'ı KAPATMAZ
+
+RFC 8831 §5: ICE/UDP katmanı IP değişimini DTLS/SCTP'ye dokunmadan halleder.
+→ Yeniden bağlanmada **yeni kanal açma**, mevcut kanalı kullan.
+TURN gereksinimi: kullanıcıların ~%22'si relay gerektiriyor (2016 callstats, hâlâ
+en iyi birincil veri); mobilde %40 symmetric NAT. Cloudflare Realtime TURN:
+**1.000 GB/ay ücretsiz**, sonrası $0,05/GB (yalnız egress).
+
+### KARAR 5 — MV3 barındırma: offscreen `WEB_RTC` reason
+
+`chrome.offscreen` reason listesinde **WEB_RTC var ve ömür SINIRSIZ** (yalnız
+AUDIO_PLAYBACK 30 sn'de kapanır). Bonus: aktif RTCPeerConnection olan sayfa
+**intensive timer throttling'den muaf**. Ruu'nun offscreen motor mimarisiyle
+birebir örtüşüyor. CSP'ye `'wasm-unsafe-eval'` açıkça yazılacak.
+
+### KARAR 6 — Kütüphaneler (sıfır CDN, hepsi pakette)
+
+| İş | Seçim | Gerekçe |
+|---|---|---|
+| QR encode | nayuki qrcodegen (MIT, 4,1 KB gzip) | Şu an `qrcode-generator` kullanılıyor; eşdeğer, değişim şart değil |
+| QR decode | **zxing-wasm** (MIT, 447 KB gzip) | Ölçüm: jsQR'dan **6-78× hızlı**; gürültülü 720p'de jsQR 560 ms (1,8 fps) → akış için kullanılamaz |
+| BarcodeDetector | yalnızca opsiyonel hızlı yol | **Chrome masaüstünde SADECE macOS/ChromeOS'ta var** — Windows/Linux'ta YOK |
+| WebRTC sarmalayıcı | **YOK, ham API** | simple-peer 2024'ten beri güncellenmiyor + 6 bağımlılık; peerjs 16.300 B chunking dayatıyor |
+| PAKE | **YOK** | QR zaten 256-bit rastgele anahtar taşıyor; PAKE düşük entropili parola içindir |
+| Doğrulama | SAS (kısa doğrulama dizesi) | DTLS fingerprint hash'inden 4-6 hane, WebCrypto ile ~10 satır |
+
+**Lisans uyarısı:** PairDrop ve Snapdrop **GPL-3.0** → Ruu MIT olduğu için
+**kod kopyalanmayacak**, yalnızca protokol fikirleri. croc/FilePizza/Decimen MIT/BSD.
+
+### KARAR 7 — QR kamera erişimi tam sekmede
+
+`getUserMedia()` offscreen document'ta çalışmaz (izin yüzeyi yok); side panel ve
+popup da güvenilir değil. → QR okuyucu gerekirse `chrome.tabs.create('scanner.html')`.
+Bizim akışımızda kamera **telefonda** (PWA) olduğu için bu sorun Faz 5'e kadar yok.
+
+### Faz sırası (güncellendi)
+
+1. **4a** Sinyalleşme: KV → Durable Object + WebSocket
+2. **4b** WebRTC DataChannel (64 KiB, 128 KiB eşik, mergeRange resume, parça SHA-256)
+3. **4c** TURN (Cloudflare Realtime, ephemeral credential)
+4. **5a** QR eşleştirme genişletme (ICE ufrag+pwd taşı — HKDF ile TÜRETME:
+   SDP munging yasaklanıyor, Chrome PSA 2025-04)
+5. **5b** QR akış: kapsam dışı (Nadir kararı) — yalnızca kontrol kanalı

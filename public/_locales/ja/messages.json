@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "サービスを提案"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — スマホ → このPC"
+  },
+  "beamDesc": {
+    "message": "スマホでスキャン。共有したリンクがここに落ちます"
+  },
+  "beamPair": {
+    "message": "ペアリングコードを表示"
+  },
+  "beamPaired": {
+    "message": "ペア済み"
+  },
+  "beamUnpair": {
+    "message": "解除"
+  },
+  "beamWaiting": {
+    "message": "リンク待ち…"
   }
 }

@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "सेवा सुझाएँ"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — फ़ोन → यह कंप्यूटर"
+  },
+  "beamDesc": {
+    "message": "फ़ोन से स्कैन करें; लिंक यहाँ डाउनलोड होंगे"
+  },
+  "beamPair": {
+    "message": "पेयरिंग कोड दिखाएँ"
+  },
+  "beamPaired": {
+    "message": "जुड़ा"
+  },
+  "beamUnpair": {
+    "message": "अलग करें"
+  },
+  "beamWaiting": {
+    "message": "लिंक की प्रतीक्षा…"
   }
 }

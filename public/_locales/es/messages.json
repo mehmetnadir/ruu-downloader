@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "Sugerir servicio"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — teléfono → este equipo"
+  },
+  "beamDesc": {
+    "message": "Escanea con el teléfono; los enlaces se descargarán aquí"
+  },
+  "beamPair": {
+    "message": "Mostrar código"
+  },
+  "beamPaired": {
+    "message": "Vinculado"
+  },
+  "beamUnpair": {
+    "message": "Desvincular"
+  },
+  "beamWaiting": {
+    "message": "Esperando enlaces…"
   }
 }

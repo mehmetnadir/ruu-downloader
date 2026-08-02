@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "Sugerir serviço"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — celular → este computador"
+  },
+  "beamDesc": {
+    "message": "Escaneie com o celular; os links baixarão aqui"
+  },
+  "beamPair": {
+    "message": "Mostrar código"
+  },
+  "beamPaired": {
+    "message": "Pareado"
+  },
+  "beamUnpair": {
+    "message": "Desparear"
+  },
+  "beamWaiting": {
+    "message": "Aguardando links…"
   }
 }

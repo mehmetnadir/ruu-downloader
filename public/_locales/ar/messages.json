@@ -273,5 +273,23 @@
   },
   "svcSuggest": {
     "message": "اقترح خدمة"
+  },
+  "beamTitle": {
+    "message": "Ruu Beam — الهاتف ← هذا الحاسوب"
+  },
+  "beamDesc": {
+    "message": "امسح بالهاتف؛ الروابط ستُنزَّل هنا"
+  },
+  "beamPair": {
+    "message": "إظهار رمز الاقتران"
+  },
+  "beamPaired": {
+    "message": "مقترن"
+  },
+  "beamUnpair": {
+    "message": "إلغاء الاقتران"
+  },
+  "beamWaiting": {
+    "message": "بانتظار الروابط…"
   }
 }
