@@ -11,7 +11,7 @@
 | IDM Integration Module | 19.000.000 | 4,0 | **Evet** (ücretli, Windows) | Evet (IDM'de, 32'ye kadar) | veri yok | Beyan: yok |
 | Free Download Manager | 3.000.000 | 4,2 | **Evet** | Evet (FDM'de) | veri yok | Beyan: yok |
 | Chrono Download Manager | 800.000 | 4,4 | Hayır | **Hayır** | **Evet** (`downloads.ui`) | **Var — Google Analytics** |
-| DownThemAll! | 200.000 | 3,9 | Hayır | Hayır (toplu indirici) | veri yok | Yok (Mozilla onaylı) |
+| DownThemAll! | Chrome'da **listeden düştü** (2025 başı, MV2) · Firefox 188K | 3,9 / 4,1 | Hayır | Hayır (toplu indirici) | veri yok | Yok (Mozilla onaylı) |
 | Turbo Download Manager 3rd | 100.000 | **3,6** | Hayır | **Evet** (3 thread) | **Hayır** | Beyan: yok |
 | Simple Mass Downloader | 100.000 | 4,6 | Hayır | Hayır | veri yok | Beyan: yok |
 | Download Master (Westbyte) | 100.000 | 3,8 | Evet | Evet (DM'de) | veri yok | Beyan: yok |

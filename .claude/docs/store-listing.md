@@ -20,13 +20,13 @@ TR mağaza görünümü `_locales/tr` üzerinden otomatik: **Ruu Downloader**
 
 **EN**
 ```
-Faster downloads with parallel connections, crash-proof resume, and one-click grabbing from WeTransfer, Drive & 25 more.
+Parallel-connection speed and crash-proof resume — no desktop app, no account. Grab share links straight from your inbox.
 ```
 (119 karakter)
 
 **TR**
 ```
-Paralel bağlantılarla hızlı indirme, çökmeye dayanıklı devam ve WeTransfer, Drive ve 25+ servisten tek tıkla indirme.
+Masaüstü uygulama ve hesap olmadan paralel hızlanma, çökmeye dayanıklı devam; paylaşım linkleri doğrudan gelen kutunuzdan.
 ```
 (116 karakter)
 
@@ -63,7 +63,9 @@ engine. A built-in decision log always tells you why a download was, or wasn't,
 taken over.
 
 📬 One click from your inbox
-Recognizes share links from 28 services (WeTransfer, Google Drive, Dropbox,
+Desktop download managers have walked share-page flows for years — but they need
+a desktop app running. Ruu does it inside the browser: it recognizes share links
+from 28 services (WeTransfer, Google Drive, Dropbox,
 MediaFire, Box, OneDrive, Gofile, TeraBox, SwissTransfer, pCloud, Filemail and
 more) directly in Gmail and Outlook. Click the Ruu button and the extension walks
 through the share page's consent and download steps for you. Per-service you can
@@ -140,6 +142,8 @@ karar günlüğü, bir indirmenin neden devralındığını (ya da alınmadığ�
 söyler.
 
 📬 Gelen kutunuzdan tek tıkla
+Masaüstü indirme yöneticileri paylaşım sayfası akışlarını yıllardır yürütüyor —
+ama çalışan bir masaüstü uygulaması gerekiyor. Ruu bunu tarayıcının içinde yapar:
 Gmail ve Outlook'ta 28 servisin paylaşım linkini tanır (WeTransfer, Google Drive,
 Dropbox, MediaFire, Box, OneDrive, Gofile, TeraBox, SwissTransfer, pCloud,
 Filemail ve daha fazlası). Ruu düğmesine basın; eklenti paylaşım sayfasındaki onay
