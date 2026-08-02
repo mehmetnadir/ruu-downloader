@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "Ruu से डाउनलोड"
+  },
+  "unaccelE2ee": {
+    "message": "एंड-टू-एंड एन्क्रिप्टेड — ब्राउज़र ही डिक्रिप्ट करता है, Ruu तेज़ नहीं कर सकता। पेज खोला जा रहा है।"
+  },
+  "unaccelLogin": {
+    "message": "साइट पर साइन-इन चाहिए — पेज खोला जा रहा है।"
+  },
+  "svcOpening": {
+    "message": "$SERVICE$ खोला जा रहा है…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "तेज़ नहीं"
   }
 }

@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "Скачать через Ruu"
+  },
+  "unaccelE2ee": {
+    "message": "Сквозное шифрование — расшифровка идёт в браузере, Ruu не ускорит. Открываем страницу."
+  },
+  "unaccelLogin": {
+    "message": "Нужен вход на сайте — открываем страницу."
+  },
+  "svcOpening": {
+    "message": "Открываем $SERVICE$…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "без ускорения"
   }
 }

@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "Ruuでダウンロード"
+  },
+  "unaccelE2ee": {
+    "message": "エンドツーエンド暗号化 — 復号はブラウザ側のため Ruu では高速化できません。ページを開きます。"
+  },
+  "unaccelLogin": {
+    "message": "サイトへのログインが必要 — ページを開きます。"
+  },
+  "svcOpening": {
+    "message": "$SERVICE$ を開いています…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "高速化不可"
   }
 }

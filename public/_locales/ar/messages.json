@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "تنزيل عبر Ruu"
+  },
+  "unaccelE2ee": {
+    "message": "مشفّر طرفًا لطرف — المتصفح هو من يفك التشفير، لذا لا يستطيع Ruu التسريع. يتم فتح الصفحة."
+  },
+  "unaccelLogin": {
+    "message": "يتطلب تسجيل دخول — يتم فتح الصفحة."
+  },
+  "svcOpening": {
+    "message": "يتم فتح $SERVICE$…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "لا يمكن تسريعه"
   }
 }

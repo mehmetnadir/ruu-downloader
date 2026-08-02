@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "Download with Ruu"
+  },
+  "unaccelE2ee": {
+    "message": "End-to-end encrypted — the browser must decrypt it, so Ruu can’t accelerate. Opening the page for a normal download."
+  },
+  "unaccelLogin": {
+    "message": "Needs a sign-in on the site — opening the page."
+  },
+  "svcOpening": {
+    "message": "Opening $SERVICE$…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "not accelerable"
   }
 }

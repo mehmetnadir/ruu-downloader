@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "用 Ruu 下载"
+  },
+  "unaccelE2ee": {
+    "message": "端到端加密 — 需由浏览器解密，Ruu 无法加速。正在打开页面。"
+  },
+  "unaccelLogin": {
+    "message": "需要在站点登录 — 正在打开页面。"
+  },
+  "svcOpening": {
+    "message": "正在打开 $SERVICE$…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "无法加速"
   }
 }

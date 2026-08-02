@@ -1,14 +1,14 @@
 /**
- * Paylaşım servisi link tanıma (PRD-3 mail entegrasyonu) — saf modül.
- * kind:
- *  - 'direct'   → URL dönüşümüyle doğrudan motor (Tier 1)
- *  - 'autoflow' → paylaşım sayfası arka planda açılır, onay/indir tıklanır,
- *                 başlayan indirmeyi devralma yakalar (Tier 3)
+ * Paylaşım linki tanıma — servis kataloğu src/content/services.ts'te
+ * (popülerliğe göre sıralı). Bu dosya eşleme + buton etiketi normalleştirme.
  */
+import { findService, type ServiceKind } from './services';
 export interface ShareMatch {
-  kind: 'direct' | 'autoflow';
-  service: string;
+  kind: ServiceKind;
+  service: string;   // servis id (log/telemetri değil, yalnız teşhis)
+  name: string;      // kullanıcıya gösterilecek ad
   url: string;
+  reason?: 'e2ee' | 'login';
 }
 
 /**
@@ -42,36 +42,19 @@ export function matchShareLink(raw: string): ShareMatch | null {
   } catch {
     return null;
   }
-  const h = u.hostname;
   // E2E kancası: yerel test sunucusunun sahte paylaşım sayfası (prod'da etkisiz —
   // yalnızca kullanıcının kendi localhost'u eşleşebilir)
-  if ((h === 'localhost' || h === '127.0.0.1') && u.pathname.startsWith('/share/')) {
-    return { kind: 'autoflow', service: 'test', url: raw };
+  if ((u.hostname === 'localhost' || u.hostname === '127.0.0.1') && u.pathname.startsWith('/share/')) {
+    return { kind: 'autoflow', service: 'test', name: 'Test', url: raw };
   }
   if (u.protocol !== 'https:') return null;
-
-  // Tier 1 — Dropbox: dl=1 hâlâ çalışıyor (araştırma 2026-07)
-  if (h === 'www.dropbox.com' || h === 'dropbox.com') {
-    if (/^\/(s|scl\/fi)\//.test(u.pathname)) {
-      u.searchParams.set('dl', '1');
-      return { kind: 'direct', service: 'dropbox', url: u.toString() };
-    }
-    return null;
-  }
-
-  // Tier 3 — onay akışlı paylaşım sayfaları
-  if (h === 'lifeboxtransfer.com' && u.pathname.startsWith('/download/')) {
-    return { kind: 'autoflow', service: 'lifebox', url: raw };
-  }
-  if (h === 'we.tl') return { kind: 'autoflow', service: 'wetransfer', url: raw };
-  if (h === 'wetransfer.com' && /^\/downloads\//.test(u.pathname)) {
-    return { kind: 'autoflow', service: 'wetransfer', url: raw };
-  }
-  if (h === 'drive.google.com' && /^\/(file\/d\/|open)/.test(u.pathname + u.search)) {
-    return { kind: 'autoflow', service: 'gdrive', url: raw };
-  }
-  if (h === '1drv.ms' || h === 'onedrive.live.com') {
-    return { kind: 'autoflow', service: 'onedrive', url: raw };
-  }
-  return null;
+  const svc = findService(u);
+  if (!svc) return null;
+  return {
+    kind: svc.kind,
+    service: svc.id,
+    name: svc.name,
+    url: svc.transform ? svc.transform(u) : raw,
+    reason: svc.reason,
+  };
 }

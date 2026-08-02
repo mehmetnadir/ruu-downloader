@@ -206,6 +206,18 @@ function shareFlowAgent(): void {
 async function handleShareFetch(rawUrl: string): Promise<void> {
   const match = matchShareLink(rawUrl);
   if (!match) return;
+  if (match.kind === 'unaccel') {
+    // Dürüstlük: uçtan uca şifreli / oturum duvarlı servislerde hızlandırma
+    // TEKNİK OLARAK mümkün değil. Sayfayı açıp kullanıcıya sebebini söyleriz.
+    void chrome.notifications.create({
+      type: 'basic', iconUrl: 'icons/icon128.png',
+      title: match.name,
+      message: t(match.reason === 'e2ee' ? 'unaccelE2ee' : 'unaccelLogin'),
+    }).catch(() => undefined);
+    void logTakeover({ url: match.name, action: 'unaccel', size: -1 });
+    void chrome.tabs.create({ url: match.url, active: true }).catch(() => undefined);
+    return;
+  }
   if (match.kind === 'direct') {
     // Tier 1: dönüştürülmüş URL doğrudan motora
     markOwn(match.url);

@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "Ruu ile indir"
+  },
+  "unaccelE2ee": {
+    "message": "Uçtan uca şifreli — çözme tarayıcıda olur, Ruu hızlandıramaz. Normal indirme için sayfa açılıyor."
+  },
+  "unaccelLogin": {
+    "message": "Sitede oturum gerekiyor — sayfa açılıyor."
+  },
+  "svcOpening": {
+    "message": "$SERVICE$ açılıyor…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "hızlandırılamaz"
   }
 }

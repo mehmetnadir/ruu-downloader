@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "Mit Ruu laden"
+  },
+  "unaccelE2ee": {
+    "message": "Ende-zu-Ende verschlüsselt — der Browser entschlüsselt, Ruu kann nicht beschleunigen. Seite wird geöffnet."
+  },
+  "unaccelLogin": {
+    "message": "Anmeldung nötig — Seite wird geöffnet."
+  },
+  "svcOpening": {
+    "message": "$SERVICE$ wird geöffnet…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "nicht beschleunigbar"
   }
 }

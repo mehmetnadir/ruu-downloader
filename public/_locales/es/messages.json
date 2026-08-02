@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "Descargar con Ruu"
+  },
+  "unaccelE2ee": {
+    "message": "Cifrado de extremo a extremo: el navegador debe descifrarlo, Ruu no puede acelerarlo. Abriendo la página."
+  },
+  "unaccelLogin": {
+    "message": "Requiere iniciar sesión — abriendo la página."
+  },
+  "svcOpening": {
+    "message": "Abriendo $SERVICE$…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "no acelerable"
   }
 }

@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "Baixar com Ruu"
+  },
+  "unaccelE2ee": {
+    "message": "Criptografado ponta a ponta — o navegador precisa descriptografar; Ruu não pode acelerar. Abrindo a página."
+  },
+  "unaccelLogin": {
+    "message": "Requer login — abrindo a página."
+  },
+  "svcOpening": {
+    "message": "Abrindo $SERVICE$…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "não acelerável"
   }
 }

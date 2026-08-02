@@ -157,6 +157,7 @@ const escapeHtml = (s: string): string => s.replace(/[&<>"']/g, (c) => `&#${c.ch
 const DIAG_LABEL: Record<string, string> = {
   taken: t('dTaken'), small: t('dSmall'), scheme: t('dScheme'),
   disabled: t('dDisabled'), 'not-active': t('dNotActive'), 'cancel-failed': t('dCancelFailed'),
+  unaccel: t('dUnaccel'), 'share-open': t('dTaken'), 'share-auto': t('dTaken'),
 };
 function renderDiag(log: Array<{ url: string; action: string; size?: number }>): void {
   diagList.innerHTML = log.slice(0, 5).map((e) => {

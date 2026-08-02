@@ -217,5 +217,22 @@
   },
   "ruuBtn": {
     "message": "Télécharger avec Ruu"
+  },
+  "unaccelE2ee": {
+    "message": "Chiffré de bout en bout — le navigateur doit déchiffrer, Ruu ne peut pas accélérer. Ouverture de la page."
+  },
+  "unaccelLogin": {
+    "message": "Connexion requise — ouverture de la page."
+  },
+  "svcOpening": {
+    "message": "Ouverture de $SERVICE$…",
+    "placeholders": {
+      "service": {
+        "content": "$1"
+      }
+    }
+  },
+  "dUnaccel": {
+    "message": "non accélérable"
   }
 }

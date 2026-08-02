@@ -55,6 +55,23 @@ modern web platform primitives — no native app, no companion daemon, no ads, n
 - 📊 **Local-only stats** — count, bytes, best speed. Nothing ever leaves your machine
   ([PRIVACY.md](PRIVACY.md)).
 
+## Supported share services
+
+Ruu recognizes links from **28 services** (ordered by real-world popularity —
+Similarweb file-sharing category + market-share research). In Gmail/Outlook a
+download button appears next to any recognized link; Ruu then walks the share
+page's consent flow for you.
+
+| Tier | Services | What happens |
+|---|---|---|
+| **Direct** | Dropbox · Pixeldrain · Catbox · file.io | URL is transformed and handed straight to the engine — no page opens |
+| **Automated** | MediaFire · Box · Gofile · WeTransfer · TeraBox · Google Drive · OneDrive/SharePoint · iCloud Drive · pCloud · SwissTransfer · Smash · TransferNow · Filemail · Send Anywhere · Lifebox · Dosya.tc · Yandex Disk · Mail.ru Cloud · Filebin · 4shared · KrakenFiles | Share page opens in the background, consent/download buttons are clicked, the download is taken over and accelerated |
+| **Honest no** | MEGA · Proton Drive · Wormhole | End-to-end encrypted: the browser itself decrypts, so *no* extension can accelerate it. Ruu says so plainly and opens the page for a normal download |
+
+Out of scope by design: torrent indexes and video rippers. Ruu is a productivity
+tool. Missing a service you use? Open an issue — adding one is a few lines in
+[`src/content/services.ts`](src/content/services.ts).
+
 ## Install
 
 **Chrome Web Store:** *in review — link coming soon.*
