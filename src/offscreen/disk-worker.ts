@@ -64,6 +64,12 @@ self.onmessage = async (ev: MessageEvent<InMsg>) => {
       }
       case 'meta': {
         if (!metaHandle) break;
+        // KRİTİK: meta, "bu byte'lar diskte" iddiasıdır. Veri flush edilmeden
+        // meta yazılırsa çökme sonrası meta İLERİDE kalır → o bölge sıfır dolu
+        // olduğu halde "indi" sayılır → SESSİZCE BOZUK DOSYA. Bu yüzden meta
+        // her zaman veri flush'ından SONRA yazılır.
+        handle?.flush();
+        unflushed = 0;
         const buf = textEncoder.encode(msg.json);
         metaHandle.truncate(0);
         metaHandle.write(buf, { at: 0 });

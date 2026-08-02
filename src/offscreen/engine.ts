@@ -40,6 +40,13 @@ const dbg = {
 (globalThis as unknown as { __ruu: typeof dbg & { jobs: Map<string, Job> } }).__ruu =
   Object.assign(dbg, { jobs });
 
+/**
+ * Kalıcı depolama izni — yarım indirmelerin tarayıcı tarafından silinmesini
+ * engeller (Chrome LRU eviction; Safari 7 gün etkileşimsizlikte origin verisini
+ * siler). İzin verilmezse indirme yine çalışır, sadece eviction riski kalır.
+ */
+void navigator.storage?.persist?.().catch(() => undefined);
+
 async function jobsDir(): Promise<FileSystemDirectoryHandle> {
   const root = await navigator.storage.getDirectory();
   return root.getDirectoryHandle('jobs', { create: true });

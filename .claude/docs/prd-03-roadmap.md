@@ -366,3 +366,71 @@ Ayrıca kalıcı not: **jsQR fiilen ölü** (2021'den beri commit yok, gürült�
 560 ms); QR çözme gerekirse `zxing-wasm`. **BarcodeDetector Chromium türevlerinde
 Windows/Linux'ta yok** (resmî Chrome'a 2025'te eklendi) → her zaman probe edip
 `getSupportedFormats()` ile doğrula.
+
+
+## Resume + eşleştirme araştırması (2026-08-02) — kod seviyesinde bulgular
+
+Dört projenin kaynak kodu okundu (PairDrop, FilePizza, ShareDrop, croc,
+magic-wormhole, CheezyPizza). Sonuçlar Ruu'nun mevcut tasarımını hem doğruladı
+hem bir hatasını ortaya çıkardı.
+
+### Kendi kodumuzda bulunan hata (DÜZELTİLDİ)
+
+Meta sidecar'ı 2 saniyede bir yazılıyordu ama veri yalnızca 32 MB'da bir
+flush ediliyordu. Aradaki pencerede çökme olursa **meta ileride kalır**:
+aslında diske inmemiş bir bölge "indi" olarak işaretlenir → resume o bölgeyi
+atlar → **sessizce bozuk dosya**. Düzeltme: meta yazımından önce daima veri
+flush'ı. (CheezyPizza'nın `opfsWriter.ts`'inde aynı sınıf hata için ters yönlü
+koruma var: `resumeOffset = min(kayıtlıOffset, gerçekDosyaBoyu)`.)
+
+Ayrıca `navigator.storage.persist()` eklendi — Chrome LRU eviction ve Safari'nin
+"7 gün etkileşim yoksa origin verisini sil" politikasına karşı.
+
+### Referans implementasyon: CheezyPizza
+
+FilePizza'nın forku, **tarayıcıda çalışan tam resume'ün tek olgun örneği**:
+64 KiB chunk · 4 MiB/512 KiB watermark akış kontrolü · 4 MiB'da bir IndexedDB
+checkpoint · OPFS kalıcılık · hash-wasm ile artımlı SHA-256 · otomatik yeniden
+bağlanma. Protokolü değiştirmeden, sadece istemciyi yazarak elde etmiş.
+
+### Diğer projelerin durumu (kaynak koddan doğrulandı)
+
+| Proje | Resume | Not |
+|---|---|---|
+| PairDrop / Snapdrop | ❌ | `repeatPartition()` yazılmış ama **hiç çağrılmıyor**; Snapdrop'ta üstelik bozuk. Alıcı her şeyi RAM'de tutuyor → iOS'ta 200 MB sert limit |
+| FilePizza | ⚠️ | Protokolde `Start{offset}` VAR, istemci `offset: 0` **hardcode** ediyor |
+| ShareDrop | ❌ | Mimari en yakın (numaralı chunk + diske seek'li yazma) ama ölü `webkitRequestFileSystem` API'sine dayanıyor |
+| croc | ✅ | Ama "tamamen sıfır blok = eksik" tahminciliğiyle. 22,7 GB dosyada çöktü (issue #1127): 692.749 chunk'lık RLE listesi JSON'da megabaytlara çıkıp el sıkışmayı öldürdü |
+| magic-wormhole | ❌ | 2016'dan beri açık issue (#88) |
+
+**Ruu'nun modeli doğru tarafta:** sıralı-güvenilir kanalda (WebRTC ordered)
+8 baytlık offset yeterli; bitmap/RLE gerekmez. Aralık listesi yalnızca
+boşluklar az ve bitişikse kazanır — parçalanınca croc gibi patlar.
+
+### ACK'i akış kontrolünden AYIR
+
+PairDrop'un dur-bekle partition ACK'i hem throughput'u öldürüyor (RTT kadar
+boşta bekleme) hem resume vermiyor. Doğru bölüşüm: **akış kontrolü =
+`bufferedAmount` watermark'ları** (protokol maliyeti sıfır), **dayanıklılık =
+periyodik offset checkpoint'i** (depolama katmanı).
+
+### Bütünlük: WebCrypto streaming DESTEKLEMİYOR
+
+`crypto.subtle.digest()` tüm girdiyi belleğe almak zorunda — 10 GB dosyada
+kullanılamaz. Artımlı hash için `hash-wasm` (SHA-256 426 MB/s, ve tek kütüphane
+olarak `save()/load()` ile hash durumunu oturumlar arası taşıyabiliyor).
+
+### Eşleştirme güvenliği: PAKE değil, şifreli SDP
+
+Önceki karar (PAKE gereksiz) doğrulandı ama daha güçlü bir yol bulundu —
+**webwormhole modeli**: SDP'nin TAMAMINI paylaşılan anahtarla şifrele.
+Neden önemli: `a=fingerprint` satırını regex'le okuyup doğrulamak MITM'i
+engellemez — sinyalleşme sunucusu satırı kendi sertifikasının parmak iziyle
+değiştirirse DTLS doğrulaması **başarılı** olur ve iki ayrı şifreli bağlantı
+kurulur. QR'dan gelen 256-bit anahtarımızla SDP'yi şifrelersek röle ne okuyabilir
+ne değiştirebilir. Bonus: `getRemoteCertificates()` gerekmez (Firefox'a ancak
+sürüm 153'te geldi — çok yeni).
+
+PAKE yalnızca "telefona 4 kelime yaz" akışı eklenirse gerekir; o gün gelirse
+balanced PAKE (CPace — CFRG'nin seçtiği) kullanılacak, SPAKE2 değil.
+⚠️ Tarayıcıda olgun/denetlenmiş JS PAKE paketi **yok**.
