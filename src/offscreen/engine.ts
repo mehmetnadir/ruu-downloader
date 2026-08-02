@@ -11,7 +11,7 @@
  */
 import { RangeAllocator, type Claim } from '../engine/allocator';
 import { autoTuneConnections, collectHints } from '../engine/autotune';
-import { mergeRange, parseMeta, type JobMeta } from '../engine/manifest';
+import { mergeRange, parseMeta, reconcileRanges, type JobMeta } from '../engine/manifest';
 import { failThreshold } from '../engine/retry';
 import {
   MIN_SPLIT,
@@ -604,7 +604,19 @@ async function restoreStale(): Promise<void> {
         } catch { /* okunamadı → sil */ }
       }
       if (meta && meta.ranges.length > 0) {
-        jobs.set(name, Job.restored(name, meta));
+        // Meta ile diskteki gerçeği uzlaştır: kayıtlı ilerleme dosya boyunu
+        // aşamaz (meta ve veri yazımı atomik değil).
+        let onDisk = meta.size;
+        try {
+          onDisk = (await (await dir.getFileHandle(name)).getFile()).size;
+        } catch { /* okunamadı → meta'ya güven */ }
+        const safe = reconcileRanges(meta.ranges, Math.min(onDisk, meta.size));
+        if (safe.length === 0) {
+          await dir.removeEntry(name).catch(() => undefined);
+          await dir.removeEntry(`${name}.meta`).catch(() => undefined);
+          continue;
+        }
+        jobs.set(name, Job.restored(name, { ...meta, ranges: safe }));
       } else {
         await dir.removeEntry(name).catch(() => undefined);
         await dir.removeEntry(`${name}.meta`).catch(() => undefined);

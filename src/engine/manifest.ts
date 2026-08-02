@@ -16,6 +16,25 @@ export interface JobMeta {
   updatedAt: number;
 }
 
+/**
+ * Savunma katmanı: meta'daki aralıkları diskteki GERÇEK dosya boyutuyla
+ * uzlaştırır. Meta yazımı ile veri yazımı asla atomik değildir (CheezyPizza'nın
+ * opfsWriter'ında da aynı sınıf koruma var) — meta ileride kalırsa indirilmemiş
+ * bölge "indi" sayılır ve dosya sessizce bozulur. Kural: kayıtlı ilerleme
+ * gerçek dosya boyunu ASLA aşamaz.
+ */
+export function reconcileRanges(
+  ranges: Array<[number, number]>,
+  fileSize: number,
+): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (const [s, e] of ranges) {
+    if (s >= fileSize) continue;          // tamamen dosyanın dışında
+    out.push([s, Math.min(e, fileSize)]); // taşan kuyruk kırpılır
+  }
+  return out;
+}
+
 export function parseMeta(json: string): JobMeta | null {
   try {
     const m = JSON.parse(json) as JobMeta;

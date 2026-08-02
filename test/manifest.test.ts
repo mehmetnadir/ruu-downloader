@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeRange, parseMeta } from '../src/engine/manifest';
+import { mergeRange, parseMeta, reconcileRanges } from '../src/engine/manifest';
 
 describe('mergeRange', () => {
   it('boş listeye ekler', () => {
@@ -59,5 +59,23 @@ describe('parseMeta', () => {
     expect(parseMeta(JSON.stringify({ ...valid, ranges: [[0, 200]] }))).toBeNull();
     expect(parseMeta(JSON.stringify({ ...valid, ranges: [[50, 10]] }))).toBeNull();
     expect(parseMeta(JSON.stringify({ ...valid, size: 0 }))).toBeNull();
+  });
+});
+
+describe('reconcileRanges (meta ile disk uzlaştırma)', () => {
+  it('dosya boyunu aşan kuyruk kırpılır', () => {
+    expect(reconcileRanges([[0, 100]], 60)).toEqual([[0, 60]]);
+  });
+
+  it('tamamen dosyanın dışındaki aralık atılır', () => {
+    expect(reconcileRanges([[0, 50], [80, 120]], 60)).toEqual([[0, 50]]);
+  });
+
+  it('tutarlı meta değişmeden geçer', () => {
+    expect(reconcileRanges([[0, 30], [40, 60]], 60)).toEqual([[0, 30], [40, 60]]);
+  });
+
+  it('boş dosyada hiçbir aralık kalmaz', () => {
+    expect(reconcileRanges([[0, 100]], 0)).toEqual([]);
   });
 });
