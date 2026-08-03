@@ -15,6 +15,7 @@ import { bytesToBase64, digestMatches, parseDigestHeader, type ExpectedDigest } 
 import { mergeRange, parseMeta, reconcileRanges, type JobMeta } from '../engine/manifest';
 import { afterDecision, RAMP_START, shouldAddConnection, type RampState } from '../engine/ramp';
 import { isRunning, nextToStart, shouldStartImmediately } from '../engine/queue';
+import { sanitizeFilename } from '../engine/filename';
 import { failThreshold } from '../engine/retry';
 import {
   MIN_SPLIT,
@@ -111,7 +112,10 @@ class Job {
   static restored(id: string, meta: JobMeta): Job {
     const job = new Job(meta.url, meta.connections, meta.filename);
     job.id = id;
-    job.filename = meta.filename;
+    // Meta ESKİ (temizlenmemiş) adı taşıyabilir — bu düzeltmeden önce yazılmış
+    // sidecar'lar öyle. Kurtarılan iş yeniden teslim edilirken aynı
+    // "Invalid filename" duvarına toslamasın.
+    job.filename = sanitizeFilename(meta.filename);
     job.size = meta.size;
     job.etag = meta.etag;
     job.lastModified = meta.lastModified;
@@ -568,6 +572,16 @@ class Job {
     this.state = 'probing';
     broadcast();
     try {
+      // TÜM baytlar zaten diskteyse sunucuya HİÇ dokunma: indirilecek bir şey
+      // yok, doğrulanacak bir şey yok. Bu, teslimi başarısız olmuş tamamlanmış
+      // bir işin kurtarılmasını linkin ölmüş olmasından bağımsız kılar —
+      // saha hatasında (TESLİM.zip, "Invalid filename") tam olarak bu durum
+      // vardı: 1,5 GB hazırdı ama kurtarma yolu tek-kullanımlık linke bağlıydı.
+      if (this.alloc?.isComplete()) {
+        await this.initDisk(this.size!, false);
+        this.beginDownloading(); // isComplete() → doğrudan finalize + teslim
+        return;
+      }
       if (this.needsRevalidate) {
         const probe = await this.probeWithRetry();
         const newEtag = probe.headers.get('etag') ?? undefined;
@@ -689,9 +703,26 @@ function parseTotal(resp: Response): number | null {
   return null;
 }
 
+/**
+ * Dosya adını belirler. Çıktı HER ZAMAN temizlenir.
+ *
+ * Eskiden sunucunun verdiği ad aynen geçiyordu ve Chrome
+ * `downloads.download()` içinde "Invalid filename" ile reddedebiliyordu —
+ * tamamlanmış 1,5 GB'lık bir indirme böyle teslim edilememişti (TESLİM.zip,
+ * Türkçe İ). Adı üreten TEK kapı burasıdır; temizlik burada yapılır ki
+ * hiçbir yol atlanamasın.
+ */
 function pickFilename(url: string, disposition: string | null, hint?: string): string {
+  return sanitizeFilename(rawFilename(url, disposition, hint));
+}
+
+function rawFilename(url: string, disposition: string | null, hint?: string): string {
   const star = disposition?.match(/filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i);
-  if (star?.[1]) return decodeURIComponent(star[1].trim().replace(/^"|"$/g, ''));
+  if (star?.[1]) {
+    try {
+      return decodeURIComponent(star[1].trim().replace(/^"|"$/g, ''));
+    } catch { /* bozuk yüzde kodlaması — sıradaki adaya geç */ }
+  }
   const plain = disposition?.match(/filename\s*=\s*"?([^";]+)"?/i);
   if (plain?.[1]) return plain[1].trim();
   if (hint) return hint; // devralmadan gelen tarayıcı dosya adı

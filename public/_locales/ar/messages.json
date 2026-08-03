@@ -322,5 +322,9 @@
   "setQueueLimitHelp": {
     "message": "عدد التنزيلات التي تعمل في وقت واحد. ينتظر الباقي دوره. لا حاجة لبرامج إضافية.",
     "description": "Settings: concurrency limit explanation"
+  },
+  "errUnknown": {
+    "message": "تعذّر الحفظ",
+    "description": "Generic wrapper for an untranslated engine/Chrome error"
   }
 }

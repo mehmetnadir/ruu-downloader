@@ -322,5 +322,9 @@
   "setQueueLimitHelp": {
     "message": "同時に実行するダウンロード数。残りは順番待ちです。追加ソフトは不要です。",
     "description": "Settings: concurrency limit explanation"
+  },
+  "errUnknown": {
+    "message": "保存できませんでした",
+    "description": "Generic wrapper for an untranslated engine/Chrome error"
   }
 }

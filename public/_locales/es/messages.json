@@ -322,5 +322,9 @@
   "setQueueLimitHelp": {
     "message": "Cuántas descargas se ejecutan a la vez. El resto espera su turno. No requiere software adicional.",
     "description": "Settings: concurrency limit explanation"
+  },
+  "errUnknown": {
+    "message": "No se pudo guardar",
+    "description": "Generic wrapper for an untranslated engine/Chrome error"
   }
 }

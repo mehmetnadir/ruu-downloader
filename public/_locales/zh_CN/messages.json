@@ -322,5 +322,9 @@
   "setQueueLimitHelp": {
     "message": "同时进行的下载数量，其余排队等待。无需安装额外程序。",
     "description": "Settings: concurrency limit explanation"
+  },
+  "errUnknown": {
+    "message": "无法保存",
+    "description": "Generic wrapper for an untranslated engine/Chrome error"
   }
 }

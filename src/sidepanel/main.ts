@@ -24,8 +24,19 @@ for (const el of document.querySelectorAll<HTMLInputElement>('[data-i18n-ph]')) 
 }
 /** Motor hata anahtarlarını yerelleştir; bilinmeyenler ham geçer. */
 const ERR_KEYS = new Set(['errChanged', 'errCancelled', 'errAllDown', 'errDelivery', 'errBlocked', 'errDigest']);
-const terr = (err: string | undefined): string =>
-  err && ERR_KEYS.has(err) ? t(err) : (err ?? '');
+/**
+ * Hata metnini kullanıcının dilinde gösterir.
+ *
+ * Çevirisi olmayan hatalar (Chrome API'sinden gelen ham İngilizce metinler)
+ * eskiden AYNEN gösteriliyordu: Türkçe kullanan bir kullanıcı kartında
+ * "Invalid filename" görüyordu. Teknik detayı atmıyoruz — anlaşılır bir
+ * başlığın arkasına koyuyoruz.
+ */
+const terr = (err: string | undefined): string => {
+  if (!err) return '';
+  if (ERR_KEYS.has(err)) return t(err);
+  return `${t('errUnknown')} — ${err}`;
+};
 
 const urlInput = $<HTMLInputElement>('#url-input');
 const addBtn = $<HTMLButtonElement>('#add-btn');

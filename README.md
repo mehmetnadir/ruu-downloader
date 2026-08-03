@@ -4,8 +4,8 @@
 
 **The download manager Chrome deserves — segmented speed, unkillable resume, zero telemetry.**
 
-[![CI-ready E2E](https://img.shields.io/badge/E2E-16%20scenarios-7fb069)](test/e2e/run.sh)
-[![Unit tests](https://img.shields.io/badge/unit-107%20passing-7fb069)](test/)
+[![CI-ready E2E](https://img.shields.io/badge/E2E-17%20scenarios-7fb069)](test/e2e/run.sh)
+[![Unit tests](https://img.shields.io/badge/unit-119%20passing-7fb069)](test/)
 [![Languages](https://img.shields.io/badge/i18n-11%20languages-e8a33d)](public/_locales/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-e8a33d)](LICENSE)
 [![Privacy](https://img.shields.io/badge/telemetry-zero-16130f)](PRIVACY.md)
@@ -139,7 +139,7 @@ Chrome 137+ removed `--load-extension` (E2E loads via CDP `Extensions.loadUnpack
 
 ## Testing
 
-Nothing ships untested — 107 unit tests plus a one-command E2E harness that drives a
+Nothing ships untested — 119 unit tests plus a one-command E2E harness that drives a
 real Chromium against a throttled, fault-injecting local server:
 
 ```bash

@@ -86,6 +86,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
   }
+  // ?cd=<ad> → Content-Disposition ile ad dayat (bozuk/Türkçe adları sınamak için)
+  const cdName = url.searchParams.get('cd');
   if (probeDelay > 0) {
     await new Promise((r) => setTimeout(r, probeDelay));
   }
@@ -127,7 +129,9 @@ const server = http.createServer(async (req, res) => {
       'Content-Length': String(end - start + 1 + extra),
       'Content-Range': `bytes ${start}-${end}/${size}`,
       'Accept-Ranges': 'bytes',
-      'Content-Disposition': `attachment; filename="test-${m[1]}mb.bin"`,
+      'Content-Disposition': cdName
+        ? `attachment; filename*=UTF-8''${encodeURIComponent(cdName)}`
+        : `attachment; filename="test-${m[1]}mb.bin"`,
       ...(digestHeader ? { 'Repr-Digest': digestHeader } : {}),
     });
   } else {
@@ -135,7 +139,9 @@ const server = http.createServer(async (req, res) => {
       'Content-Type': 'application/octet-stream',
       'Content-Length': String(size),
       ...(noRange ? {} : { 'Accept-Ranges': 'bytes' }),
-      'Content-Disposition': `attachment; filename="test-${m[1]}mb.bin"`,
+      'Content-Disposition': cdName
+        ? `attachment; filename*=UTF-8''${encodeURIComponent(cdName)}`
+        : `attachment; filename="test-${m[1]}mb.bin"`,
     });
   }
 

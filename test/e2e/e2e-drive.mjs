@@ -405,6 +405,40 @@ const MB = 1024 * 1024;
     violated ? `SINIR İHLALİ: ${violated}` : `son=${states}`);
 }
 
+// S17: BOZUK DOSYA ADI — sunucu Chrome'un reddedeceği bir ad dayatır.
+// SAHA HATASI (2026-08-03, sendgb): TESLİM.zip, 1,5 GB tamamlandı ama teslim
+// "Invalid filename" ile düştü ve dosya kullanıcıya HİÇ ulaşmadı.
+{
+  // NFD Türkçe İ + görünmez LRM + Windows yasak karakteri, hepsi bir arada
+  const evil = 'TESLI\u0307M\u200e:rapor .zip';
+  const url = `http://localhost:${serverPort}/f/5?cd=${encodeURIComponent(evil)}`;
+  await evalIn(panel, `chrome.runtime.sendMessage({target:'sw',type:'add',url:${JSON.stringify(url)}}); 'sent'`);
+  const off = await pageCdp('offscreen.html');
+  let st = '';
+  let name = '';
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    await sleep(700);
+    const r = await evalIn(off,
+      `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});
+        return j? j.state+'|'+j.filename : 'yok|'})()`);
+    [st, name] = r.split('|');
+    if (st === 'done' || st === 'error') break;
+  }
+  off.close();
+  // Dosya gerçekten diske düşmüş mü? BOYUTA göre bakılır — CDP
+  // setDownloadBehavior blob indirmelerini GUID adla kaydettiği için (bkz.
+  // findFile yorumu) disk ADI bu koşumda doğrulanamaz; motorun ürettiği ad
+  // doğrulanır, teslimin gerçekleştiği ise dosyanın varlığıyla kanıtlanır.
+  const onDisk = findFile(5 * MB);
+  const clean = !/[\u0000-\u001f\u200e:\\/]/.test(name)
+    && name.normalize('NFC') === name
+    && !/[\s.]+\.[^.]+$/.test(name); // gövde sonu boşluk yok
+  record('S17 bozuk dosya adı → temizlenir ve teslim edilir',
+    st === 'done' && clean && !!onDisk,
+    `durum=${st} ad="${name}" diskte=${onDisk ? 'var' : 'YOK'}`);
+}
+
 // S13: HAYALET İNDİRME — probe uçarken iptal edilen iş DİRİLMEMELİ.
 // Denetim bulgusu 2: probe abort edilmiyordu ve start() await'ten sonra
 // kontrolsüz devam edip silinmiş dosyayı yeniden yaratıyordu.

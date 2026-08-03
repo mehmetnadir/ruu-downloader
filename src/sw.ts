@@ -3,6 +3,7 @@
  */
 import { BEAM_ALARM, loadState, pollOnce, saveState } from './beam/client';
 import { matchShareLink } from './content/patterns';
+import { safeFallbackName } from './engine/filename';
 import { DEFAULT_CATEGORY_NAMES, routeByType } from './engine/foldering';
 import { decideTakeover } from './engine/takeover';
 import { addEntry, type HistoryEntry } from './engine/history';
@@ -591,12 +592,33 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
         break;
       }
       case 'deliver': {
+        /**
+         * Teslim reddedilirse dosyayı KAYBETMEYİZ.
+         *
+         * Chrome adı `net::IsSafePortablePathComponent` ile doğrular ve
+         * uymayanı reddeder. Motor artık adı temizliyor, ama Chrome'un kural
+         * kümesi sürüme göre değişebilir ve kategori klasörü de yola giriyor.
+         * Bu yüzden reddedilirse sırayla geri çekiliyoruz: klasörsüz dene,
+         * sonra saf ASCII adla dene. Tamamlanmış bir indirme adlandırma
+         * yüzünden asla çöpe gitmemeli.
+         */
+        const attempts = [
+          routeByType(raw.filename, settings.typeFolders, CATEGORY_NAMES),
+          raw.filename,                    // kategori klasörü olmadan
+          safeFallbackName(raw.filename),  // saf ASCII, uzantı korunur
+        ];
         try {
-          const id = await chrome.downloads.download({
-            url: raw.blobUrl,
-            filename: routeByType(raw.filename, settings.typeFolders, CATEGORY_NAMES),
-            conflictAction: 'uniquify',
-          });
+          let id: number | undefined;
+          let lastErr: unknown;
+          for (const filename of attempts) {
+            try {
+              id = await chrome.downloads.download({
+                url: raw.blobUrl, filename, conflictAction: 'uniquify',
+              });
+              break;
+            } catch (err) { lastErr = err; }
+          }
+          if (id === undefined) throw lastErr ?? new Error('errDelivery');
           await setDelivery(id, {
             jobId: raw.jobId, size: raw.size, topSpeed: raw.topSpeed,
             priv: raw.priv ?? false, origin: raw.origin, sender: raw.sender,

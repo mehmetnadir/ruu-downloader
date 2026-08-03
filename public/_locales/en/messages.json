@@ -322,5 +322,9 @@
   "setQueueLimitHelp": {
     "message": "How many downloads run at the same time. The rest wait their turn. No extra software needed.",
     "description": "Settings: concurrency limit explanation"
+  },
+  "errUnknown": {
+    "message": "Could not be saved",
+    "description": "Generic wrapper for an untranslated engine/Chrome error"
   }
 }
