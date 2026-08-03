@@ -26,6 +26,9 @@ import {
 const BACKPRESSURE_HIGH = 32 << 20;
 const BACKPRESSURE_LOW = 8 << 20;
 const SPEED_WINDOW_MS = 3000;
+const DELIVERY_TIMEOUT_MS = 10 * 60_000;
+/** Bütünlük doğrulaması için üst sınır — üstünde OOM riski (bkz. finalize). */
+const DIGEST_MAX_BYTES = 512 * 1024 * 1024;
 const META_INTERVAL_MS = 2000;
 
 /** Kullanıcı ayarı: ağ hatasında yeniden deneme (varsayılan 1) — SW'den itilir. */
@@ -84,6 +87,11 @@ class Job {
   /** Adaptif rampa: kör paralellik hızlı hatlarda ZARARLI (saha ölçümü). */
   private ramp: RampState = { ...RAMP_START };
   private rampTimer: ReturnType<typeof setInterval> | null = null;
+  /** İptal edildi mi — await sınırlarında devam etmeyi engelleyen bayrak. */
+  private cancelled = false;
+  private deliveryTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Sunucu özet verdi ama dosya doğrulanamayacak kadar büyüktü. */
+  digestSkipped = false;
   downloadId?: number;
   priv = false; // gizli: geçmişe yazılmaz, istatistiğe girmez, kart kaybolur
   completedAt?: number;
@@ -114,6 +122,7 @@ class Job {
   async start(): Promise<void> {
     try {
       const probe = await this.probeWithRetry();
+      this.throwIfCancelled();
       this.filename = pickFilename(this.url, probe.headers.get('content-disposition'), this.filenameHint);
       this.etag = probe.headers.get('etag') ?? undefined;
       this.lastModified = probe.headers.get('last-modified') ?? undefined;
@@ -122,9 +131,14 @@ class Job {
       probe.body?.cancel().catch(() => undefined);
 
       if (probe.status !== 206 || total === null) {
-        // Range yok → native indiriciye zarif düşüş (PRD F2)
+        // Range yok → native indiriciye zarif düşüş (PRD F2).
+        // DİKKAT: burada 'done' demek YALAN olur — henüz tek bayt inmedi.
+        // Chrome'un indirmesi de başarısız olabilir (süresi dolmuş link, 404);
+        // 'done' dersek kullanıcı yeşil kartı görüp dosyanın indiğini sanır.
+        // Gerçek sonucu SW, downloads.onChanged üzerinden geri bildirir.
         this.native = true;
-        this.state = 'done';
+        this.state = 'finalizing';
+        this.armDeliveryWatchdog();
         send({ target: 'sw', type: 'native-fallback', jobId: this.id, url: this.url });
         broadcast();
         return;
@@ -133,13 +147,24 @@ class Job {
       this.size = total;
       this.alloc = new RangeAllocator(total, MIN_SPLIT);
       await this.initDisk(total, true);
+      this.throwIfCancelled();
       this.beginDownloading();
     } catch (err) {
+      if (this.cancelled) return; // iptal zaten temizliği yaptı
       this.fail(err);
     }
   }
 
   private beginDownloading(): void {
+    // Tamamlanma tespiti yalnızca onPumpExit'te yapılıyordu; hiç pompa
+    // doğmazsa (tüm aralıklar zaten inmişse) hiç tetiklenmiyordu. Teslim
+    // hatasından sonra "Yenile" ya da %100'de duraklat/devam et bu duruma
+    // düşüyor ve iş sonsuza kadar "indiriliyor · %100"da kalıyordu.
+    if (this.alloc?.isComplete()) {
+      this.state = 'downloading';
+      void this.finalize();
+      return;
+    }
     this.state = 'downloading';
     keepAwake();
     this.sendMeta();
@@ -150,22 +175,44 @@ class Job {
     broadcast();
   }
 
-  /** Probe: 3 deneme, artan bekleme — anlık ağ sekmeleri işi düşürmesin. */
+  /**
+   * Probe: 3 deneme, artan bekleme — anlık ağ sekmeleri işi düşürmesin.
+   *
+   * İptal edilebilir olmak ZORUNDA: probe uçarken kullanıcı iptal ederse ve
+   * istek durdurulmazsa, cevap geldiğinde start() kaldığı yerden devam edip
+   * iptal edilmiş dosyayı yeniden yaratıyordu (hayalet indirme).
+   */
   private async probeWithRetry(): Promise<Response> {
     let lastErr: unknown;
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt));
+      this.throwIfCancelled();
+      const ctl = new AbortController();
+      this.controllers.add(ctl);
       try {
         return await fetch(this.url, {
           headers: { Range: 'bytes=0-0' },
           credentials: 'include',
           cache: 'no-store',
+          signal: ctl.signal,
         });
       } catch (err) {
+        this.throwIfCancelled();
         lastErr = err;
+      } finally {
+        this.controllers.delete(ctl);
       }
     }
     throw lastErr;
+  }
+
+  /**
+   * İptal bekçisi. Her `await` bir görev sınırıdır: beklerken iptal gelmiş
+   * olabilir. Bunu kontrol etmeden devam etmek, silinmiş dosyayı yeniden
+   * yaratıp kullanıcının açıkça durdurduğu indirmeyi tamamlamak demektir.
+   */
+  private throwIfCancelled(): void {
+    if (this.cancelled) throw new Error('errCancelled');
   }
 
   private initDisk(size: number, fresh: boolean): Promise<void> {
@@ -256,13 +303,13 @@ class Job {
   private startRamp(): void {
     if (this.rampTimer) return;
     // İlk pompa
-    this.ramp = afterDecision(this.ramp, 0, true);
+    this.ramp = afterDecision(this.ramp, 0, true, this.connections);
     this.spawnPumps();
     this.rampTimer = setInterval(() => {
       if (this.state !== 'downloading') return;
       const speed = this.speed();
       const add = shouldAddConnection(this.ramp, speed, this.connections);
-      this.ramp = afterDecision(this.ramp, speed, add);
+      this.ramp = afterDecision(this.ramp, speed, add, this.connections);
       if (add) this.spawnPumps();
       if (this.ramp.settled) this.stopRamp();
     }, 1500);
@@ -365,6 +412,7 @@ class Job {
 
   private async finalize(): Promise<void> {
     this.state = 'finalizing';
+    this.armDeliveryWatchdog();
     this.stopRamp();
     this.stopMetaTimer();
     broadcast();
@@ -382,7 +430,14 @@ class Job {
 
     // Sunucu özet verdiyse doğrula. Bozuk proxy/yanlış birleştirme sessizce
     // geçemesin. Özet yoksa hash HESAPLANMAZ — karşılaştıracak referans yok.
-    if (this.expectedDigest) {
+    if (this.expectedDigest && file.size > DIGEST_MAX_BYTES) {
+      // file.arrayBuffer() dosyanın TAMAMINI belleğe alır, digest üstüne bir
+      // kopya daha çıkarır. Birkaç GB'da offscreen renderer OOM ile öldürülür
+      // ve o an inen TÜM işler birlikte düşer (JS istisnası değil, proses
+      // ölümü — try/catch yakalayamaz). Bu yüzden eşik var.
+      // SESSİZCE atlamıyoruz: kullanıcı doğrulamanın yapılmadığını görmeli.
+      this.digestSkipped = true;
+    } else if (this.expectedDigest) {
       try {
         const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
         this.digestOk = digestMatches(this.expectedDigest, bytesToBase64(digest));
@@ -391,7 +446,10 @@ class Job {
           return;
         }
       } catch {
-        this.digestOk = undefined; // hesaplanamadı (ör. bellek) — engelleme
+        // Hesaplanamadı (ör. bellek). İndirmeyi ENGELLEMİYORUZ ama sessizce
+        // de geçmiyoruz: kullanıcı "doğrulanmadı" bilgisini görmeli.
+        this.digestOk = undefined;
+        this.digestSkipped = true;
       }
     }
     // slice: veri kopyalamadan MIME atar — boş MIME Chrome'un .txt eklemesine yol açıyor
@@ -403,7 +461,21 @@ class Job {
     });
   }
 
+  /**
+   * Teslim bekçisi: SW 'delivered' haberini hiç göndermezse (SW çöktü,
+   * mesaj düştü) iş sonsuza kadar 'finalizing'de kalır — keepAwake bırakılmaz
+   * ve OPFS verisi silinmez. 10 dk sonra hatayla kapat; kullanıcı en azından
+   * "Yenile" görebilsin.
+   */
+  private armDeliveryWatchdog(): void {
+    if (this.deliveryTimer) clearTimeout(this.deliveryTimer);
+    this.deliveryTimer = setTimeout(() => {
+      if (this.state === 'finalizing') void this.delivered(false, 'errDelivery');
+    }, DELIVERY_TIMEOUT_MS);
+  }
+
   async delivered(ok: boolean, error?: string, downloadId?: number): Promise<void> {
+    if (this.deliveryTimer) { clearTimeout(this.deliveryTimer); this.deliveryTimer = null; }
     this.downloadId = downloadId;
     if (this.blobUrl) URL.revokeObjectURL(this.blobUrl);
     this.worker?.terminate();
@@ -431,6 +503,10 @@ class Job {
     this.state = 'paused';
     this.abortConnections();
     this.stopRamp();
+    // Duraklama penceresi hız ölçümünü kirletir: speed() böleni
+    // `now - ticks[0].t` olduğu için 5 dk duraklamış bir işte devam ettikten
+    // sonraki ilk ölçüm saçma düşük çıkar ve rampa o yanlış tabandan tırmanır.
+    this.ticks.length = 0;
     this.sendMeta();
     this.stopMetaTimer();
     keepAwake();
@@ -503,6 +579,7 @@ class Job {
   }
 
   async cancel(): Promise<void> {
+    this.cancelled = true;
     const hadWorker = this.worker !== null;
     this.state = 'error';
     this.error = 'errCancelled';
@@ -583,6 +660,7 @@ class Job {
       priv: this.priv || undefined,
       completedAt: this.completedAt,
       digestOk: this.digestOk,
+      digestSkipped: this.digestSkipped,
       origin: this.origin,
       sender: this.sender,
     };

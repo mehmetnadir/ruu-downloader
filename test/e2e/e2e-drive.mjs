@@ -329,6 +329,108 @@ const MB = 1024 * 1024;
     privLeaked ? 'GİZLİ İNDİRME GEÇMİŞE SIZDI' : `${hist.length} kayıt: ${names.slice(0, 60)}`);
 }
 
+// S15: DURAKLAT/DEVAM — duraklatılan iş kaldığı yerden devam edip TAMAMLANMALI.
+// Denetim bulgusu 4: tamamlanma tespiti yalnızca onPumpExit'teydi; %100'e
+// yakın duraklat/devam'da hiç pompa doğmayınca iş sonsuza kadar
+// "indiriliyor · %100"da kilitleniyordu.
+{
+  const url = `http://localhost:${serverPort}/f/25?rate=8`;
+  await evalIn(panel, `chrome.runtime.sendMessage({target:'sw',type:'add',url:${JSON.stringify(url)}}); 'sent'`);
+  const off = await pageCdp('offscreen.html');
+  const probe = `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});
+    if(!j) return null;
+    return {s:j.state, d:j.alloc?.downloadedBytes?.()??0, n:j.size??0, id:j.id};})()`;
+
+  // ilerlemenin bir kısmı insin, sonra duraklat
+  let st = null;
+  const d1 = Date.now() + 30_000;
+  while (Date.now() < d1) {
+    await sleep(500);
+    st = await evalIn(off, probe);
+    if (st && st.n && st.d / st.n > 0.3) break;
+  }
+  const pausedAt = st ? st.d : 0;
+  await evalIn(panel,
+    `chrome.runtime.sendMessage({target:'sw',type:'pause',jobId:${JSON.stringify(st?.id ?? '')}}); 'sent'`);
+  await sleep(1500);
+  const afterPause = await evalIn(off, probe);
+
+  // devam ettir, tamamlanmasını bekle
+  await evalIn(panel,
+    `chrome.runtime.sendMessage({target:'sw',type:'resume',jobId:${JSON.stringify(st?.id ?? '')}}); 'sent'`);
+  let final = null;
+  const d2 = Date.now() + 60_000;
+  while (Date.now() < d2) {
+    await sleep(700);
+    final = await evalIn(off, probe);
+    if (final && (final.s === 'done' || final.s === 'error')) break;
+  }
+  off.close();
+  const resumedFromScratch = afterPause && pausedAt > 0 && afterPause.d < pausedAt * 0.9;
+  record('S15 duraklat/devam → tamamlanır',
+    final?.s === 'done' && !resumedFromScratch,
+    `duraklama=%${Math.round((pausedAt / (st?.n || 1)) * 100)} son=${final?.s} ` +
+    (resumedFromScratch ? 'İLERLEME KAYBOLDU' : 'ilerleme korundu'));
+}
+
+// S13: HAYALET İNDİRME — probe uçarken iptal edilen iş DİRİLMEMELİ.
+// Denetim bulgusu 2: probe abort edilmiyordu ve start() await'ten sonra
+// kontrolsüz devam edip silinmiş dosyayı yeniden yaratıyordu.
+{
+  const url = `http://localhost:${serverPort}/f/8?probeDelay=3000`;
+  await evalIn(panel, `chrome.runtime.sendMessage({target:'sw',type:'add',url:${JSON.stringify(url)}}); 'sent'`);
+  const off = await pageCdp('offscreen.html');
+  await sleep(600); // probe uçuyor, henüz cevap yok
+  const jobId = await evalIn(off,
+    `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});return j?j.id:''})()`);
+  await evalIn(panel, `chrome.runtime.sendMessage({target:'sw',type:'cancel',jobId:${JSON.stringify(jobId)}}); 'sent'`);
+  // probe cevabı gelsin + diriliş için bol zaman tanı
+  await sleep(5000);
+  const ghost = await evalIn(off,
+    `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url===${JSON.stringify(url)});
+      return j? j.state : 'yok'})()`);
+  // OPFS'te artık kalmamalı — hayalet iş dosyayı yeniden yaratıyordu
+  const leftover = await evalIn(off,
+    `(async()=>{const r=await navigator.storage.getDirectory();
+      const d=await r.getDirectoryHandle('jobs',{create:true});
+      const names=[]; for await (const n of d.keys()) names.push(n);
+      return names.filter(n=>n.startsWith(${JSON.stringify(jobId)})).join(',')})()`);
+  off.close();
+  record('S13 probe sırasında iptal → hayalet yok', ghost === 'yok' && !leftover,
+    `durum=${ghost} artık=${leftover || 'yok'}`);
+}
+
+// S14: EŞZAMANLI İKİ İNDİRME — ikisi de tamamlanmalı, hiçbiri sessizce düşmemeli.
+//
+// KAPSAM SINIRI (dürüst kayıt): bu senaryo offscreen belge ZATEN varken koşar,
+// çünkü panel testi onu daha önce uyandırmış oluyor. Yani bulgu 1'in tam
+// yarışını (offscreen YOKKEN iki eşzamanlı createDocument) tetiklemez —
+// onun için SW'yi dışarıdan öldürmek gerekir ki CDP ile uzantı yüklüyken
+// güvenilir değil. Burada kanıtlanan: eşzamanlı iki ekleme birbirini
+// düşürmüyor. Yarışın kendisi kod incelemesiyle kapatıldı (in-flight promise
+// memoizasyonu + "zaten var" hatasını başarı sayma).
+{
+  const a = `http://localhost:${serverPort}/f/6`;
+  const b = `http://localhost:${serverPort}/f/7`;
+  await evalIn(panel,
+    `chrome.runtime.sendMessage({target:'sw',type:'add',url:${JSON.stringify(a)}});` +
+    `chrome.runtime.sendMessage({target:'sw',type:'add',url:${JSON.stringify(b)}}); 'sent'`);
+  const off = await pageCdp('offscreen.html');
+  const deadline = Date.now() + 45_000;
+  let states = '';
+  while (Date.now() < deadline) {
+    await sleep(700);
+    states = await evalIn(off,
+      `(()=>{const j=[...__ruu.jobs.values()];
+        return [${JSON.stringify(a)},${JSON.stringify(b)}].map(u=>{
+          const x=j.find(y=>y.url===u); return x?x.state:'yok'}).join(',')})()`);
+    if (states.split(',').every((x) => x === 'done' || x === 'error')) break;
+  }
+  off.close();
+  record('S14 eşzamanlı ekleme (offscreen yarışı)', states === 'done,done',
+    `durumlar=${states}`);
+}
+
 // S5: CRASH-RESUME — indirme ortasında tarayıcıyı öldür, yeniden başlat, devam ettir (PRD F3)
 {
   const url = `http://localhost:${serverPort}/f/80?rate=2`;

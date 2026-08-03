@@ -80,6 +80,7 @@ export function afterDecision(
   state: RampState,
   currentSpeed: number,
   added: boolean,
+  maxActive = Number.POSITIVE_INFINITY,
 ): RampState {
   // Her ölçümde en iyi noktayı hatırla — geri çekilmenin dayanağı bu.
   const better = currentSpeed > state.bestSpeed;
@@ -91,7 +92,10 @@ export function afterDecision(
 
   if (added) {
     return {
-      active: state.active + 1,
+      // Üst sınır burada da uygulanır: shouldAddConnection çağrılmadan
+      // doğrudan afterDecision(_, _, true) çağıran yollar var (motorun ilk
+      // pompası, devam et, yenile) — sınır orada da tutmalı.
+      active: Math.min(maxActive, state.active + 1),
       lastSpeed: currentSpeed,
       speedBeforeLastAdd: currentSpeed,
       settled: false,

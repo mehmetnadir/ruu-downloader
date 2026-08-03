@@ -4,7 +4,7 @@
 
 **The download manager Chrome deserves — segmented speed, unkillable resume, zero telemetry.**
 
-[![CI-ready E2E](https://img.shields.io/badge/E2E-10%20scenarios-7fb069)](test/e2e/run.sh)
+[![CI-ready E2E](https://img.shields.io/badge/E2E-15%20scenarios-7fb069)](test/e2e/run.sh)
 [![Unit tests](https://img.shields.io/badge/unit-99%20passing-7fb069)](test/)
 [![Languages](https://img.shields.io/badge/i18n-11%20languages-e8a33d)](public/_locales/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-e8a33d)](LICENSE)

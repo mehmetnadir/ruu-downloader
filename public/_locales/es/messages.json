@@ -306,5 +306,9 @@
   },
   "verified": {
     "message": "verificado"
+  },
+  "notVerified": {
+    "message": "sin verificar",
+    "description": "Server sent a digest but the file was too large to verify"
   }
 }

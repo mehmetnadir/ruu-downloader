@@ -441,6 +441,7 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
     ref.stats.textContent = [
       when, from, job.sender,
       job.digestOk ? `✓ ${t('verified')}` : '',
+      job.digestSkipped ? `⚠ ${t('notVerified')}` : '',
       job.native ? t('wNative') : '',
     ].filter(Boolean).join(' · ');
     ref.stats.title = job.url;

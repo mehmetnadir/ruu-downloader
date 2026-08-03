@@ -30,6 +30,7 @@ export interface JobSnapshot {
   priv?: boolean; // gizli indirme: geçmişte iz bırakmaz
   completedAt?: number;   // teslim zamanı (epoch ms)
   digestOk?: boolean;     // sunucu özeti doğrulandıysa true
+  digestSkipped?: boolean; // özet vardı ama doğrulanamadı (çok büyük / hata)
   origin?: string;        // kaynak: servis adı ya da host
   sender?: string;        // maildeki gönderen (yalnız yerelde tutulur)
 }

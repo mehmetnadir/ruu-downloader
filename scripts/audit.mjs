@@ -98,6 +98,30 @@ if (existsSync('out')) {
   }
 }
 
+// 7b) Kritik dosyalarda test kapsamı boşluğu
+// Bağımsız denetim (2026-08-03) bunu yakaladı: kapsam kontrolü yalnızca
+// src/engine/ için yapılıyordu, oysa projedeki en karmaşık iki dosya
+// (offscreen/engine.ts durum makinesi ve sw.ts yönlendirici) görüş alanı
+// dışındaydı — 8 bulgunun 6'sı tam oradaydı.
+{
+  const critical = ['src/offscreen/engine.ts', 'src/sw.ts'];
+  const e2eBody = existsSync('test/e2e/e2e-drive.mjs')
+    ? readFileSync('test/e2e/e2e-drive.mjs', 'utf8') : '';
+  // Bu dosyalar chrome/Worker'a bağlı olduğu için unit test yerine E2E ile
+  // korunur. En azından yıkıcı yolların senaryosu OLMALI.
+  const mustCover = [
+    ['iptal', /type:'cancel'|type:"cancel"/],
+    ['duraklat/devam', /type:'pause'|type:"pause"/],
+    ['eşzamanlı indirme', /S14|eşzamanlı/i],
+    ['çökme sonrası devam', /S5|crash/i],
+  ];
+  for (const [ad, re] of mustCover) {
+    if (!re.test(e2eBody)) {
+      add('WARN', 'test', `E2E'de "${ad}" senaryosu yok — ${critical.join(', ')} korumasız`);
+    }
+  }
+}
+
 // 8) Belge–kod tutarlılığı
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const readme = readFileSync('README.md', 'utf8');
@@ -121,6 +145,21 @@ if (unitCount) {
     }
   }
 }
+
+// Aynı sınıf hata E2E rozetinde de iki kez kaçtı: gövde metni güncellenirken
+// rozet unutuluyor. Senaryo sayısını da doğrula.
+if (existsSync('test/e2e/e2e-drive.mjs')) {
+  const n = String((readFileSync('test/e2e/e2e-drive.mjs', 'utf8')
+    .match(/\brecord\(/g) ?? []).length);
+  const claims = [
+    ...readme.matchAll(/E2E-(\d+)%20scenarios/g),
+    ...readme.matchAll(/(\d+)\s*\/\s*\d+\s+E2E/g),
+    ...readme.matchAll(/(\d+)\s+E2E scenario/g),
+  ].map((m) => m[1]);
+  for (const c of new Set(claims)) {
+    if (c !== n) add('WARN', 'belge', `README'de eski E2E senaryo sayısı: ${c} (gerçek: ${n})`);
+  }
+}
 const depCount = Object.keys(pkg.dependencies ?? {}).length;
 if (readme.includes('zero dependencies') && depCount > 0) {
   add('HIGH', 'belge', `README 'zero dependencies' diyor ama ${depCount} bağımlılık var`);
@@ -129,6 +168,29 @@ if (readme.includes('zero dependencies') && depCount > 0) {
 // ── rapor ────────────────────────────────────────────────────────────────────
 const order = { HIGH: 0, WARN: 1 };
 findings.sort((a, b) => order[a.sev] - order[b.sev] || a.area.localeCompare(b.area));
+
+// 9) Gizlilik beyanı ↔ manifest izinleri
+// Beyan edilmemiş izin = mağaza incelemesinde "açıklanmamış davranış".
+if (existsSync('PRIVACY.md')) {
+  const priv = readFileSync('PRIVACY.md', 'utf8');
+  const mf = JSON.parse(readFileSync('public/manifest.json', 'utf8'));
+  for (const perm of mf.permissions ?? []) {
+    if (!priv.includes(`\`${perm}\``)) {
+      add('HIGH', 'gizlilik', `PRIVACY.md '${perm}' iznini açıklamıyor`);
+    }
+  }
+  for (const cs of mf.content_scripts ?? []) {
+    for (const m of cs.matches ?? []) {
+      const host = (m.match(/:\/\/([^/]+)/) ?? [])[1]?.replace(/^\*\./, '') ?? '';
+      if (!host || /localhost|127\.0\.0\.1/.test(host)) continue;
+      const stem = host.split('.')[0].replace(/\*/g, '');
+      if (stem && !priv.toLowerCase().includes(stem.toLowerCase())) {
+        add('HIGH', 'gizlilik', `PRIVACY.md '${host}' content script'ini açıklamıyor`);
+      }
+    }
+  }
+}
+
 if (findings.length === 0) {
   console.log('✓ borç bulunamadı');
 } else {

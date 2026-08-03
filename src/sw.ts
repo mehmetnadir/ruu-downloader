@@ -52,7 +52,15 @@ function applyDownloadUi(): void {
   void api.setUiOptions?.({ enabled: !settings.defaultExperience }).catch(() => undefined);
 }
 
-void chrome.storage.local.get(settings).then((s) => {
+/**
+ * Ayarlar diskten gelene kadar bekleyen söz.
+ *
+ * MV3 tuzağı: SW'yi UYANDIRAN olayın kendisi (örn. downloads.onCreated) bu
+ * promise çözülmeden dispatch edilebilir. O anda `settings` hâlâ varsayılan
+ * olur — kullanıcı devralmayı KAPATMIŞ olsa bile indirme devralınır ve
+ * iptal+erase edilir. Bu yüzden karar veren her yol önce bunu bekler.
+ */
+const settingsReady = chrome.storage.local.get(settings).then((s) => {
   Object.assign(settings, s);
   applyDownloadUi();
 });
@@ -97,6 +105,9 @@ async function logTakeover(entry: Record<string, unknown>): Promise<void> {
 
 chrome.downloads.onCreated.addListener((item) => {
   void (async () => {
+    // Kullanıcının GERÇEK ayarları yüklenmeden devralma kararı verilemez
+    // (soğuk açılışta bu olay SW'yi uyandıran olayın ta kendisi olabilir).
+    await settingsReady;
     // Paylaşım akışı açıksa kullanıcı zaten "Ruu ile indir" dedi → eşiği atla
     const decision = decideTakeover(item, settings, isOwn, shareTabs.size > 0);
     const shortUrl = decision.url.length > 72 ? `${decision.url.slice(0, 69)}…` : decision.url;
@@ -108,6 +119,16 @@ chrome.downloads.onCreated.addListener((item) => {
       if (decision.reason !== 'own') closeShareTabsAfterDownload();
       return;
     }
+    // SIRA ÖNEMLİ: önce motoru hazırla, SONRA Chrome'un indirmesini iptal et.
+    // Tersi ("önce yık, sonra kur") motor hazırlığı patlarsa geri dönüşsüz:
+    // indirme Chrome'dan silinmiş, Ruu'da da hiç başlamamış olur — kullanıcı
+    // için dosya sessizce buharlaşır.
+    try {
+      await ensureOffscreen();
+    } catch {
+      void logTakeover({ url: shortUrl, action: 'engine-failed', size: item.totalBytes });
+      return; // motor yok → dokunma, native indirme devam etsin
+    }
     try {
       await chrome.downloads.cancel(item.id);
       await chrome.downloads.erase({ id: item.id });
@@ -118,7 +139,6 @@ chrome.downloads.onCreated.addListener((item) => {
     void logTakeover({ url: shortUrl, action: 'taken', size: item.totalBytes });
     closeShareTabsAfterDownload();
     const hint = item.filename ? item.filename.split(/[\\/]/).pop() : undefined;
-    await ensureOffscreen();
     void chrome.runtime.sendMessage({
       target: 'engine', type: 'add', url: decision.url, filenameHint: hint,
       ...takeOrigin(),
@@ -126,24 +146,100 @@ chrome.downloads.onCreated.addListener((item) => {
   })();
 });
 
-async function ensureOffscreen(): Promise<void> {
+/**
+ * Offscreen belge oluşturma — TEK UÇUŞTA bir kez.
+ *
+ * Eski hali getContexts() ile createDocument() arasında async boşluk
+ * bırakıyordu: iki eşzamanlı çağrı (iki hızlı indirme, beam yoklaması +
+ * devralma) o boşlukta iç içe geçince ikinci createDocument
+ * "Only a single offscreen document may be created" ile REDDEDİYORDU.
+ * Çağıran taraf reddi yutunca indirme sessizce düşüyordu.
+ */
+let offscreenInflight: Promise<void> | null = null;
+
+async function createOffscreen(): Promise<void> {
   const contexts = await chrome.runtime.getContexts({
     contextTypes: ['OFFSCREEN_DOCUMENT' as chrome.runtime.ContextType],
   });
-  if (contexts.length > 0) return;
-  await chrome.offscreen.createDocument({
-    url: 'offscreen.html',
-    reasons: ['BLOBS', 'WORKERS'] as chrome.offscreen.Reason[],
-    justification:
-      'Hosts the segmented download engine and OPFS disk worker so active transfers ' +
-      'survive service worker suspension; creates blob URLs to hand completed files ' +
-      'to the downloads API.',
-  });
+  if (contexts.length === 0) {
+    try {
+      await chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: ['BLOBS', 'WORKERS'] as chrome.offscreen.Reason[],
+        justification:
+          'Hosts the segmented download engine and OPFS disk worker so active transfers ' +
+          'survive service worker suspension; creates blob URLs to hand completed files ' +
+          'to the downloads API.',
+      });
+    } catch (err) {
+      // Başka bir yol bizden önce oluşturduysa hedefe zaten ulaşıldı.
+      if (!String(err).includes('single offscreen document')) throw err;
+    }
+  }
+  await settingsReady;
   pushEngineSettings();
 }
 
-interface Delivery { jobId: string; size: number; topSpeed: number; priv: boolean; origin?: string; sender?: string }
-const deliveries = new Map<number, Delivery>(); // chrome downloadId → teslim bilgisi
+function ensureOffscreen(): Promise<void> {
+  offscreenInflight ??= createOffscreen().finally(() => { offscreenInflight = null; });
+  return offscreenInflight;
+}
+
+interface Delivery {
+  jobId: string; size: number; topSpeed: number; priv: boolean;
+  origin?: string; sender?: string;
+  /** Native indiriciye düşülen iş — blob teslimi değil, ham URL. */
+  native?: boolean;
+}
+
+/**
+ * chrome downloadId → teslim bilgisi. **storage.session'da tutulur.**
+ *
+ * Neden bellekte değil: `downloads.download()` çağrısı ile `state:'complete'`
+ * olayı arasında Chrome büyük dosyayı diske kopyalar; bu sırada
+ * `downloads.onChanged` bayt ilerlemesi için TETİKLENMEZ. Başka aktif iş
+ * yoksa SW 30 sn'de askıya alınır ve bellekteki map buharlaşırdı. Sonuç:
+ *   • motor 'delivered' mesajını hiç almaz → iş sonsuza kadar 'finalizing'
+ *   • keepAwake hiç bırakılmaz → kullanıcının bilgisayarı bir daha uyumaz
+ *   • OPFS'teki (belki GB'larca) veri hiç silinmez
+ *   • geçmiş/istatistik/bildirim hiç çalışmaz
+ * storage.session tam bu iş için: SW askıya alınmasını aşar, tarayıcı
+ * kapanınca temizlenir (kalıcı çöp bırakmaz).
+ */
+const DELIVERIES_KEY = 'deliveries';
+
+/**
+ * Teslim kaydı güncellemeleri SIRAYA SOKULUR.
+ *
+ * storage üzerinde oku-değiştir-yaz yapıyoruz; iki eşzamanlı teslim
+ * (iki dosya aynı anda bitiyor) kilitsiz halde birbirini eziyordu: ikisi de
+ * aynı nesneyi okur, her biri kendi anahtarını ekler, ikinci yazma birincinin
+ * kaydını siler. Kaydı silinen iş 'delivered' haberini hiç alamaz ve sonsuza
+ * kadar 'finalizing'de kalır. (E2E S14 tam bunu yakaladı.)
+ */
+let deliveryQueue: Promise<unknown> = Promise.resolve();
+
+function withDeliveries<T>(fn: (all: Record<string, Delivery>) => T | Promise<T>): Promise<T> {
+  const next = deliveryQueue.then(async () => {
+    const all = ((await chrome.storage.session.get(DELIVERIES_KEY))[DELIVERIES_KEY] ?? {}) as
+      Record<string, Delivery>;
+    const out = await fn(all);
+    await chrome.storage.session.set({ [DELIVERIES_KEY]: all });
+    return out;
+  });
+  // Kuyruk bir hatayla kilitlenmesin
+  deliveryQueue = next.catch(() => undefined);
+  return next;
+}
+
+const getDelivery = (id: number): Promise<Delivery | undefined> =>
+  withDeliveries((all) => all[String(id)]);
+
+const setDelivery = (id: number, d: Delivery): Promise<void> =>
+  withDeliveries((all) => { all[String(id)] = d; });
+
+const dropDelivery = (id: number): Promise<void> =>
+  withDeliveries((all) => { delete all[String(id)]; });
 
 /** Kalıcı geçmiş — gizli indirmeler ASLA yazılmaz. */
 async function recordHistory(id: number, d: Delivery, filename: string): Promise<void> {
@@ -498,7 +594,7 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
             filename: routeByType(raw.filename, settings.typeFolders, CATEGORY_NAMES),
             conflictAction: 'uniquify',
           });
-          deliveries.set(id, {
+          await setDelivery(id, {
             jobId: raw.jobId, size: raw.size, topSpeed: raw.topSpeed,
             priv: raw.priv ?? false, origin: raw.origin, sender: raw.sender,
           });
@@ -512,7 +608,20 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
       }
       case 'native-fallback': {
         markOwn(raw.url); // devralma bunu tekrar yakalayıp döngü kurmasın
-        await chrome.downloads.download({ url: raw.url }).catch(() => undefined);
+        // Sonucu İZLEMEK zorundayız: eskiden hata yutuluyordu ve motor işi
+        // 'done' sayıyordu — süresi dolmuş bir linkte kullanıcı yeşil
+        // "Tamamlandı" kartı görüp dosyanın indiğini sanıyordu.
+        try {
+          const id = await chrome.downloads.download({ url: raw.url });
+          await setDelivery(id, {
+            jobId: raw.jobId, size: 0, topSpeed: 0, priv: false, native: true,
+          });
+        } catch (err) {
+          void chrome.runtime.sendMessage({
+            target: 'engine', type: 'delivered', jobId: raw.jobId,
+            ok: false, error: err instanceof Error ? err.message : String(err),
+          } satisfies Msg).catch(() => undefined);
+        }
         break;
       }
       case 'keepawake': {
@@ -525,14 +634,15 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
 });
 
 chrome.downloads.onChanged.addListener((delta) => {
-  const delivery = deliveries.get(delta.id);
+  void (async () => {
+  const delivery = await getDelivery(delta.id);
   if (!delivery) return;
   // Safe Browsing teslim yolumuzu DA tarar (Chromium: blob: şeması bilinçli
   // olarak whitelist'te). Tehlikeli bulunursa indirme askıya alınır —
   // sessizce takılı kalmasın, kullanıcıya söyle.
   const danger = delta.danger?.current;
   if (danger && danger !== 'safe' && danger !== 'accepted') {
-    deliveries.delete(delta.id);
+    await dropDelivery(delta.id);
     void chrome.runtime.sendMessage({
       target: 'engine', type: 'delivered', jobId: delivery.jobId,
       ok: false, error: 'errBlocked',
@@ -544,7 +654,7 @@ chrome.downloads.onChanged.addListener((delta) => {
     return;
   }
   if (delta.state?.current === 'complete') {
-    deliveries.delete(delta.id);
+    await dropDelivery(delta.id);
     if (delivery.priv) {
       // gizli: geçmiş kaydı silinir, istatistik/parti yok, panel Aç butonu almaz
       void chrome.downloads.erase({ id: delta.id }).catch(() => undefined);
@@ -563,10 +673,11 @@ chrome.downloads.onChanged.addListener((delta) => {
       }).catch(() => celebrate(delta.id, '', delivery.size));
     }
   } else if (delta.state?.current === 'interrupted') {
-    deliveries.delete(delta.id);
+    await dropDelivery(delta.id);
     void chrome.runtime.sendMessage({
       target: 'engine', type: 'delivered', jobId: delivery.jobId, ok: false,
       error: delta.error?.current ?? 'interrupted',
     } satisfies Msg).catch(() => undefined);
   }
+  })();
 });

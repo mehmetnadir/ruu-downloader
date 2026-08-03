@@ -71,6 +71,9 @@ const server = http.createServer(async (req, res) => {
   }
   const size = Number(m[1]) * 1024 * 1024;
   const rate = Number(url.searchParams.get('rate') ?? 0) * 1024 * 1024; // B/s
+  // ?probeDelay=ms → ilk baytı geciktirir. İptal-sırasında-probe yarışını
+  // deterministik biçimde tetiklemek için (S13).
+  const probeDelay = Number(url.searchParams.get('probeDelay') ?? 0);
 
   // ?key=X&failAfterReq=N → aynı key'e N istekten sonra 403 HTML (imzalı URL süresi doldu)
   const key = url.searchParams.get('key');
@@ -82,6 +85,9 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(403, { 'Content-Type': 'text/html' }).end('<html>link expired</html>');
       return;
     }
+  }
+  if (probeDelay > 0) {
+    await new Promise((r) => setTimeout(r, probeDelay));
   }
   // ?digest=1 → doğru sha-256, ?digest=bad → kasten yanlış (RFC 9530)
   const digestMode = url.searchParams.get('digest');
