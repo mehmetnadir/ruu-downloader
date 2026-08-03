@@ -5,7 +5,7 @@
 **The download manager Chrome deserves — segmented speed, unkillable resume, zero telemetry.**
 
 [![CI-ready E2E](https://img.shields.io/badge/E2E-10%20scenarios-7fb069)](test/e2e/run.sh)
-[![Unit tests](https://img.shields.io/badge/unit-97%20passing-7fb069)](test/)
+[![Unit tests](https://img.shields.io/badge/unit-99%20passing-7fb069)](test/)
 [![Languages](https://img.shields.io/badge/i18n-11%20languages-e8a33d)](public/_locales/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-e8a33d)](LICENSE)
 [![Privacy](https://img.shields.io/badge/telemetry-zero-16130f)](PRIVACY.md)
@@ -51,8 +51,25 @@ modern web platform primitives — no native app, no companion daemon, no ads, n
   Blind parallelism *costs* you on a link that's already fast: six TCP slow-starts and
   six handshakes buy nothing, and on HTTP/2 the six "connections" are multiplexed onto one
   transport sharing one fixed flow-control window. Fixed-count competitors (IDM's 8/16/32,
-  Turbo Download Manager's 3) open the same connections regardless. Ruu ramps, so it takes
-  the ×1.78 where it exists and stays out of its own way where it doesn't.
+  Turbo Download Manager's 3) open the same connections regardless.
+
+  Then we measured the *whole curve* (n=1…6) and found it's **noisy** — the same host,
+  minutes apart, dipped at n=3 and recovered at n=4. A greedy climb stops in that dip. So
+  the ramp probes past one bad reading and, when it settles, **falls back to the best count
+  it actually observed** (in-flight connections aren't aborted; the count decays as segments
+  finish, so no byte is wasted). Validated against live curves with
+  [`test/field/ramp-curve.mjs`](test/field/ramp-curve.mjs), which imports the production
+  decision code rather than re-implementing it:
+
+  | Host | Ramp settles at | vs. best observed | vs. fixed-6 |
+  |---|---|---|---|
+  | Catbox | n=4 (2.78 MB/s) | 100% | **×1.64** |
+  | ThinkBroadband | n=5 (22.35 MB/s) | 100% | **×1.97** |
+
+  *Honest caveat:* "100%" means the ramp landed on the best point **it observed** — with a
+  noisy signal that's not proof of the true optimum. The guarantee we do claim is weaker and
+  more useful: the ramp never settles worse than the best reading it saw, so it cannot get
+  stuck below a fixed count the way a greedy climb can.
 - 💾 **Crash-proof resume** — acknowledged byte ranges are journaled; even a hard
   browser crash resumes byte-exact, with ETag/Last-Modified validation.
 - 🔗 **Expired-link rescue** — signed CDN URL died at 95%? Paste a fresh link;
@@ -117,7 +134,7 @@ Chrome 137+ removed `--load-extension` (E2E loads via CDP `Extensions.loadUnpack
 
 ## Testing
 
-Nothing ships untested — 97 unit tests plus a one-command E2E harness that drives a
+Nothing ships untested — 99 unit tests plus a one-command E2E harness that drives a
 real Chromium against a throttled, fault-injecting local server:
 
 ```bash

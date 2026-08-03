@@ -147,3 +147,37 @@ Sabit sayı kullanan rakipler (IDM 8/16/32, Turbo DM 3) bu ayrımı yapmıyor.
 **Bu ölçümün sınırı:** 3 host, tek ağ (Türkiye, ev bağlantısı), tek zaman dilimi.
 Eğilimi gösteriyor, evrensel bir sabit vermiyor. Daha fazla host eklendikçe bu tablo
 büyümeli.
+
+### Eğri ölçümü ve rampanın doğrulanması
+
+İlk rampa (eşik %12, geri çekilme yok) gerçek eğride **erken duruyordu**: Catbox'ta
+n=3'te kalıp tavanın %83'ünü alıyordu. Nedenini görmek için tam eğri (n=1..6) ölçüldü
+ve asıl sorun ortaya çıktı — **eğri gürültülü**:
+
+    Catbox, aynı dosya, dakikalar arayla:
+    koşum A:  1,65 → 2,17 → 2,36 → 2,85 → 2,85 → 2,84
+    koşum B:  1,52 → 2,03 → **1,64** → 2,55 → 2,86 → 2,17
+    koşum C:  1,79 → 2,21 → **1,02** → 2,78 → 0,91 → 1,69
+
+n=3'teki çukur gerçek bir tavan değil, ölçüm gürültüsü. Açgözlü tırmanış orada duruyordu.
+
+**Üç düzeltme:** eşik %12→%5, bir çukuru geçecek kadar sabır (PATIENCE=2), ve en
+önemlisi **en iyi gözlenen noktaya geri çekilme** — uçuştaki bağlantılar iptal edilmez,
+sadece yenisi doğurulmaz, sayı segmentler bittikçe kendiliğinden düşer.
+
+Canlı eğride sonuç (`test/field/ramp-curve.mjs` — karar mantığını KOPYALAMAZ, üretim
+kodunu import eder, yoksa simülatör sessizce ayrışır):
+
+| Host | Rampa durduğu yer | Gözlenen en iyinin | Sabit-6'ya karşı |
+|---|---|---|---|
+| Catbox | n=4 (2,78 MB/s) | %100'ü | **×1,64** |
+| ThinkBroadband | n=5 (22,35 MB/s) | %100'ü | **×1,97** |
+
+**Dürüst kayıt:** "%100" = rampa **gözlediği** en iyi noktaya oturdu. Gürültülü sinyalde
+bu gerçek optimumun kanıtı değildir. İddia ettiğimiz garanti daha zayıf ama daha
+kullanışlı: rampa gördüğü en iyi okumadan daha kötüye yerleşmez — yani açgözlü bir
+tırmanışın takılabildiği yerde takılamaz.
+
+**Yan bulgu:** sabit-6 iki hostta da kaybetti (×1,64 ve ×1,97 fark). Yani "her zaman
+maksimum bağlantı" yalnızca hızlı CDN'lerde değil, gürültülü paylaşım hostlarında da
+yanlış — çünkü 6 bağlantı hostun kendi kısıtlayıcısını tetikleyebiliyor.

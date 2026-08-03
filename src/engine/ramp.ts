@@ -22,14 +22,39 @@ export interface RampState {
   speedBeforeLastAdd: number;
   /** Rampa durdu mu (ekleme fayda etmedi) */
   settled: boolean;
+  /** Üst üste kaç ekleme fayda etmedi (gürültü toleransı) */
+  misses: number;
+  /** Şimdiye kadarki en iyi hız ve o hızı veren bağlantı sayısı */
+  bestSpeed: number;
+  bestN: number;
 }
 
 export const RAMP_START: RampState = {
-  active: 0, lastSpeed: 0, speedBeforeLastAdd: 0, settled: false,
+  active: 0, lastSpeed: 0, speedBeforeLastAdd: 0, settled: false, misses: 0, bestSpeed: 0, bestN: 0,
 };
 
-/** Ekleme faydalı sayılması için gereken en az iyileşme (%12). */
-const MIN_GAIN = 1.12;
+/**
+ * Ekleme faydalı sayılması için gereken en az iyileşme (%5).
+ *
+ * Neden bu kadar düşük? Gerçek eğri ölçüldüğünde (Catbox, n=1..6) azalan ama
+ * HÂLÂ GERÇEK getiri görüldü: 1,65 → 2,17 → 2,36 → 2,85 MB/s. %12'lik eşik
+ * 2→3 adımını (%8,8) reddedip n=3'te duruyordu — tavanın %83'ü.
+ * Eşiği düşürmek tek başına riskli olurdu (hızlı hatta gereksiz bağlantı),
+ * ama aşağıdaki GERİ ÇEKİLME bunu güvenli kılıyor: fazla gidilirse en iyi
+ * noktaya dönülür. Yani "yanılmak ucuz" olduğu için cesur davranabiliyoruz.
+ */
+const MIN_GAIN = 1.05;
+
+/**
+ * Kaç başarısız denemeden sonra rampa kapanır.
+ *
+ * Neden 1 değil? Gerçek eğri ÖLÇÜLDÜĞÜNDE gürültülü çıktı (Catbox, aynı dosya,
+ * dakikalar arayla): 1,52 → 2,03 → **1,64** → 2,55 → 2,86 → 2,17 MB/s.
+ * n=3'teki çukur gerçek bir tavan değil, ölçüm gürültüsü — açgözlü bir tırmanış
+ * orada durup tavanın %57'sinde kalıyordu. Bir çukuru "yoklama" ile geçmek,
+ * geri çekilme zaten güvenlik ağı olduğu için bedavaya yakın.
+ */
+const PATIENCE = 2;
 
 /**
  * Bir sonraki adımda bağlantı eklenmeli mi?
@@ -45,8 +70,9 @@ export function shouldAddConnection(
   if (state.active === 0) return true;              // ilk pompa
   if (currentSpeed <= 0) return false;              // henüz ölçüm yok
   if (state.speedBeforeLastAdd === 0) return true;  // ikinci pompayı dene
-  // Son ekleme yeterince iyileştirdiyse devam et, etmediyse dur
-  return currentSpeed >= state.speedBeforeLastAdd * MIN_GAIN;
+  if (currentSpeed >= state.speedBeforeLastAdd * MIN_GAIN) return true;
+  // İyileşme yok — ama sabır bitmediyse bir kez daha yokla (gürültü olabilir)
+  return state.misses + 1 < PATIENCE;
 }
 
 /** Ekleme kararından sonra durumu ilerletir. */
@@ -55,15 +81,30 @@ export function afterDecision(
   currentSpeed: number,
   added: boolean,
 ): RampState {
+  // Her ölçümde en iyi noktayı hatırla — geri çekilmenin dayanağı bu.
+  const better = currentSpeed > state.bestSpeed;
+  const bestSpeed = better ? currentSpeed : state.bestSpeed;
+  const bestN = better ? state.active : state.bestN;
+
+  const improved = state.speedBeforeLastAdd === 0
+    || currentSpeed >= state.speedBeforeLastAdd * MIN_GAIN;
+
   if (added) {
     return {
       active: state.active + 1,
       lastSpeed: currentSpeed,
       speedBeforeLastAdd: currentSpeed,
       settled: false,
+      misses: improved ? 0 : state.misses + 1,
+      bestSpeed,
+      bestN,
     };
   }
-  // Eklemedik: eğer sebebi "fayda yok" ise rampayı kapat (üst sınır değilse)
+
   const settled = state.active > 0 && currentSpeed > 0;
-  return { ...state, lastSpeed: currentSpeed, settled };
+  // GERİ ÇEKİLME: son eklemeler zarar verdiyse en iyi bilinen sayıya dön.
+  // Uçuştaki bağlantılar iptal EDİLMEZ — sadece yenisi doğurulmaz, sayı
+  // segmentler bittikçe kendiliğinden düşer. Böylece hiçbir bayt boşa gitmez.
+  const active = settled && bestN > 0 && bestN < state.active ? bestN : state.active;
+  return { ...state, active, lastSpeed: currentSpeed, settled, bestSpeed, bestN };
 }

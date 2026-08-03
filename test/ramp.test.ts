@@ -14,9 +14,22 @@ function simulate(speedFor: (n: number) => number, max = 6): number {
 }
 
 describe('adaptif bağlantı rampası', () => {
-  it('HIZLI HAT: ekleme fayda etmiyorsa tek bağlantıda kalır (ThinkBroadband profili)', () => {
-    // 1→41, 2→40, 3→38 … eklemek kötüleştiriyor
-    expect(simulate((n) => 41 - (n - 1) * 2)).toBeLessThanOrEqual(2);
+  it('HIZLI HAT: ekleme kötüleştiriyorsa TEK bağlantıya geri çekilir (ThinkBroadband profili)', () => {
+    // 1→41, 2→39, 3→37 … her ekleme zarar; en iyi n=1, oraya dönmeli
+    expect(simulate((n) => 41 - (n - 1) * 2)).toBe(1);
+  });
+
+  it('GÜRÜLTÜLÜ EĞRİ: ara çukuru yoklayıp geçer (gerçek Catbox ölçümü 2026-08-03)', () => {
+    // n=3'teki düşüş gerçek tavan değil, ölçüm gürültüsü
+    const measured = [0, 1.52, 2.03, 1.64, 2.55, 2.86, 2.17];
+    const n = simulate((k) => measured[k] ?? 0);
+    // en iyi 2,85 — %95'inden fazlasını yakalamalı
+    expect((measured[n] ?? 0) / 2.86).toBeGreaterThan(0.95);
+  });
+
+  it('geri çekilme: 4. bağlantı zarar verirse 3\'e döner', () => {
+    // 1→2, 2→4, 3→6, 4→3 (çöküş)
+    expect(simulate((n) => (n <= 3 ? n * 2 : 3))).toBe(3);
   });
 
   it('PAYLAŞIM HOSTU: bağlantı başına kısıtlıysa tavana çıkar (Catbox profili)', () => {
@@ -33,7 +46,7 @@ describe('adaptif bağlantı rampası', () => {
   });
 
   it('doyduktan sonra bir daha eklemez', () => {
-    const settled: RampState = { active: 3, lastSpeed: 10, speedBeforeLastAdd: 10, settled: true };
+    const settled: RampState = { ...RAMP_START, active: 3, lastSpeed: 10, speedBeforeLastAdd: 10, settled: true };
     expect(shouldAddConnection(settled, 10, 6)).toBe(false);
   });
 });
