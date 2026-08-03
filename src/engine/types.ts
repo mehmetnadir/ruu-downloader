@@ -47,6 +47,7 @@ export type Msg =
   | { target: 'engine'; type: 'query' }
   | { target: 'engine'; type: 'delivered'; jobId: string; ok: boolean; error?: string; downloadId?: number }
   | { target: 'engine'; type: 'settings'; maxRetries: number; queueLimit?: number }
+  | { target: 'engine'; type: 'deliver-ack'; jobId: string }
   | { target: 'engine'; type: 'renew'; jobId: string; url: string }
   // engine/panel → sw
   | { target: 'sw'; type: 'add'; url: string; connections?: number; filenameHint?: string; priv?: boolean; origin?: string; sender?: string }

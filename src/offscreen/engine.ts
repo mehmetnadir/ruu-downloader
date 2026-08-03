@@ -29,6 +29,8 @@ const BACKPRESSURE_HIGH = 32 << 20;
 const BACKPRESSURE_LOW = 8 << 20;
 const SPEED_WINDOW_MS = 3000;
 const DELIVERY_TIMEOUT_MS = 10 * 60_000;
+/** Teslim Chrome'a devredildikten sonraki üst sınır (kaydetme penceresi payı). */
+const DELIVERY_HANDOFF_MS = 6 * 60 * 60_000;
 /** Bütünlük doğrulaması için üst sınır — üstünde OOM riski (bkz. finalize). */
 const DIGEST_MAX_BYTES = 512 * 1024 * 1024;
 const META_INTERVAL_MS = 2000;
@@ -474,11 +476,21 @@ class Job {
    * ve OPFS verisi silinmez. 10 dk sonra hatayla kapat; kullanıcı en azından
    * "Yenile" görebilsin.
    */
-  private armDeliveryWatchdog(): void {
+  private armDeliveryWatchdog(ms = DELIVERY_TIMEOUT_MS): void {
     if (this.deliveryTimer) clearTimeout(this.deliveryTimer);
     this.deliveryTimer = setTimeout(() => {
       if (this.state === 'finalizing') void this.delivered(false, 'errDelivery');
-    }, DELIVERY_TIMEOUT_MS);
+    }, ms);
+  }
+
+  /**
+   * SW `downloads.download()` çağrısını başarıyla yaptı — teslim Chrome'a geçti.
+   * Kısa bekçi artık yanlış: kullanıcının kaydetme penceresi dakikalarca açık
+   * kalabilir ve bu bir arıza değildir. Yine de tamamen bırakmıyoruz; SW ölür
+   * ve tamamlanma haberi hiç gelmezse iş sonsuza kadar asılı kalmasın.
+   */
+  deliverAck(): void {
+    if (this.state === 'finalizing') this.armDeliveryWatchdog(DELIVERY_HANDOFF_MS);
   }
 
   async delivered(ok: boolean, error?: string, downloadId?: number): Promise<void> {
@@ -869,5 +881,6 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
       break;
     }
     case 'renew': void jobs.get(raw.jobId)?.renew(raw.url); break;
+    case 'deliver-ack': jobs.get(raw.jobId)?.deliverAck(); break;
   }
 });

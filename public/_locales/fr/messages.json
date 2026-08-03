@@ -326,5 +326,9 @@
   "errUnknown": {
     "message": "Enregistrement impossible",
     "description": "Generic wrapper for an untranslated engine/Chrome error"
+  },
+  "errSaveCancelled": {
+    "message": "Emplacement non choisi",
+    "description": "User dismissed the Save As dialog"
   }
 }

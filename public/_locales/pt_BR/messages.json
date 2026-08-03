@@ -326,5 +326,9 @@
   "errUnknown": {
     "message": "Não foi possível salvar",
     "description": "Generic wrapper for an untranslated engine/Chrome error"
+  },
+  "errSaveCancelled": {
+    "message": "Local de salvamento não escolhido",
+    "description": "User dismissed the Save As dialog"
   }
 }

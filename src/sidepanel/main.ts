@@ -23,7 +23,10 @@ for (const el of document.querySelectorAll<HTMLInputElement>('[data-i18n-ph]')) 
   el.placeholder = t(el.dataset['i18nPh']!);
 }
 /** Motor hata anahtarlarını yerelleştir; bilinmeyenler ham geçer. */
-const ERR_KEYS = new Set(['errChanged', 'errCancelled', 'errAllDown', 'errDelivery', 'errBlocked', 'errDigest']);
+const ERR_KEYS = new Set([
+  'errChanged', 'errCancelled', 'errAllDown', 'errDelivery',
+  'errBlocked', 'errDigest', 'errSaveCancelled',
+]);
 /**
  * Hata metnini kullanıcının dilinde gösterir.
  *
@@ -408,7 +411,9 @@ function actionButtons(job: JobSnapshot): string {
   if (job.state === 'error' && !job.native) {
     out += btn('renew', 'id', job.id, t('renewT'), icons.refresh);
   }
-  if (job.state === 'done' && job.downloadId !== undefined && !job.native) {
+  // native işler de artık downloads.onChanged üzerinden izleniyor (bulgu 5),
+  // yani downloadId'leri var — Aç/Klasörde göster onlarda da çalışır.
+  if (job.state === 'done' && job.downloadId !== undefined) {
     out += btn('open', 'dlid', job.downloadId, t('openFile'), icons.open);
     out += btn('show', 'dlid', job.downloadId, t('showFolder'), icons.show);
   }

@@ -326,5 +326,9 @@
   "errUnknown": {
     "message": "सहेजा नहीं जा सका",
     "description": "Generic wrapper for an untranslated engine/Chrome error"
+  },
+  "errSaveCancelled": {
+    "message": "सहेजने का स्थान नहीं चुना गया",
+    "description": "User dismissed the Save As dialog"
   }
 }

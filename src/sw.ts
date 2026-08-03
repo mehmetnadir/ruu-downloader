@@ -30,7 +30,10 @@ void loadState().then((s) => {
 const settings = {
   takeover: true,
   takeoverMinMB: 10,
-  typeFolders: true,
+  // Varsayılan KAPALI: kullanıcı aksini söylemedikçe dosya tam olarak
+  // Chrome'un koyacağı yere iner. Açıksa Downloads/Ruu/<kategori>/ altına
+  // yönlendirilir — bu bir ek özellik, varsayılan davranış değil.
+  typeFolders: false,
   defaultExperience: false, // Chrome'un indirme balonunu gizle → Ruu varsayılan UI
   maxRetries: 1,
   queueLimit: 0, // 0 = sınırsız; kuyruk tamamen eklenti içinde çalışır
@@ -283,7 +286,10 @@ function celebrate(downloadId: number, filename = '', size = 0): void {
         iconUrl: 'icons/icon128.png',
         title: t('nTitle'),
         message: t('nMsg'),
-        buttons: [{ title: t('nOpen') }],
+        // İki eylem: dosyayı aç · klasörde göster (dosyanın NEREYE indiğini
+        // görmek, açmak kadar sık istenen şey — özellikle "her seferinde sor"
+        // kapalıyken kullanıcı konumu bilmiyor olabilir.)
+        buttons: [{ title: t('nOpen') }, { title: t('showFolder') }],
       }).catch(() => undefined);
       break;
   }
@@ -519,11 +525,15 @@ function closeShareTabsAfterDownload(): void {
   shareTabs.clear();
 }
 
-chrome.notifications.onButtonClicked.addListener((notificationId) => {
+chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
   const m = notificationId.match(/^ruu-dl-(\d+)$/);
-  if (m) {
-    try { chrome.downloads.open(Number(m[1])); } catch { /* dosya taşınmış olabilir */ }
-  }
+  if (!m) return;
+  const id = Number(m[1]);
+  try {
+    // 0 = Aç · 1 = Klasörde göster
+    if (buttonIndex === 1) chrome.downloads.show(id);
+    else chrome.downloads.open(id);
+  } catch { /* dosya taşınmış olabilir */ }
 });
 
 chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
@@ -612,6 +622,10 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
           let lastErr: unknown;
           for (const filename of attempts) {
             try {
+              // `saveAs` BİLİNÇLİ olarak geçilmiyor. Geçmek, kullanıcının
+              // Chrome ayarındaki "Her dosya için kaydetme yerini sor"
+              // tercihini EZERDİ. Atlayınca kararı Chrome verir: ayar açıksa
+              // kaydetme penceresi çıkar, kapalıysa varsayılan klasöre iner.
               id = await chrome.downloads.download({
                 url: raw.blobUrl, filename, conflictAction: 'uniquify',
               });
@@ -619,6 +633,14 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
             } catch (err) { lastErr = err; }
           }
           if (id === undefined) throw lastErr ?? new Error('errDelivery');
+          // Teslim Chrome'a DEVREDİLDİ. Bundan sonrası Chrome'un ve kullanıcının
+          // işi: "her dosya için sor" açıksa dosya kaydetme penceresi açık
+          // kaldığı sürece indirme in_progress'te bekler. Motorun kısa teslim
+          // bekçisi bunu "kayıp mesaj" sanıp işi düşürüyordu — saha ölçümüyle
+          // yakalandı (test/field/save-prompt.sh).
+          void chrome.runtime.sendMessage({
+            target: 'engine', type: 'deliver-ack', jobId: raw.jobId,
+          } satisfies Msg).catch(() => undefined);
           await setDelivery(id, {
             jobId: raw.jobId, size: raw.size, topSpeed: raw.topSpeed,
             priv: raw.priv ?? false, origin: raw.origin, sender: raw.sender,
@@ -699,9 +721,13 @@ chrome.downloads.onChanged.addListener((delta) => {
     }
   } else if (delta.state?.current === 'interrupted') {
     await dropDelivery(delta.id);
+    // "Her dosya için sor" açıkken kullanıcı pencereyi kapatırsa Chrome
+    // USER_CANCELED döner. Bu bir HATA değil, bir karardır: veri OPFS'te
+    // durur, kart "Yeniden dene" ile aynı dosyayı yeniden teslim edebilir.
+    const raw = delta.error?.current ?? 'interrupted';
     void chrome.runtime.sendMessage({
       target: 'engine', type: 'delivered', jobId: delivery.jobId, ok: false,
-      error: delta.error?.current ?? 'interrupted',
+      error: raw === 'USER_CANCELED' ? 'errSaveCancelled' : raw,
     } satisfies Msg).catch(() => undefined);
   }
   })();

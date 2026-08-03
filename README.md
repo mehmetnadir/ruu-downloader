@@ -75,6 +75,12 @@ modern web platform primitives — no native app, no companion daemon, no ads, n
   up its slot to the next one. This runs entirely inside the extension — there
   is no daemon to install, no port to configure, nothing to trust but the
   extension you already reviewed.
+- 📁 **Your Chrome settings win** — Ruu passes no `saveAs` flag, so Chrome decides:
+  if you have *"Ask where to save each file"* on, you get the dialog; if not, the file
+  lands in your normal download folder. Type-based subfolders exist but are **off by
+  default** — out of the box a Ruu download goes exactly where a Chrome download goes.
+  Verified empirically, not assumed: [`test/field/save-prompt.sh`](test/field/save-prompt.sh)
+  writes the preference into a fresh profile and checks that the prompt actually appears.
 - 💾 **Crash-proof resume** — acknowledged byte ranges are journaled; even a hard
   browser crash resumes byte-exact, with ETag/Last-Modified validation.
 - 🔗 **Expired-link rescue** — signed CDN URL died at 95%? Paste a fresh link;

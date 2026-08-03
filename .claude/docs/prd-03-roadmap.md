@@ -577,3 +577,32 @@ güvenlik anlatısı olarak değersizdir.
 
 **Durum:** Faz 1 (eklenti içi kuyruk) TAMAMLANDI. aria2 arka ucu sıraya alındı,
 öncelik Beam Durable Object göçünün ardında.
+
+---
+
+## Kaydetme yeri davranışı — ölçüldü (2026-08-03)
+
+**Kural:** `downloads.download()` çağrısına `saveAs` GEÇİLMEZ. Geçmek kullanıcının
+Chrome ayarındaki "Her dosya için kaydetme yerini sor" tercihini ezerdi.
+
+Chrome belgeleri atlanan `saveAs`'ın davranışını açıkça yazmıyor (yalnızca
+true/false anlatılıyor), o yüzden **ölçtük** — `test/field/save-prompt.sh`:
+taze profile `download.prompt_for_download = true` yazılır, bir teslim tetiklenir.
+
+Sonuç:
+```
+chrome.downloads kayıtları: [{"s":"in_progress","f":"","b":3145728}]
+motor iş durumu: finalizing
+→ kaydetme penceresi AÇILDI, tercihe saygı duyuluyor
+```
+(dosya adı boş + baytlar tam = pencere bekleniyor)
+
+**Ölçüm bir hata da buldu:** pencere açıkken iş `finalizing`'de bekliyor ve 10
+dakikalık teslim bekçisi onu düşürüyordu — kullanıcı pencereyi açık bırakıp
+uzaklaşırsa indirmesi hata veriyordu. Düzeltme: SW `downloads.download()`
+başarılı olunca motora `deliver-ack` gönderir, motor bekçiyi 6 saate uzatır
+(tamamen kaldırmıyoruz: SW ölür ve haber hiç gelmezse iş asılı kalmasın).
+
+**Tür klasörleri artık VARSAYILAN KAPALI.** Kutudan çıktığı hâliyle bir Ruu
+indirmesi tam olarak bir Chrome indirmesinin gideceği yere gider; `Ruu/<kategori>/`
+altına yönlendirme kullanıcının açtığı bir ek özelliktir.

@@ -326,5 +326,9 @@
   "errUnknown": {
     "message": "تعذّر الحفظ",
     "description": "Generic wrapper for an untranslated engine/Chrome error"
+  },
+  "errSaveCancelled": {
+    "message": "لم يتم اختيار موقع الحفظ",
+    "description": "User dismissed the Save As dialog"
   }
 }

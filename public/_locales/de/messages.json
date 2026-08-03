@@ -326,5 +326,9 @@
   "errUnknown": {
     "message": "Konnte nicht gespeichert werden",
     "description": "Generic wrapper for an untranslated engine/Chrome error"
+  },
+  "errSaveCancelled": {
+    "message": "Speicherort wurde nicht gewählt",
+    "description": "User dismissed the Save As dialog"
   }
 }
