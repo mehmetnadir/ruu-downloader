@@ -32,6 +32,8 @@ const settings = {
   typeFolders: true,
   defaultExperience: false, // Chrome'un indirme balonunu gizle → Ruu varsayılan UI
   maxRetries: 1,
+  queueLimit: 0, // 0 = sınırsız; kuyruk tamamen eklenti içinde çalışır
+
   notifyMode: 'notify' as 'silent' | 'notify' | 'party' | 'tab',
   partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   openWhenDone: false,
@@ -41,6 +43,7 @@ const settings = {
 function pushEngineSettings(): void {
   void chrome.runtime.sendMessage({
     target: 'engine', type: 'settings', maxRetries: settings.maxRetries,
+    queueLimit: settings.queueLimit,
   } satisfies Msg).catch(() => undefined);
 }
 

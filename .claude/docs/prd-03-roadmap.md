@@ -510,3 +510,70 @@ Varsayılan kota = toplam diskin %60'ı (0.8 havuz × 0.75 origin). `unlimitedSt
 kotayı ve eviction'ı kaldırıyor (kaynak kodda doğrulandı: `IsStorageUnlimited`
 → `kNoLimit`) — biz bu izne zaten sahibiz. Saha raporları çelişkili olduğu için
 `navigator.storage.persist()` de çağrılıyor (kemer + askı).
+
+---
+
+## Yerel yardımcı program kararı (2026-08-03)
+
+**Soru:** Kuyruk mekanizmasının çalışması için kullanıcılara küçük bir yerel
+program kurdurmalı mıyız?
+
+**Cevap: Hayır — çünkü kuyruk buna ihtiyaç duymuyor, ve zorunlu kurulum ana
+iddiamızı öldürüyor.**
+
+### Premis kontrolü: kuyruk yerel program gerektirmiyor
+
+Eşzamanlılık sınırı ("3 tanesi insin, kalanı beklesin") tamamen eklenti içinde
+uygulanır — `src/engine/queue.ts` + offscreen motor. Uygulandı, E2E S16 ile
+doğrulandı. Yerel programın gerçekten açtığı kapılar dar:
+
+| Gerçekten yerel program gerektirir | Neden |
+|---|---|
+| Tarayıcı KAPANDIKTAN sonra indirmenin sürmesi | tarayıcı yoksa eklenti de yok |
+| Chrome kapalıyken zamanlanmış indirme | `chrome.alarms` tarayıcı açıkken çalışır |
+| Host başına 6'dan fazla bağlantı | `g_max_sockets_per_group` tarayıcı sabiti |
+| 2× tepe disk kullanımını bitirmek | OPFS → blob → İndirilenler devri |
+
+Yani ihtiyaç "kuyruk çalışsın" değil, **"ben yokken de çalışsın"**.
+
+### Zorunlu kurulumun ölçülen bedeli
+
+| Ürün | Model | Kullanıcı |
+|---|---|---|
+| Aria2 Explorer | eklenti + ayrı daemon | **80 bin** (4,6★) |
+| Chrono Download Manager | saf eklenti | **800 bin** |
+
+10× fark. Aria2 Explorer'ın puanı yüksek — yani ürün iyi, kaybettiği yer
+kurulum. Yorumlar bunu doğruluyor: "aria2'ye bağlanamıyorum", "kurulum kısmı
+kafa karıştırıcı", "her açılışta yeniden ayarlamak zorunda kalıyorum".
+
+Ve konumlandırmamız (comparison.md ile doğrulandı) tam olarak
+*"paylaşım linki → mailden tek tıkla, KURULUMSUZ, izsiz"*. IDM zaten var;
+ondan farkımız kurulum istememek.
+
+### Karar: kendi ikili dosyamızı YAZMAYIZ
+
+Yazsaydık: Apple notarization (~$99/yıl), Windows EV sertifikası (~$300/yıl),
+otomatik güncelleme altyapısı, tedarik zinciri saldırı yüzeyi — ve en kötüsü,
+kullanıcıdan BİZE güvenmesini istemek. "Güvenli, söz veriyorum" cümlesi indirme
+yöneticisi kategorisinde tam olarak kötü yazılımın kullandığı cümledir; bir
+güvenlik anlatısı olarak değersizdir.
+
+**Bunun yerine, isteğe bağlı arka uç olarak `aria2` konuşulur:**
+- 20 yıllık, açık kaynak, Debian/Homebrew/winget paketlerinde hazır
+- JSON-RPC arayüzü var (localhost:6800), Aria2 Explorer'ın 80 bin kullanıcısı
+  bu protokolün CWS incelemesinden geçtiğini kanıtlıyor
+- Kullanıcı bizden hiçbir ikili dosya indirmez → güvenlik anlatımı kanıt
+  gerektirmez; biz kendimize güvenilmesini istemiyoruz
+- aria2 zaten >6 bağlantı, zamanlama, bant genişliği sınırı yapıyor
+
+**Uygulama kuralları:**
+1. **Otomatik algıla** — aria2 RPC erişilebilirse "gözetimsiz mod" rozetini
+   göster. Erişilemiyorsa HİÇ bahsetme; kurulum dırdırı yasak.
+2. **Asla zorunlu değil** — eklenti tek başına tam işlevli kalır.
+3. **Etkileşimli indirmeler bizim motorumuzda kalır** — çökme-devam günlüğü,
+   süresi dolan link kurtarma, adaptif rampa ve Gmail akışı orada yaşıyor.
+   aria2 yalnızca gözetimsiz/zamanlanmış/çok büyük işler için devreye girer.
+
+**Durum:** Faz 1 (eklenti içi kuyruk) TAMAMLANDI. aria2 arka ucu sıraya alındı,
+öncelik Beam Durable Object göçünün ardında.

@@ -113,6 +113,10 @@
   "wProbing": {
     "message": "接続中"
   },
+  "wQueued": {
+    "message": "待機中",
+    "description": "Job is waiting for a free slot"
+  },
   "wPaused": {
     "message": "待機中"
   },
@@ -310,5 +314,13 @@
   "notVerified": {
     "message": "未検証",
     "description": "Server sent a digest but the file was too large to verify"
+  },
+  "setQueueLimit": {
+    "message": "同時ダウンロード数",
+    "description": "Settings: concurrency limit"
+  },
+  "setQueueLimitHelp": {
+    "message": "同時に実行するダウンロード数。残りは順番待ちです。追加ソフトは不要です。",
+    "description": "Settings: concurrency limit explanation"
   }
 }

@@ -113,6 +113,10 @@
   "wProbing": {
     "message": "جارٍ الاتصال"
   },
+  "wQueued": {
+    "message": "في الانتظار",
+    "description": "Job is waiting for a free slot"
+  },
   "wPaused": {
     "message": "بانتظار"
   },
@@ -310,5 +314,13 @@
   "notVerified": {
     "message": "لم يتم التحقق",
     "description": "Server sent a digest but the file was too large to verify"
+  },
+  "setQueueLimit": {
+    "message": "التنزيلات المتزامنة",
+    "description": "Settings: concurrency limit"
+  },
+  "setQueueLimitHelp": {
+    "message": "عدد التنزيلات التي تعمل في وقت واحد. ينتظر الباقي دوره. لا حاجة لبرامج إضافية.",
+    "description": "Settings: concurrency limit explanation"
   }
 }

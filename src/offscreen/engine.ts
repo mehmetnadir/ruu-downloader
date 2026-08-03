@@ -14,6 +14,7 @@ import { autoTuneConnections, collectHints, MAX_CONNECTIONS } from '../engine/au
 import { bytesToBase64, digestMatches, parseDigestHeader, type ExpectedDigest } from '../engine/digest';
 import { mergeRange, parseMeta, reconcileRanges, type JobMeta } from '../engine/manifest';
 import { afterDecision, RAMP_START, shouldAddConnection, type RampState } from '../engine/ramp';
+import { isRunning, nextToStart, shouldStartImmediately } from '../engine/queue';
 import { failThreshold } from '../engine/retry';
 import {
   MIN_SPLIT,
@@ -92,6 +93,8 @@ class Job {
   private deliveryTimer: ReturnType<typeof setTimeout> | null = null;
   /** Sunucu özet verdi ama dosya doğrulanamayacak kadar büyüktü. */
   digestSkipped = false;
+  /** Kuyruğa giriş sırası — FIFO için. */
+  readonly seq = ++queueSeq;
   downloadId?: number;
   priv = false; // gizli: geçmişe yazılmaz, istatistiğe girmez, kart kaybolur
   completedAt?: number;
@@ -495,10 +498,17 @@ class Job {
       this.error = error ?? 'errDelivery';
     }
     keepAwake();
+    pumpQueue(); // slot boşaldı → kuyruktaki sıradaki başlasın
     broadcast();
   }
 
   pause(): void {
+    if (this.state === 'queued') {
+      // Kuyrukta beklerken duraklat = "sıramı kaybetmeden beni atla"
+      this.state = 'paused';
+      broadcast();
+      return;
+    }
     if (this.state !== 'downloading') return;
     this.state = 'paused';
     this.abortConnections();
@@ -510,6 +520,7 @@ class Job {
     this.sendMeta();
     this.stopMetaTimer();
     keepAwake();
+    pumpQueue(); // duraklatılan iş slotu bırakır
     broadcast();
   }
 
@@ -596,6 +607,7 @@ class Job {
     await dir.removeEntry(`${this.id}.meta`).catch(() => undefined);
     jobs.delete(this.id);
     keepAwake();
+    pumpQueue();
     broadcast();
   }
 
@@ -621,6 +633,7 @@ class Job {
     this.stopRamp();
     this.stopMetaTimer();
     keepAwake();
+    pumpQueue(); // başarısız iş de slotu bırakır — kuyruk tıkanmasın
     broadcast();
   }
 
@@ -693,12 +706,38 @@ function send(msg: Msg): void {
   void chrome.runtime.sendMessage(msg).catch(() => undefined);
 }
 
+/**
+ * Eşzamanlılık sınırı. 0 = sınırsız. Panelden ayarlanır.
+ *
+ * Kuyruk TAMAMEN eklenti içinde çalışır — yerel bir yardımcı program
+ * gerektirmez. (Yardımcı program yalnızca "tarayıcı kapalıyken de devam et"
+ * senaryosunu açardı; sıraya alma onun parçası değil.)
+ */
+let queueLimit = 0;
+let queueSeq = 0;
+
+/** Slot boşaldığında kuyruktan sıradakileri başlatır. */
+function pumpQueue(): void {
+  const items = [...jobs.values()].map((j) => ({ id: j.id, state: j.state, seq: j.seq }));
+  for (const id of nextToStart(items, queueLimit)) {
+    const job = jobs.get(id);
+    if (!job) continue;
+    void job.start();
+  }
+}
+
 let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
 function broadcast(): void {
   if (broadcastTimer) return;
   broadcastTimer = setTimeout(() => {
     broadcastTimer = null;
-    send({ target: 'panel', type: 'jobs', jobs: [...jobs.values()].map((j) => j.snapshot()) });
+    const queued = [...jobs.values()].filter((j) => j.state === 'queued')
+      .sort((a, b) => a.seq - b.seq);
+    const pos = new Map(queued.map((j, i) => [j.id, i + 1]));
+    send({
+      target: 'panel', type: 'jobs',
+      jobs: [...jobs.values()].map((j) => ({ ...j.snapshot(), queuePos: pos.get(j.id) })),
+    });
   }, 100);
 }
 setInterval(() => {
@@ -775,7 +814,13 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
       job.origin = raw.origin;
       job.sender = raw.sender;
       jobs.set(job.id, job);
-      void job.start();
+      const items = [...jobs.values()].map((j) => ({ id: j.id, state: j.state, seq: j.seq }));
+      if (shouldStartImmediately(items.filter((i) => i.id !== job.id), queueLimit, raw.manual ?? false)) {
+        void job.start();
+      } else {
+        job.state = 'queued';
+        broadcast();
+      }
       break;
     }
     case 'pause': jobs.get(raw.jobId)?.pause(); break;
@@ -784,7 +829,14 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
     case 'pause-all': for (const j of jobs.values()) j.pause(); break;
     case 'query': broadcast(); break;
     case 'delivered': void jobs.get(raw.jobId)?.delivered(raw.ok, raw.error, raw.downloadId); break;
-    case 'settings': maxRetries = Math.min(10, Math.max(0, raw.maxRetries)); break;
+    case 'settings': {
+      maxRetries = Math.min(10, Math.max(0, raw.maxRetries));
+      if (raw.queueLimit !== undefined) {
+        queueLimit = Math.max(0, Math.min(20, raw.queueLimit));
+        pumpQueue(); // sınır büyüdüyse bekleyenler hemen başlasın
+      }
+      break;
+    }
     case 'renew': void jobs.get(raw.jobId)?.renew(raw.url); break;
   }
 });

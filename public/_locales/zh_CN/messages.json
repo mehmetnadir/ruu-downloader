@@ -113,6 +113,10 @@
   "wProbing": {
     "message": "连接中"
   },
+  "wQueued": {
+    "message": "排队中",
+    "description": "Job is waiting for a free slot"
+  },
   "wPaused": {
     "message": "等待中"
   },
@@ -310,5 +314,13 @@
   "notVerified": {
     "message": "未验证",
     "description": "Server sent a digest but the file was too large to verify"
+  },
+  "setQueueLimit": {
+    "message": "同时下载数",
+    "description": "Settings: concurrency limit"
+  },
+  "setQueueLimitHelp": {
+    "message": "同时进行的下载数量，其余排队等待。无需安装额外程序。",
+    "description": "Settings: concurrency limit explanation"
   }
 }

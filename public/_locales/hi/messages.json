@@ -113,6 +113,10 @@
   "wProbing": {
     "message": "जुड़ रहा है"
   },
+  "wQueued": {
+    "message": "कतार में",
+    "description": "Job is waiting for a free slot"
+  },
   "wPaused": {
     "message": "प्रतीक्षा में"
   },
@@ -310,5 +314,13 @@
   "notVerified": {
     "message": "सत्यापित नहीं",
     "description": "Server sent a digest but the file was too large to verify"
+  },
+  "setQueueLimit": {
+    "message": "एक साथ डाउनलोड",
+    "description": "Settings: concurrency limit"
+  },
+  "setQueueLimitHelp": {
+    "message": "एक समय में कितने डाउनलोड चलें। बाकी अपनी बारी का इंतज़ार करते हैं। कोई अतिरिक्त सॉफ़्टवेयर नहीं चाहिए।",
+    "description": "Settings: concurrency limit explanation"
   }
 }

@@ -113,6 +113,10 @@
   "wProbing": {
     "message": "Bağlanıyor"
   },
+  "wQueued": {
+    "message": "Sırada",
+    "description": "Job is waiting for a free slot"
+  },
   "wPaused": {
     "message": "Bekliyor"
   },
@@ -310,5 +314,13 @@
   "notVerified": {
     "message": "doğrulanmadı",
     "description": "Server sent a digest but the file was too large to verify"
+  },
+  "setQueueLimit": {
+    "message": "Aynı anda indirme",
+    "description": "Settings: concurrency limit"
+  },
+  "setQueueLimitHelp": {
+    "message": "Aynı anda kaç indirme çalışsın. Kalanlar sırasını bekler. Ek program gerekmez.",
+    "description": "Settings: concurrency limit explanation"
   }
 }

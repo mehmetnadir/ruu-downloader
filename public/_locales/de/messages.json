@@ -113,6 +113,10 @@
   "wProbing": {
     "message": "Verbinde"
   },
+  "wQueued": {
+    "message": "In Warteschlange",
+    "description": "Job is waiting for a free slot"
+  },
   "wPaused": {
     "message": "Wartet"
   },
@@ -310,5 +314,13 @@
   "notVerified": {
     "message": "nicht verifiziert",
     "description": "Server sent a digest but the file was too large to verify"
+  },
+  "setQueueLimit": {
+    "message": "Gleichzeitige Downloads",
+    "description": "Settings: concurrency limit"
+  },
+  "setQueueLimitHelp": {
+    "message": "Wie viele Downloads gleichzeitig laufen. Der Rest wartet. Keine Zusatzsoftware nötig.",
+    "description": "Settings: concurrency limit explanation"
   }
 }

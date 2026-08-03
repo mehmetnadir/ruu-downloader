@@ -1,4 +1,5 @@
 export type JobState =
+  | 'queued'    // kuyrukta bekliyor — eşzamanlılık sınırı dolu
   | 'probing'
   | 'downloading'
   | 'paused'
@@ -33,18 +34,19 @@ export interface JobSnapshot {
   digestSkipped?: boolean; // özet vardı ama doğrulanamadı (çok büyük / hata)
   origin?: string;        // kaynak: servis adı ya da host
   sender?: string;        // maildeki gönderen (yalnız yerelde tutulur)
+  queuePos?: number;      // 'queued' ise kuyruktaki sıra (1 tabanlı)
 }
 
 export type Msg =
   // panel/sw → engine
-  | { target: 'engine'; type: 'add'; url: string; connections?: number; filenameHint?: string; priv?: boolean; origin?: string; sender?: string }
+  | { target: 'engine'; type: 'add'; url: string; connections?: number; filenameHint?: string; priv?: boolean; origin?: string; sender?: string; manual?: boolean }
   | { target: 'engine'; type: 'pause'; jobId: string }
   | { target: 'engine'; type: 'resume'; jobId: string }
   | { target: 'engine'; type: 'cancel'; jobId: string }
   | { target: 'engine'; type: 'pause-all' }
   | { target: 'engine'; type: 'query' }
   | { target: 'engine'; type: 'delivered'; jobId: string; ok: boolean; error?: string; downloadId?: number }
-  | { target: 'engine'; type: 'settings'; maxRetries: number }
+  | { target: 'engine'; type: 'settings'; maxRetries: number; queueLimit?: number }
   | { target: 'engine'; type: 'renew'; jobId: string; url: string }
   // engine/panel → sw
   | { target: 'sw'; type: 'add'; url: string; connections?: number; filenameHint?: string; priv?: boolean; origin?: string; sender?: string }

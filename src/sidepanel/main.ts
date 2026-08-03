@@ -41,6 +41,7 @@ const SEG_BUCKETS = 48;
 /** Tek-kelime durum sözcükleri (Claude tarzı) — yerelden gelir. */
 const FLOW_WORDS = [t('f1'), t('f2'), t('f3'), t('f4'), t('f5')];
 const STATE_WORDS: Record<JobSnapshot['state'], string> = {
+  queued: t('wQueued'),
   probing: t('wProbing'),
   downloading: FLOW_WORDS[0]!,
   paused: t('wPaused'),
@@ -98,6 +99,7 @@ const DEFAULTS = {
   takeoverMinMB: 10,
   typeFolders: true,
   maxRetries: 1,
+  queueLimit: 0,
   notifyMode: 'notify',
   partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   openWhenDone: false,
@@ -122,6 +124,7 @@ const setTakeover = $<HTMLInputElement>('#set-takeover');
 const setMinMb = $<HTMLInputElement>('#set-minmb');
 const setFolders = $<HTMLInputElement>('#set-folders');
 const setRetries = $<HTMLInputElement>('#set-retries');
+const setQueue = $<HTMLInputElement>('#set-queue');
 const setNotify = $<HTMLSelectElement>('#set-notify');
 const setParty = $<HTMLInputElement>('#set-party');
 const partyRow = $('#party-row');
@@ -134,6 +137,7 @@ void chrome.storage.local.get(DEFAULTS).then((s) => {
   setMinMb.value = String(s['takeoverMinMB']);
   setFolders.checked = Boolean(s['typeFolders']);
   setRetries.value = String(s['maxRetries']);
+  setQueue.value = String(s['queueLimit']);
   setNotify.value = String(s['notifyMode']);
   setParty.value = String(s['partyUrl']);
   partyRow.hidden = s['notifyMode'] !== 'party';
@@ -148,6 +152,7 @@ setTakeover.addEventListener('change', () => save({ takeover: setTakeover.checke
 setMinMb.addEventListener('change', () => save({ takeoverMinMB: Math.max(0, Number(setMinMb.value) || 0) }));
 setFolders.addEventListener('change', () => save({ typeFolders: setFolders.checked }));
 setRetries.addEventListener('change', () => save({ maxRetries: Math.min(10, Math.max(0, Number(setRetries.value) || 0)) }));
+setQueue.addEventListener('change', () => save({ queueLimit: Math.min(20, Math.max(0, Number(setQueue.value) || 0)) }));
 setNotify.addEventListener('change', () => {
   partyRow.hidden = setNotify.value !== 'party';
   save({ notifyMode: setNotify.value });
@@ -408,7 +413,10 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
     ref.state = job.state;
     ref.el.className = `card ${job.state}`;
     ref.actions.innerHTML = actionButtons(job);
-    setWord(ref, STATE_WORDS[job.state]);
+    // Kuyruktaki iş sırasını göstersin — "Sırada · 2." bilinmezliği kaldırır
+    setWord(ref, job.state === 'queued' && job.queuePos
+      ? `${STATE_WORDS.queued} · ${job.queuePos}.`
+      : STATE_WORDS[job.state]);
     if (job.state === 'done' && prev && prev !== 'done') {
       liveRegion.textContent = `${job.filename} — ${t('wDone')}`;
     }

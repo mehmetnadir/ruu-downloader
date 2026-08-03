@@ -373,6 +373,38 @@ const MB = 1024 * 1024;
     (resumedFromScratch ? 'İLERLEME KAYBOLDU' : 'ilerleme korundu'));
 }
 
+// S16: KUYRUK — sınır 1 iken üç iş eklenir; ikisi BEKLEMELİ, sırayla inmeli.
+// Kuyruk tamamen eklenti içinde çalışır: yerel yardımcı program gerekmez.
+{
+  await evalIn(panel, `chrome.storage.local.set({queueLimit:1}); 'set'`);
+  await sleep(800); // ayar SW üzerinden motora itilsin
+  const urls = [30, 31, 32].map((n) => `http://localhost:${serverPort}/f/5?q=${n}`);
+  for (const u of urls) {
+    await evalIn(panel, `chrome.runtime.sendMessage({target:'sw',type:'add',url:${JSON.stringify(u)}}); 'sent'`);
+  }
+  const off = await pageCdp('offscreen.html');
+  const probe = `(()=>{const j=[...__ruu.jobs.values()];
+    return ${JSON.stringify(urls)}.map(u=>{const x=j.find(y=>y.url===u);return x?x.state:'yok'}).join(',')})()`;
+
+  // sınır ihlali gözlemlendi mi? (aynı anda 2+ çalışan)
+  let violated = '';
+  let states = '';
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    await sleep(400);
+    states = await evalIn(off, probe);
+    const running = states.split(',')
+      .filter((x) => x === 'probing' || x === 'downloading' || x === 'finalizing').length;
+    if (running > 1 && !violated) violated = states;
+    if (states.split(',').every((x) => x === 'done' || x === 'error')) break;
+  }
+  off.close();
+  await evalIn(panel, `chrome.storage.local.set({queueLimit:0}); 'reset'`);
+  record('S16 kuyruk sınırına uyar (limit=1)',
+    states === 'done,done,done' && !violated,
+    violated ? `SINIR İHLALİ: ${violated}` : `son=${states}`);
+}
+
 // S13: HAYALET İNDİRME — probe uçarken iptal edilen iş DİRİLMEMELİ.
 // Denetim bulgusu 2: probe abort edilmiyordu ve start() await'ten sonra
 // kontrolsüz devam edip silinmiş dosyayı yeniden yaratıyordu.

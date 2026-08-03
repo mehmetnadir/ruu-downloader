@@ -4,8 +4,8 @@
 
 **The download manager Chrome deserves — segmented speed, unkillable resume, zero telemetry.**
 
-[![CI-ready E2E](https://img.shields.io/badge/E2E-15%20scenarios-7fb069)](test/e2e/run.sh)
-[![Unit tests](https://img.shields.io/badge/unit-99%20passing-7fb069)](test/)
+[![CI-ready E2E](https://img.shields.io/badge/E2E-16%20scenarios-7fb069)](test/e2e/run.sh)
+[![Unit tests](https://img.shields.io/badge/unit-107%20passing-7fb069)](test/)
 [![Languages](https://img.shields.io/badge/i18n-11%20languages-e8a33d)](public/_locales/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-e8a33d)](LICENSE)
 [![Privacy](https://img.shields.io/badge/telemetry-zero-16130f)](PRIVACY.md)
@@ -70,6 +70,11 @@ modern web platform primitives — no native app, no companion daemon, no ads, n
   noisy signal that's not proof of the true optimum. The guarantee we do claim is weaker and
   more useful: the ramp never settles worse than the best reading it saw, so it cannot get
   stuck below a fixed count the way a greedy climb can.
+- 📋 **Queue that needs no helper app** — set how many downloads run at once;
+  the rest wait their turn and show their position. Pausing a queued job gives
+  up its slot to the next one. This runs entirely inside the extension — there
+  is no daemon to install, no port to configure, nothing to trust but the
+  extension you already reviewed.
 - 💾 **Crash-proof resume** — acknowledged byte ranges are journaled; even a hard
   browser crash resumes byte-exact, with ETag/Last-Modified validation.
 - 🔗 **Expired-link rescue** — signed CDN URL died at 95%? Paste a fresh link;
@@ -134,7 +139,7 @@ Chrome 137+ removed `--load-extension` (E2E loads via CDP `Extensions.loadUnpack
 
 ## Testing
 
-Nothing ships untested — 99 unit tests plus a one-command E2E harness that drives a
+Nothing ships untested — 107 unit tests plus a one-command E2E harness that drives a
 real Chromium against a throttled, fault-injecting local server:
 
 ```bash
