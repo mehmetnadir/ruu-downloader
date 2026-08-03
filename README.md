@@ -5,7 +5,7 @@
 **The download manager Chrome deserves — segmented speed, unkillable resume, zero telemetry.**
 
 [![CI-ready E2E](https://img.shields.io/badge/E2E-10%20scenarios-7fb069)](test/e2e/run.sh)
-[![Unit tests](https://img.shields.io/badge/unit-83%20passing-7fb069)](test/)
+[![Unit tests](https://img.shields.io/badge/unit-97%20passing-7fb069)](test/)
 [![Languages](https://img.shields.io/badge/i18n-11%20languages-e8a33d)](public/_locales/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-e8a33d)](LICENSE)
 [![Privacy](https://img.shields.io/badge/telemetry-zero-16130f)](PRIVACY.md)
@@ -34,13 +34,25 @@ modern web platform primitives — no native app, no companion daemon, no ads, n
 
 ## Features
 
-- ⚡ **Dynamic segmented engine** — 1-8 connections tuned to your device & network;
-  when a connection frees up it *steals* half of the largest in-flight segment, so one
-  slow mirror never drags the download. Honest caveat: parallel connections help most
-  when the server throttles **per connection** (typical of file-sharing hosts — measured
-  ~2-3× on one such host). Against a fast HTTP/2 CDN that already saturates your line,
-  expect little or no gain: the browser multiplexes those "connections" onto one
-  transport, and an extension cannot change that.
+- ⚡ **Adaptive segmented engine** — starts with **one** connection, measures, and adds
+  another only while adding one still helps (≥12% gain), up to the browser's hard ceiling
+  of 6 per host. When a connection frees up it *steals* half of the largest in-flight
+  segment, so one slow mirror never drags the download.
+
+  **Why adaptive, and not "always 6"?** Because we measured it ([`test/field/bench.mjs`](test/field/bench.mjs),
+  alternating A/B against real hosts, median of 3):
+
+  | Host | 1 connection | 6 connections | Result |
+  |---|---|---|---|
+  | Catbox (file-sharing host) | 1.42 MB/s | 2.53 MB/s | **×1.78 faster** |
+  | Hetzner (fast HTTP/2 CDN) | 3.55 MB/s | 3.07 MB/s | ×0.86 — slower |
+  | ThinkBroadband (fast HTTP/1.1) | 41.57 MB/s | 27.52 MB/s | **×0.66 — much slower** |
+
+  Blind parallelism *costs* you on a link that's already fast: six TCP slow-starts and
+  six handshakes buy nothing, and on HTTP/2 the six "connections" are multiplexed onto one
+  transport sharing one fixed flow-control window. Fixed-count competitors (IDM's 8/16/32,
+  Turbo Download Manager's 3) open the same connections regardless. Ruu ramps, so it takes
+  the ×1.78 where it exists and stays out of its own way where it doesn't.
 - 💾 **Crash-proof resume** — acknowledged byte ranges are journaled; even a hard
   browser crash resumes byte-exact, with ETag/Last-Modified validation.
 - 🔗 **Expired-link rescue** — signed CDN URL died at 95%? Paste a fresh link;
@@ -105,7 +117,7 @@ Chrome 137+ removed `--load-extension` (E2E loads via CDP `Extensions.loadUnpack
 
 ## Testing
 
-Nothing ships untested — 83 unit tests plus a one-command E2E harness that drives a
+Nothing ships untested — 97 unit tests plus a one-command E2E harness that drives a
 real Chromium against a throttled, fault-injecting local server:
 
 ```bash
@@ -114,7 +126,8 @@ npm test              # unit
                       # native fallback, takeover, private downloads,
                       # hard-crash resume, expired-link renewal,
                       # share-page automation, expired-share warning,
-                      # fully automatic mail flow
+                      # fully automatic mail flow, persistent history,
+                      # server-digest verification
 HEADLESS=1 ./test/e2e/run.sh   # CI mode
 ```
 

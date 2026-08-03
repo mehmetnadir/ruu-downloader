@@ -21,6 +21,9 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Debt audit
+        run: node scripts/audit.mjs
+
       - name: Package sanity
         run: |
           node scripts/package.mjs

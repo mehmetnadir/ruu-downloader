@@ -13,6 +13,7 @@ import { RangeAllocator, type Claim } from '../engine/allocator';
 import { autoTuneConnections, collectHints, MAX_CONNECTIONS } from '../engine/autotune';
 import { bytesToBase64, digestMatches, parseDigestHeader, type ExpectedDigest } from '../engine/digest';
 import { mergeRange, parseMeta, reconcileRanges, type JobMeta } from '../engine/manifest';
+import { afterDecision, RAMP_START, shouldAddConnection, type RampState } from '../engine/ramp';
 import { failThreshold } from '../engine/retry';
 import {
   MIN_SPLIT,
@@ -80,6 +81,9 @@ class Job {
   private blobUrl: string | null = null;
   private metaTimer: ReturnType<typeof setInterval> | null = null;
   private topSpeed = 0;
+  /** Adaptif rampa: kör paralellik hızlı hatlarda ZARARLI (saha ölçümü). */
+  private ramp: RampState = { ...RAMP_START };
+  private rampTimer: ReturnType<typeof setInterval> | null = null;
   downloadId?: number;
   priv = false; // gizli: geçmişe yazılmaz, istatistiğe girmez, kart kaybolur
   completedAt?: number;
@@ -142,7 +146,7 @@ class Job {
     if (!this.metaTimer) {
       this.metaTimer = setInterval(() => this.sendMeta(), META_INTERVAL_MS);
     }
-    this.spawnPumps();
+    this.startRamp();
     broadcast();
   }
 
@@ -231,8 +235,13 @@ class Job {
     return Math.max(SEG_MIN, Math.min(SEG_MAX, ideal));
   }
 
+  /**
+   * Pompaları rampa kararına göre açar. Hedef sayı sabit değil: tek bağlantıyla
+   * başlanır, her ölçüm turunda ekleme FAYDA ETTİĞİ sürece artırılır.
+   */
   private spawnPumps(): void {
-    while (this.pumps < this.connections && this.state === 'downloading') {
+    const target = Math.max(1, this.ramp.active);
+    while (this.pumps < target && this.state === 'downloading') {
       const claim = this.alloc!.allocate(this.segSize()) ?? this.alloc!.steal();
       if (!claim) break;
       this.pumps++;
@@ -241,6 +250,26 @@ class Job {
         this.onPumpExit();
       });
     }
+  }
+
+  /** 1,5 sn'de bir hızı ölç ve rampayı ilerlet. */
+  private startRamp(): void {
+    if (this.rampTimer) return;
+    // İlk pompa
+    this.ramp = afterDecision(this.ramp, 0, true);
+    this.spawnPumps();
+    this.rampTimer = setInterval(() => {
+      if (this.state !== 'downloading') return;
+      const speed = this.speed();
+      const add = shouldAddConnection(this.ramp, speed, this.connections);
+      this.ramp = afterDecision(this.ramp, speed, add);
+      if (add) this.spawnPumps();
+      if (this.ramp.settled) this.stopRamp();
+    }, 1500);
+  }
+
+  private stopRamp(): void {
+    if (this.rampTimer) { clearInterval(this.rampTimer); this.rampTimer = null; }
   }
 
   private async pump(claim: Claim): Promise<void> {
@@ -336,6 +365,7 @@ class Job {
 
   private async finalize(): Promise<void> {
     this.state = 'finalizing';
+    this.stopRamp();
     this.stopMetaTimer();
     broadcast();
     await new Promise<void>((resolve) => {
@@ -400,6 +430,7 @@ class Job {
     if (this.state !== 'downloading') return;
     this.state = 'paused';
     this.abortConnections();
+    this.stopRamp();
     this.sendMeta();
     this.stopMetaTimer();
     keepAwake();
@@ -476,6 +507,7 @@ class Job {
     this.state = 'error';
     this.error = 'errCancelled';
     this.abortConnections();
+    this.stopRamp();
     this.stopMetaTimer();
     if (hadWorker) {
       this.worker!.postMessage({ type: 'abort' });
@@ -509,6 +541,7 @@ class Job {
     this.state = 'error';
     this.error = err instanceof Error ? err.message : String(err);
     this.abortConnections();
+    this.stopRamp();
     this.stopMetaTimer();
     keepAwake();
     broadcast();
@@ -539,7 +572,7 @@ class Job {
       state: this.state,
       downloaded: this.alloc?.downloadedBytes() ?? 0,
       speed: this.speed(),
-      connections: this.connections,
+      connections: Math.max(1, this.ramp.active),
       claims: (this.alloc?.claims ?? []).map((c) => ({
         s: c.start, e: c.end, w: c.written, a: c.active,
       })),

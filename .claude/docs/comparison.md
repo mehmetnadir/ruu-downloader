@@ -115,3 +115,35 @@ Referans: [chrome.downloads API](https://developer.chrome.com/docs/extensions/re
 - CWS kullanıcı sayıları Google tarafından yuvarlanır (100.000 / 3.000.000 gibi).
 - Manifest sürümü yalnızca Turbo DM ve Chrono için birincil kaynaktan doğrulandı.
 - IDM fiyatı üçüncü taraf satıcılardan alındı, resmî sayfadan değil.
+
+---
+
+## Ek: Hız iddiasının ölçümü (2026-08-03)
+
+Denetim maddesi #1'e cevap. Yöntem: `test/field/bench.mjs` — aynı dosya, aynı host,
+**dönüşümlü A/B/B/A** koşum (ağ dalgalanması bir tarafa sistematik avantaj vermesin),
+doğrudan HTTP Range ile, 3 tekrarın medyanı.
+
+| Host | Karakter | Tek bağlantı | 6 paralel | Kazanç |
+|---|---|---|---|---|
+| Catbox | paylaşım hostu, bağlantı başına kısıtlı | 1,42 MB/s | 2,53 MB/s | **×1,78** |
+| Hetzner | hızlı CDN, HTTP/2 | 3,55 MB/s | 3,07 MB/s | ×0,86 |
+| ThinkBroadband | hızlı hat, HTTP/1.1 | 41,57 MB/s | 27,52 MB/s | **×0,66** |
+
+**Bulgu iki yönlü ve ikisi de önemli:**
+
+1. Segmentasyon **yalnızca** bağlantı başına hız kısan hostlarda kazandırıyor — yani
+   tam olarak bizim hedef kitlemizin kullandığı paylaşım servislerinde (Catbox ×1,78).
+   Bu, Chromium kaynak analizinin öngördüğü şeydi ve artık ölçülü.
+2. Hızlı hatlarda kör paralellik **aktif olarak zarar veriyor** (×0,66'ya kadar).
+   6 TCP slow-start + 6 el sıkışma bedava değil; HTTP/2'de altı "bağlantı" zaten tek
+   transport üzerinde aynı sabit pencereyi bölüşüyor.
+
+**Ürüne yansıması:** 2. bulgu sabit bağlantı sayısını savunulamaz kılıyor. Motor
+`src/engine/ramp.ts` ile adaptif hale getirildi: tek bağlantıyla başla, 1,5 sn'de bir
+ölç, **ekleme ≥%12 iyileştirdiği sürece** bir bağlantı daha ekle, iyileştirmiyorsa dur.
+Sabit sayı kullanan rakipler (IDM 8/16/32, Turbo DM 3) bu ayrımı yapmıyor.
+
+**Bu ölçümün sınırı:** 3 host, tek ağ (Türkiye, ev bağlantısı), tek zaman dilimi.
+Eğilimi gösteriyor, evrensel bir sabit vermiyor. Daha fazla host eklendikçe bu tablo
+büyümeli.
