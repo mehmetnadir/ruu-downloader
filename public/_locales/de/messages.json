@@ -334,5 +334,29 @@
   "wNativeWhy": {
     "message": "kein Teil-Download",
     "description": "Why the job was handed to the browser: server has no Range support"
+  },
+  "setHelperT": {
+    "message": "Hilfsprogramm",
+    "description": "Settings: optional helper app"
+  },
+  "setHelperD": {
+    "message": "Optional. Mehr Verbindungen und Downloads laufen weiter, wenn der Browser zu ist. Selbst installieren; Ruu funktioniert auch ohne.",
+    "description": "Settings: helper explanation"
+  },
+  "setAfterCloseT": {
+    "message": "Nach Browser-Schließen fortsetzen",
+    "description": "Settings: keep downloading after browser closes"
+  },
+  "setAfterCloseD": {
+    "message": "Benötigt das Hilfsprogramm. Downloads laufen als eigener Prozess weiter.",
+    "description": "Settings: explanation"
+  },
+  "wViaHelper": {
+    "message": "über Helfer",
+    "description": "Badge: job delegated to helper"
+  },
+  "errHelperMissing": {
+    "message": "Hilfsprogramm nicht gefunden",
+    "description": "Helper not installed"
   }
 }

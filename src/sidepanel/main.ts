@@ -114,6 +114,8 @@ const DEFAULTS = {
   typeFolders: true,
   maxRetries: 1,
   queueLimit: 0,
+  useHelper: false,
+  continueAfterClose: false,
   notifyMode: 'notify',
   partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   openWhenDone: false,
@@ -139,6 +141,8 @@ const setMinMb = $<HTMLInputElement>('#set-minmb');
 const setFolders = $<HTMLInputElement>('#set-folders');
 const setRetries = $<HTMLInputElement>('#set-retries');
 const setQueue = $<HTMLInputElement>('#set-queue');
+const setHelper = $<HTMLInputElement>('#set-helper');
+const setAfterClose = $<HTMLInputElement>('#set-afterclose');
 const setNotify = $<HTMLSelectElement>('#set-notify');
 const setParty = $<HTMLInputElement>('#set-party');
 const partyRow = $('#party-row');
@@ -152,6 +156,9 @@ void chrome.storage.local.get(DEFAULTS).then((s) => {
   setFolders.checked = Boolean(s['typeFolders']);
   setRetries.value = String(s['maxRetries']);
   setQueue.value = String(s['queueLimit']);
+  setHelper.checked = Boolean(s['useHelper']);
+  setAfterClose.checked = Boolean(s['continueAfterClose']);
+  setAfterClose.disabled = !s['useHelper'];
   setNotify.value = String(s['notifyMode']);
   setParty.value = String(s['partyUrl']);
   partyRow.hidden = s['notifyMode'] !== 'party';
@@ -167,6 +174,18 @@ setMinMb.addEventListener('change', () => save({ takeoverMinMB: Math.max(0, Numb
 setFolders.addEventListener('change', () => save({ typeFolders: setFolders.checked }));
 setRetries.addEventListener('change', () => save({ maxRetries: Math.min(10, Math.max(0, Number(setRetries.value) || 0)) }));
 setQueue.addEventListener('change', () => save({ queueLimit: Math.min(20, Math.max(0, Number(setQueue.value) || 0)) }));
+
+// Yardımcı AÇILIRKEN izin istenir; kullanıcı reddederse ya da program kurulu
+// değilse kutu geri kapanır — sessizce "açık" görünüp çalışmaması yanıltıcı olur.
+setHelper.addEventListener('change', () => {
+  if (!setHelper.checked) {
+    void save({ useHelper: false, continueAfterClose: false });
+    setAfterClose.disabled = true;
+    return;
+  }
+  send({ target: 'sw', type: 'enable-helper' });
+});
+setAfterClose.addEventListener('change', () => save({ continueAfterClose: setAfterClose.checked }));
 setNotify.addEventListener('change', () => {
   partyRow.hidden = setNotify.value !== 'party';
   save({ notifyMode: setNotify.value });
@@ -470,6 +489,7 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
       // hızlı inmediğini görüp bizde hata sanıyordu. Sebep sunucudadır:
       // Range desteklemeyen bir host'ta bölmek mümkün değil.
       job.native ? `${t('wNative')} · ${t('wNativeWhy')}` : '',
+      job.viaHelper ? t('wViaHelper') : '',
     ].filter(Boolean).join(' · ');
     ref.stats.title = job.url;
   } else {
@@ -566,6 +586,13 @@ document.body.addEventListener('click', (e) => {
 
 chrome.runtime.onMessage.addListener((raw: Msg) => {
   if (raw.target === 'panel' && raw.type === 'jobs') render(raw.jobs);
+  if (raw.target === 'panel' && raw.type === 'helper-result') {
+    // İzin verilmediyse ya da program kurulu değilse kutuyu geri kapat:
+    // "açık ama çalışmıyor" durumu kullanıcıyı yanıltır.
+    setHelper.checked = raw.ok;
+    setAfterClose.disabled = !raw.ok;
+    if (!raw.ok) liveRegion.textContent = t('errHelperMissing');
+  }
 });
 
 send({ target: 'sw', type: 'hello-panel' });

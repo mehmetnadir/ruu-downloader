@@ -122,6 +122,47 @@ if (existsSync('out')) {
   }
 }
 
+// 7c) Bağlanmamış modül: tam yazılmış, tam test edilmiş, HİÇBİR YERDEN çağrılmayan.
+// Denetleyicinin kör noktasıydı — "yeşil testler" bir modülün ürüne bağlı
+// olduğunu KANITLAMAZ. Yarım kalmış entegrasyon, bitmiş gibi görünür.
+{
+  const srcFiles = execSync("find src -name '*.ts' -not -name '*.d.ts'")
+    .toString().trim().split('\n').filter(Boolean);
+  // Giriş noktalarını TAHMİN ETME — build yapılandırmasından oku, yoksa
+  // yeni bir bundle eklendiğinde denetim yanlış alarm verir.
+  const entryPoints = new Set(
+    [...readFileSync('scripts/build.mjs', 'utf8').matchAll(/['"]([^'"]*src\/[^'"]+\.ts)['"]/g)]
+      .map((m) => m[1].replace(/^\.\//, '')),
+  );
+
+  for (const f of srcFiles) {
+    const mod = f.replace(/^src\//, '').replace(/\.ts$/, '');
+    const base = mod.split('/').pop();
+    if (base === 'types') continue;                            // yalnız tip bildirimi
+    if (entryPoints.has(f)) continue;                          // bundle girişi — import edilmemesi normal
+    // Kendisi dışında bir dosya bu modülü import ediyor mu?
+    const importers = srcFiles.filter((o) => o !== f
+      && new RegExp(`from ['"][^'"]*${base}['"]`).test(readFileSync(o, 'utf8')));
+    if (importers.length === 0) {
+      add('WARN', 'ölü-kod', `src/${mod}.ts hiçbir kaynak dosyadan import edilmiyor — entegrasyon yarım kalmış olabilir`);
+    }
+  }
+}
+
+// 7d) Motor ayarları: pushEngineSettings'in gönderdiği her alan ENGINE_SETTINGS
+// listesinde OLMAK ZORUNDA, yoksa ayar değişse de motora hiç ulaşmaz (sessiz
+// etkisizlik — kuyruk sınırında bu bir kez yaşandı).
+{
+  const sw = readFileSync('src/sw.ts', 'utf8');
+  const listed = (sw.match(/const ENGINE_SETTINGS = \[([^\]]*)\]/) ?? [])[1] ?? '';
+  const pushed = (sw.match(/type: 'settings',([\s\S]*?)\}\s*satisfies Msg/) ?? [])[1] ?? '';
+  for (const m of pushed.matchAll(/(\w+):\s*settings\.(\w+)/g)) {
+    if (!listed.includes(`'${m[2]}'`)) {
+      add('HIGH', 'ayar', `'${m[2]}' motora gönderiliyor ama ENGINE_SETTINGS'te yok — değişince itilmez`);
+    }
+  }
+}
+
 // 8) Belge–kod tutarlılığı
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const readme = readFileSync('README.md', 'utf8');

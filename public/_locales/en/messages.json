@@ -334,5 +334,29 @@
   "wNativeWhy": {
     "message": "no split support",
     "description": "Why the job was handed to the browser: server has no Range support"
+  },
+  "setHelperT": {
+    "message": "Helper app",
+    "description": "Settings: optional helper app"
+  },
+  "setHelperD": {
+    "message": "Optional. Lets downloads use more connections and keep going after you close the browser. Install it yourself; Ruu works fine without it.",
+    "description": "Settings: helper explanation"
+  },
+  "setAfterCloseT": {
+    "message": "Continue after closing browser",
+    "description": "Settings: keep downloading after browser closes"
+  },
+  "setAfterCloseD": {
+    "message": "Needs the helper app. Downloads keep running as their own process.",
+    "description": "Settings: explanation"
+  },
+  "wViaHelper": {
+    "message": "via helper",
+    "description": "Badge: job delegated to helper"
+  },
+  "errHelperMissing": {
+    "message": "Helper app not found",
+    "description": "Helper not installed"
   }
 }

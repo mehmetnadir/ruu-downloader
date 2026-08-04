@@ -334,5 +334,29 @@
   "wNativeWhy": {
     "message": "parçalı indirme yok",
     "description": "Why the job was handed to the browser: server has no Range support"
+  },
+  "setHelperT": {
+    "message": "Yardımcı uygulama",
+    "description": "Settings: optional helper app"
+  },
+  "setHelperD": {
+    "message": "İsteğe bağlı. Daha çok bağlantı açar ve tarayıcıyı kapatsan da indirmeyi sürdürür. Kurulumu sana ait; Ruu onsuz da tam çalışır.",
+    "description": "Settings: helper explanation"
+  },
+  "setAfterCloseT": {
+    "message": "Tarayıcı kapansa da sürsün",
+    "description": "Settings: keep downloading after browser closes"
+  },
+  "setAfterCloseD": {
+    "message": "Yardımcı uygulama gerekir. İndirmeler kendi süreci olarak devam eder.",
+    "description": "Settings: explanation"
+  },
+  "wViaHelper": {
+    "message": "yardımcıyla",
+    "description": "Badge: job delegated to helper"
+  },
+  "errHelperMissing": {
+    "message": "Yardımcı uygulama bulunamadı",
+    "description": "Helper not installed"
   }
 }

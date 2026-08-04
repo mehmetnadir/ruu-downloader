@@ -669,9 +669,35 @@ Yardımcıyı istemeyen kullanıcı bu izinleri hiç vermez; mağaza inceleme y�
 de büyümez. PRIVACY.md ikisini de açıklıyor; denetleyici artık
 optional_permissions'ı da beyan karşısında kontrol ediyor.
 
-### Durum
+### Durum: MOTORA BAĞLANDI (2026-08-04)
 
-Yardımcı ve uzantı istemcisi hazır ve test edildi (17 Go testi race detector ile,
-12 uzantı testi). **Motor akışına henüz bağlanmadı** — sıradaki tur: eklentinin
-`shouldUseHelper()` kararını verip işi yardımcıya devretmesi ve ilerlemeyi
-panelde birleştirmesi.
+Akış uçtan uca çalışıyor ve gerçek ikiliyle doğrulandı
+(`test/field/helper-live.sh`): motorun kararı → HTTP istemcisi → Go ikilisi →
+dosya doğrudan indirme dizinine. OPFS'e yazılmıyor, blob üretilmiyor,
+`downloads.download()` çağrılmıyor — 2× tepe disk kullanımı da bu yolda yok.
+
+**Host izni GEREKMİYOR.** Yardımcı yalnızca bizim eklenti kaynağımıza CORS izni
+veriyor (kaynağı Chrome native-messaging argümanıyla ona bildiriyor) ve Chrome'un
+Private Network Access preflight'ına açıkça yanıt veriyor. Tek isteğe bağlı izin
+`nativeMessaging` kaldı.
+
+**Tarayıcı yeniden açılınca geri bağlanma var:** `GET /jobs` ile süren işler
+bulunur ve panele geri takılır. Olmasaydı indirme diskte biterdi ama panelde
+terk edilmiş görünürdü — özelliğin yarısı teslim edilmemiş olurdu.
+
+Saha testinin yakaladığı üç gerçek hata (üçü de derlemeden geçiyordu):
+1. `HelperClient`'ın varsayılan `fetch`'i bağlı değildi → tarayıcı
+   "Illegal invocation" atıyor, yardımcı sessizce hiç kullanılmıyordu.
+2. Chrome'un Private Network Access preflight'ı yanıtsızdı → curl çalışıyor,
+   tarayıcı çalışmıyordu.
+3. Motor ayarları yalnızca `maxRetries` değişince itiliyordu → **kuyruk sınırı
+   ayarı da hiç motora ulaşmıyormuş** (geçen turun "bitmiş" özelliği).
+   Denetleyiciye kalıcı kontrol eklendi.
+
+### Kapsam sınırı (dürüst kayıt)
+
+`test/field/helper-live.sh` izin akışını ve `connectNative` el sıkışmasını
+SÜRMEZ: `chrome.permissions.request()` modal bir TARAYICI penceresi açar ve
+sayfa içeriği olmadığı için CDP ile tıklanamaz. El sıkışma testte SW'nin
+ürettiğinin birebir aynısı olan bir mesajla enjekte edilir; native-messaging
+çerçeveleme Go tarafında ayrıca test edilir. İzin akışı elle doğrulanmalıdır.

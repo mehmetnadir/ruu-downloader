@@ -334,5 +334,29 @@
   "wNativeWhy": {
     "message": "لا يدعم التجزئة",
     "description": "Why the job was handed to the browser: server has no Range support"
+  },
+  "setHelperT": {
+    "message": "التطبيق المساعد",
+    "description": "Settings: optional helper app"
+  },
+  "setHelperD": {
+    "message": "اختياري. اتصالات أكثر واستمرار التنزيل بعد إغلاق المتصفح. تثبّته بنفسك؛ Ruu يعمل بدونه.",
+    "description": "Settings: helper explanation"
+  },
+  "setAfterCloseT": {
+    "message": "الاستمرار بعد إغلاق المتصفح",
+    "description": "Settings: keep downloading after browser closes"
+  },
+  "setAfterCloseD": {
+    "message": "يتطلب التطبيق المساعد. تستمر التنزيلات كعملية مستقلة.",
+    "description": "Settings: explanation"
+  },
+  "wViaHelper": {
+    "message": "عبر المساعد",
+    "description": "Badge: job delegated to helper"
+  },
+  "errHelperMissing": {
+    "message": "لم يتم العثور على التطبيق المساعد",
+    "description": "Helper not installed"
   }
 }

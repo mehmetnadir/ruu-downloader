@@ -334,5 +334,29 @@
   "wNativeWhy": {
     "message": "без сегментов",
     "description": "Why the job was handed to the browser: server has no Range support"
+  },
+  "setHelperT": {
+    "message": "Вспомогательная программа",
+    "description": "Settings: optional helper app"
+  },
+  "setHelperD": {
+    "message": "Необязательно. Больше соединений, загрузки продолжаются после закрытия браузера. Устанавливаете сами; Ruu работает и без неё.",
+    "description": "Settings: helper explanation"
+  },
+  "setAfterCloseT": {
+    "message": "Продолжать после закрытия браузера",
+    "description": "Settings: keep downloading after browser closes"
+  },
+  "setAfterCloseD": {
+    "message": "Нужна вспомогательная программа. Загрузки идут отдельным процессом.",
+    "description": "Settings: explanation"
+  },
+  "wViaHelper": {
+    "message": "через помощник",
+    "description": "Badge: job delegated to helper"
+  },
+  "errHelperMissing": {
+    "message": "Вспомогательная программа не найдена",
+    "description": "Helper not installed"
   }
 }

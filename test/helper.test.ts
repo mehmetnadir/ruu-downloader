@@ -26,6 +26,21 @@ describe('el sıkışma doğrulaması', () => {
 });
 
 describe('HelperClient', () => {
+  it('varsayılan fetch BAĞLI olmalı — çıplak referans "Illegal invocation" atar', async () => {
+    // Gerçek tarayıcı hatasını taklit et: this===undefined/window değilse patlar
+    const globalAny = globalThis as unknown as { fetch: unknown };
+    const original = globalAny.fetch;
+    globalAny.fetch = function boundOnly(this: unknown) {
+      if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+      return Promise.resolve(new Response('{"version":"1.0.0"}', { status: 200 }));
+    };
+    try {
+      await expect(new HelperClient(hs).health()).resolves.toMatchObject({ version: '1.0.0' });
+    } finally {
+      globalAny.fetch = original;
+    }
+  });
+
   it('her isteğe Bearer token ekler ve 127.0.0.1 kullanır', async () => {
     const doFetch = vi.fn(
       async (_url: string, _init?: RequestInit) =>

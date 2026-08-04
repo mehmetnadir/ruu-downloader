@@ -334,5 +334,29 @@
   "wNativeWhy": {
     "message": "不支持分段",
     "description": "Why the job was handed to the browser: server has no Range support"
+  },
+  "setHelperT": {
+    "message": "辅助程序",
+    "description": "Settings: optional helper app"
+  },
+  "setHelperD": {
+    "message": "可选。可使用更多连接，并在关闭浏览器后继续下载。需自行安装；没有它 Ruu 也能正常工作。",
+    "description": "Settings: helper explanation"
+  },
+  "setAfterCloseT": {
+    "message": "关闭浏览器后继续",
+    "description": "Settings: keep downloading after browser closes"
+  },
+  "setAfterCloseD": {
+    "message": "需要辅助程序。下载将作为独立进程继续。",
+    "description": "Settings: explanation"
+  },
+  "wViaHelper": {
+    "message": "经辅助程序",
+    "description": "Badge: job delegated to helper"
+  },
+  "errHelperMissing": {
+    "message": "未找到辅助程序",
+    "description": "Helper not installed"
   }
 }

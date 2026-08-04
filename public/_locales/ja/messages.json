@@ -334,5 +334,29 @@
   "wNativeWhy": {
     "message": "分割非対応",
     "description": "Why the job was handed to the browser: server has no Range support"
+  },
+  "setHelperT": {
+    "message": "ヘルパーアプリ",
+    "description": "Settings: optional helper app"
+  },
+  "setHelperD": {
+    "message": "任意。接続数を増やし、ブラウザを閉じてもダウンロードを継続します。ご自身でインストールしてください。なくても動作します。",
+    "description": "Settings: helper explanation"
+  },
+  "setAfterCloseT": {
+    "message": "ブラウザを閉じても継続",
+    "description": "Settings: keep downloading after browser closes"
+  },
+  "setAfterCloseD": {
+    "message": "ヘルパーアプリが必要です。独立したプロセスとして継続します。",
+    "description": "Settings: explanation"
+  },
+  "wViaHelper": {
+    "message": "ヘルパー経由",
+    "description": "Badge: job delegated to helper"
+  },
+  "errHelperMissing": {
+    "message": "ヘルパーアプリが見つかりません",
+    "description": "Helper not installed"
   }
 }

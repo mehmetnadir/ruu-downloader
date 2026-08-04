@@ -60,7 +60,6 @@ history and are excluded from local statistics.
 | `alarms` | Wakes the service worker on a schedule for Beam polling and for share-link flows that outlive a suspension |
 | `scripting` | **Only on a share-link page you opened via Ruu**, and only after you clicked "Download with Ruu": Ruu injects a short-lived script that clicks the site's own download/consent button on your behalf, so you don't have to complete the flow manually. It runs on that one tab, stops as soon as the download starts, reads nothing else, and sends nothing anywhere. |
 | `nativeMessaging` *(optional — never granted unless you ask for it)* | Only if you install the optional Ruu Helper. Chrome uses this channel to hand the extension the helper's local port and access token. Nothing else travels over it. If you never install the helper, this permission is never requested and the code path never runs. |
-| `http://127.0.0.1/*` *(optional — never granted unless you ask for it)* | Talking to the Ruu Helper on your own machine. Loopback only: the helper refuses to bind to any non-loopback address, so this can never reach the network. |
 | Content script on `mail.google.com` and `outlook.*` | Adds a download button next to share links in an open message. It reads the message's links and the sender address **in the page only**, to label the download and fill the history entry described above. It does not read message bodies, does not run on other sites, and transmits nothing. |
 
 ## The optional helper
@@ -70,6 +69,9 @@ separate program, it runs on your machine and downloads files for the extension.
 is optional, opt-in, and removable with one command.
 
 - It listens on `127.0.0.1` only, and refuses to start on any other address.
+- It answers exactly one browser origin — this extension's — and never uses a
+  wildcard, so no web page can drive it even on your own machine. Because of that
+  Ruu needs **no host permission** for the helper at all.
 - Every request needs a token generated fresh at each start and delivered to the
   extension over Chrome's native-messaging channel, which only this extension's ID
   can open.

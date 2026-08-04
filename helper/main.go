@@ -35,6 +35,7 @@ const version = "1.0.0"
 
 type server struct {
 	token  string
+	origin string // yalnızca bu eklenti kaynağına CORS izni verilir
 	dir    string
 	client *http.Client
 	mu     sync.Mutex
@@ -47,6 +48,7 @@ func main() {
 		dir      = flag.String("dir", defaultDownloadDir(), "indirme dizini")
 		addr     = flag.String("addr", "127.0.0.1:0", "dinlenecek adres (yalnız yerel)")
 		handshake = flag.Bool("handshake", false, "Chrome native-messaging modu: port+token'ı stdio ile bildir")
+		originArg = flag.String("origin", "", "izin verilecek eklenti kaynağı (test için; normalde Chrome argüman olarak geçirir)")
 		showVer  = flag.Bool("version", false, "sürümü yaz ve çık")
 	)
 	flag.Parse()
@@ -69,8 +71,20 @@ func main() {
 		fmt.Fprintln(os.Stderr, "token üretilemedi:", err)
 		os.Exit(1)
 	}
+	// Chrome, native-messaging ile başlattığı programa çağıran eklentinin
+	// kaynağını argüman olarak geçirir. Bunu CORS'ta tam eşleşme olarak
+	// kullanmak, host izni istemeye gerek bırakmıyor: tarayıcı cevabı başka
+	// hiçbir kaynağa açmaz. Bir izin daha az = daha az sürtünme, daha küçük
+	// inceleme yüzeyi.
+	origin := *originArg
+	for _, a := range flag.Args() {
+		if strings.HasPrefix(a, "chrome-extension://") {
+			origin = strings.TrimSuffix(a, "/")
+			break
+		}
+	}
 	srv := &server{
-		token: hex.EncodeToString(tok), dir: *dir,
+		token: hex.EncodeToString(tok), origin: origin, dir: *dir,
 		client: newClient(), jobs: map[string]*Job{}, ctx: ctx,
 	}
 	if err := os.MkdirAll(srv.dir, 0o755); err != nil {
@@ -131,11 +145,45 @@ func assertLoopback(addr string) error {
 
 func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("OPTIONS /", s.preflight)
 	mux.HandleFunc("GET /health", s.auth(s.health))
+	mux.HandleFunc("GET /jobs", s.auth(s.listJobs))
 	mux.HandleFunc("POST /jobs", s.auth(s.createJob))
 	mux.HandleFunc("GET /jobs/{id}", s.auth(s.jobStatus))
 	mux.HandleFunc("DELETE /jobs/{id}", s.auth(s.cancelJob))
-	return mux
+	return s.cors(mux)
+}
+
+// cors allows exactly one origin: the extension Chrome told us about. Wildcards
+// are refused on purpose — a helper that answers any origin is a download
+// service any web page can drive.
+func (s *server) cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.origin != "" && r.Header.Get("Origin") == s.origin {
+			w.Header().Set("Access-Control-Allow-Origin", s.origin)
+			w.Header().Set("Vary", "Origin")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *server) preflight(w http.ResponseWriter, r *http.Request) {
+	if s.origin == "" || r.Header.Get("Origin") != s.origin {
+		http.Error(w, "kaynak reddedildi", http.StatusForbidden)
+		return
+	}
+	w.Header().Set("Access-Control-Allow-Origin", s.origin)
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "600")
+	// Private Network Access: Chrome, genel bir bağlamdan YEREL ağa yapılan
+	// isteği ancak hedef bunu açıkça kabul ederse geçirir. Bu başlık olmadan
+	// tarayıcı isteği preflight'ta sessizce düşürür — CORS doğru olsa bile.
+	// (Saha testi bunu yakaladı: curl çalışıyordu, tarayıcı çalışmıyordu.)
+	if r.Header.Get("Access-Control-Request-Private-Network") == "true" {
+		w.Header().Set("Access-Control-Allow-Private-Network", "true")
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *server) auth(next http.HandlerFunc) http.HandlerFunc {
@@ -156,6 +204,19 @@ func (s *server) health(w http.ResponseWriter, _ *http.Request) {
 		// Eklentinin neye güvenebileceğini bilmesi için yetenek bildirimi.
 		"maxConnections": 32, "survivesBrowserClose": true, "resume": true,
 	})
+}
+
+// listJobs lets the extension re-attach after the browser was closed and
+// reopened. Without it a download that kept running would finish on disk but
+// look abandoned in the panel — the feature would be half-delivered.
+func (s *server) listJobs(w http.ResponseWriter, _ *http.Request) {
+	s.mu.Lock()
+	out := make([]JobStatus, 0, len(s.jobs))
+	for _, j := range s.jobs {
+		out = append(out, j.status())
+	}
+	s.mu.Unlock()
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *server) createJob(w http.ResponseWriter, r *http.Request) {

@@ -16,6 +16,10 @@ import { mergeRange, parseMeta, reconcileRanges, type JobMeta } from '../engine/
 import { afterDecision, RAMP_START, shouldAddConnection, type RampState } from '../engine/ramp';
 import { isRunning, nextToStart, shouldStartImmediately } from '../engine/queue';
 import { sanitizeFilename } from '../engine/filename';
+import {
+  HelperClient, shouldUseHelper, toEngineRanges,
+  type HelperCapabilities, type HelperHandshake,
+} from '../engine/helper';
 import { failThreshold } from '../engine/retry';
 import {
   MIN_SPLIT,
@@ -45,9 +49,16 @@ const jobs = new Map<string, Job>();
 const dbg = {
   fetches: 0, responses: 0, reads: 0, rbytes: 0,
   writes: 0, acks: 0, pumpErrors: [] as string[],
+  helperDecisions: [] as unknown[],
 };
-(globalThis as unknown as { __ruu: typeof dbg & { jobs: Map<string, Job> } }).__ruu =
-  Object.assign(dbg, { jobs });
+(globalThis as unknown as {
+  __ruu: typeof dbg & { jobs: Map<string, Job>; helper: () => unknown };
+}).__ruu = Object.assign(dbg, {
+  jobs,
+  // Saha testinin yardımcının gerçekten bağlandığını görebilmesi için.
+  helper: () => (helper ? helper.caps : null),
+  helperOpts: () => ({ continueAfterClose: helperContinueAfterClose, queueLimit, maxRetries }),
+});
 
 /**
  * Kalıcı depolama izni — yarım indirmelerin tarayıcı tarafından silinmesini
@@ -98,6 +109,11 @@ class Job {
   digestSkipped = false;
   /** Kuyruğa giriş sırası — FIFO için. */
   readonly seq = ++queueSeq;
+  /** İş yerel yardımcıya devredildiyse true — teslim adımı ATLANIR. */
+  viaHelper = false;
+  /** Yardımcıya devretme denendi ve başarısız olduysa nedeni. */
+  helperError?: string;
+  private helperPoll: ReturnType<typeof setInterval> | null = null;
   downloadId?: number;
   priv = false; // gizli: geçmişe yazılmaz, istatistiğe girmez, kart kaybolur
   completedAt?: number;
@@ -155,6 +171,26 @@ class Job {
 
       this.size = total;
       this.alloc = new RangeAllocator(total, MIN_SPLIT);
+
+      // Yardımcı bu iş için MANTIKLI mı? Karar burada verilir ve yardımcıya
+      // yalnızca sonuç geçirilir — strateji eklentide kalır.
+      // Karar KAYDEDİLİR. "Yardımcı açık ama kullanılmıyor" sorusunun cevabı
+      // aksi halde hiçbir yerde yazmıyor (devralma için de aynı günlük var).
+      const decision = {
+        available: helper !== null,
+        wantConnections: this.connections,
+        browserCap: MAX_CONNECTIONS,
+        continueAfterClose: helperContinueAfterClose,
+        sizeBytes: total,
+      };
+      const useHelper = shouldUseHelper(decision);
+      dbg.helperDecisions.push({ ...decision, useHelper });
+      if (dbg.helperDecisions.length > 10) dbg.helperDecisions.shift();
+      if (useHelper) {
+        await this.runViaHelper();
+        return;
+      }
+
       await this.initDisk(total, true);
       this.throwIfCancelled();
       this.beginDownloading();
@@ -162,6 +198,81 @@ class Job {
       if (this.cancelled) return; // iptal zaten temizliği yaptı
       this.fail(err);
     }
+  }
+
+  /**
+   * İşi yerel yardımcıya devreder ve ilerlemeyi yoklar.
+   *
+   * OPFS'e HİÇ yazılmaz ve teslim adımı çalışmaz: yardımcı dosyayı doğrudan
+   * kullanıcının indirme dizinine yazar. Bu, tarayıcı motorunun 2× tepe disk
+   * kullanımını da ortadan kaldırır.
+   */
+  private async runViaHelper(): Promise<void> {
+    const h = helper;
+    if (!h) { this.beginDownloading(); return; }
+    this.viaHelper = true;
+    this.state = 'downloading';
+    keepAwake();
+    broadcast();
+    try {
+      await h.client.start({
+        id: this.id, url: this.url, dest: this.filename,
+        size: this.size!, connections: Math.min(this.connections, h.caps.maxConnections),
+      });
+    } catch (err) {
+      // Yardımcı reddettiyse KENDİ motorumuzla devam et — kullanıcı bir şey
+      // kaybetmesin. Yardımcı bir kolaylık, tek yol değil.
+      //
+      // Ama SESSİZCE düşme: nedeni kaydet. Yoksa "yardımcı açık ama hiç
+      // kullanılmıyor" durumu teşhis edilemez hale gelir.
+      this.helperError = err instanceof Error ? err.message : String(err);
+      dbg.pumpErrors.push(`helper: ${this.helperError}`);
+      this.viaHelper = false;
+      await this.initDisk(this.size!, true);
+      this.beginDownloading();
+      return;
+    }
+    this.watchHelper();
+  }
+
+  /** Yardımcıdaki işin durumunu yoklar ve panele yansıtır. */
+  private watchHelper(): void {
+    if (this.helperPoll) return;
+    this.helperPoll = setInterval(() => {
+      void (async () => {
+        const h = helper;
+        if (!h || this.cancelled) { this.stopHelperPoll(); return; }
+        let st;
+        try {
+          st = await h.client.status(this.id);
+        } catch {
+          return; // yardımcı yeniden başlıyor olabilir; yoklamaya devam
+        }
+        this.acked = toEngineRanges(st.ranges);
+        this.alloc = RangeAllocator.restore(this.size!, this.acked, MIN_SPLIT);
+        if (st.state === 'done') {
+          this.stopHelperPoll();
+          this.state = 'done';
+          this.completedAt = Date.now();
+          keepAwake();
+          pumpQueue();
+        } else if (st.state === 'error' || st.state === 'cancelled') {
+          this.stopHelperPoll();
+          this.fail(new Error(st.error ?? 'errHelper'));
+        }
+        broadcast();
+      })();
+    }, 1000);
+  }
+
+  /** Geri bağlanan iş için yoklamayı dışarıdan başlatır. */
+  watchHelperPublic(): void { this.watchHelper(); }
+
+  /** Yardımcıdaki iş için yeniden doğrulama gereksiz — indirme zaten sürüyor. */
+  skipRevalidate(): void { this.needsRevalidate = false; }
+
+  private stopHelperPoll(): void {
+    if (this.helperPoll) { clearInterval(this.helperPoll); this.helperPoll = null; }
   }
 
   private beginDownloading(): void {
@@ -617,6 +728,11 @@ class Job {
 
   async cancel(): Promise<void> {
     this.cancelled = true;
+    this.stopHelperPoll();
+    if (this.viaHelper) {
+      // Yardımcıdaki işi de durdur; kısmi dosyayı O saklar (devam edilebilir).
+      await helper?.client.cancel(this.id).catch(() => undefined);
+    }
     const hadWorker = this.worker !== null;
     this.state = 'error';
     this.error = 'errCancelled';
@@ -700,6 +816,7 @@ class Job {
       completedAt: this.completedAt,
       digestOk: this.digestOk,
       digestSkipped: this.digestSkipped,
+      viaHelper: this.viaHelper,
       origin: this.origin,
       sender: this.sender,
     };
@@ -758,6 +875,62 @@ function send(msg: Msg): void {
  */
 let queueLimit = 0;
 let queueSeq = 0;
+
+/**
+ * Yerel yardımcı — SW el sıkışmayı yaptıysa dolu, aksi halde null.
+ * null olması NORMAL durumdur: uzantı tek başına tam işlevlidir.
+ */
+let helper: { client: HelperClient; caps: HelperCapabilities } | null = null;
+/** Kullanıcı "tarayıcıyı kapatsam da devam etsin" dedi mi? */
+let helperContinueAfterClose = false;
+
+async function setHelper(hs: HelperHandshake | null): Promise<void> {
+  if (!hs) { helper = null; return; }
+  const client = new HelperClient(hs);
+  try {
+    helper = { client, caps: await client.health() };
+  } catch {
+    helper = null; // yardımcı kapanmış olabilir — sessizce kendi motorumuza dön
+    broadcast();
+    return;
+  }
+  await reattachHelperJobs();
+  broadcast();
+}
+
+/**
+ * Tarayıcı kapalıyken süren işlere geri bağlanır.
+ *
+ * Yardımcı tarayıcıdan bağımsız çalıştığı için, tarayıcı yeniden açıldığında
+ * orada hâlâ inen (ya da bitmiş) işler olabilir. Bunları toplamazsak indirme
+ * diskte tamamlanır ama panelde hiç görünmez — özelliğin yarısı teslim
+ * edilmemiş olur.
+ */
+async function reattachHelperJobs(): Promise<void> {
+  const h = helper;
+  if (!h) return;
+  let list;
+  try {
+    list = await h.client.list();
+  } catch {
+    return;
+  }
+  for (const st of list) {
+    if (jobs.has(st.id)) continue;
+    if (st.state === 'cancelled') continue;
+    const job = Job.restored(st.id, {
+      v: 1, url: '', filename: st.path?.split(/[/\\]/).pop() ?? 'download',
+      size: st.size, connections: h.caps.maxConnections,
+      ranges: toEngineRanges(st.ranges), updatedAt: Date.now(),
+    });
+    job.viaHelper = true;
+    job.state = st.state === 'done' ? 'done' : 'downloading';
+    job.skipRevalidate(); // yardımcı zaten indiriyor; probe gereksiz
+    jobs.set(st.id, job);
+    if (st.state !== 'done') job.watchHelperPublic();
+  }
+  if (list.length) broadcast();
+}
 
 /** Slot boşaldığında kuyruktan sıradakileri başlatır. */
 function pumpQueue(): void {
@@ -874,6 +1047,7 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
     case 'delivered': void jobs.get(raw.jobId)?.delivered(raw.ok, raw.error, raw.downloadId); break;
     case 'settings': {
       maxRetries = Math.min(10, Math.max(0, raw.maxRetries));
+      if (raw.continueAfterClose !== undefined) helperContinueAfterClose = raw.continueAfterClose;
       if (raw.queueLimit !== undefined) {
         queueLimit = Math.max(0, Math.min(20, raw.queueLimit));
         pumpQueue(); // sınır büyüdüyse bekleyenler hemen başlasın
@@ -882,5 +1056,6 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
     }
     case 'renew': void jobs.get(raw.jobId)?.renew(raw.url); break;
     case 'deliver-ack': jobs.get(raw.jobId)?.deliverAck(); break;
+    case 'helper': void setHelper(raw.handshake); break;
   }
 });

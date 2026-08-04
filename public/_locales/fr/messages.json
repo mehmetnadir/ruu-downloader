@@ -334,5 +334,29 @@
   "wNativeWhy": {
     "message": "pas de téléchargement segmenté",
     "description": "Why the job was handed to the browser: server has no Range support"
+  },
+  "setHelperT": {
+    "message": "Application auxiliaire",
+    "description": "Settings: optional helper app"
+  },
+  "setHelperD": {
+    "message": "Facultatif. Plus de connexions et les téléchargements continuent après fermeture. À installer vous-même ; Ruu fonctionne sans.",
+    "description": "Settings: helper explanation"
+  },
+  "setAfterCloseT": {
+    "message": "Continuer après fermeture",
+    "description": "Settings: keep downloading after browser closes"
+  },
+  "setAfterCloseD": {
+    "message": "Nécessite l'application auxiliaire. Les téléchargements continuent en propre processus.",
+    "description": "Settings: explanation"
+  },
+  "wViaHelper": {
+    "message": "via auxiliaire",
+    "description": "Badge: job delegated to helper"
+  },
+  "errHelperMissing": {
+    "message": "Application auxiliaire introuvable",
+    "description": "Helper not installed"
   }
 }

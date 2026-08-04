@@ -61,9 +61,15 @@ export function isValidHandshake(v: unknown): v is HelperHandshake {
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 export class HelperClient {
+  /**
+   * DİKKAT: varsayılan `fetch` BAĞLANMIŞ olmak zorunda.
+   * Sınıf alanı olarak saklanan çıplak `fetch`, metot gibi çağrılınca `this`
+   * HelperClient olur ve tarayıcı "Illegal invocation" atar — istek hiç gitmez.
+   * Sessizce null yeteneğe düşüyordu; saha testi yakaladı.
+   */
   constructor(
     private readonly hs: HelperHandshake,
-    private readonly doFetch: FetchLike = fetch,
+    private readonly doFetch: FetchLike = (url, init) => fetch(url, init),
   ) {}
 
   /** Yardımcı yalnızca 127.0.0.1'de dinler; adresi burada da sabitliyoruz. */
@@ -89,6 +95,11 @@ export class HelperClient {
       method: 'POST',
       body: JSON.stringify(spec),
     });
+  }
+
+  /** Süren işleri listeler — tarayıcı yeniden açıldığında geri bağlanmak için. */
+  list(): Promise<HelperJobStatus[]> {
+    return this.call<HelperJobStatus[]>('/jobs');
   }
 
   status(id: string): Promise<HelperJobStatus> {

@@ -4,6 +4,7 @@
 import { BEAM_ALARM, loadState, pollOnce, saveState } from './beam/client';
 import { matchShareLink } from './content/patterns';
 import { safeFallbackName } from './engine/filename';
+import { HELPER_HOST, isValidHandshake, type HelperHandshake } from './engine/helper';
 import { DEFAULT_CATEGORY_NAMES, routeByType } from './engine/foldering';
 import { decideTakeover } from './engine/takeover';
 import { addEntry, type HistoryEntry } from './engine/history';
@@ -37,18 +38,35 @@ const settings = {
   defaultExperience: false, // Chrome'un indirme balonunu gizle → Ruu varsayılan UI
   maxRetries: 1,
   queueLimit: 0, // 0 = sınırsız; kuyruk tamamen eklenti içinde çalışır
+  useHelper: false, // isteğe bağlı yerel yardımcı — varsayılan KAPALI
+  continueAfterClose: false, // yardımcı varsa: tarayıcı kapansa da sürsün
 
   notifyMode: 'notify' as 'silent' | 'notify' | 'party' | 'tab',
   partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   openWhenDone: false,
 };
 
+/** Motorun davranışını değiştiren ayarlar — değişince mesajla itilmek ZORUNDA. */
+const ENGINE_SETTINGS = ['maxRetries', 'queueLimit', 'continueAfterClose'] as const;
+
 /** Offscreen'de chrome.storage yok — motoru ilgilendiren ayarlar mesajla itilir. */
 function pushEngineSettings(): void {
   void chrome.runtime.sendMessage({
     target: 'engine', type: 'settings', maxRetries: settings.maxRetries,
-    queueLimit: settings.queueLimit,
+    queueLimit: settings.queueLimit, continueAfterClose: settings.continueAfterClose,
   } satisfies Msg).catch(() => undefined);
+}
+
+/** Panel "yardımcıyı kullan"ı açtığında izinleri ister ve yeniden yoklar. */
+async function enableHelper(): Promise<boolean> {
+  const ok = await chrome.permissions.request({
+    permissions: ['nativeMessaging'],
+  }).catch(() => false);
+  if (!ok) return false;
+  await chrome.storage.local.set({ useHelper: true });
+  settings.useHelper = true;
+  await pushHelper(true);
+  return true;
 }
 
 /** Chrome'un kendi indirme arayüzünü aç/kapat (downloads.ui izni). */
@@ -77,7 +95,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (k in settings) (settings as Record<string, unknown>)[k] = v.newValue;
   }
   if (changes['defaultExperience']) applyDownloadUi();
-  if (changes['maxRetries']) pushEngineSettings();
+  // Motoru ilgilendiren HER ayar itilmeli. Eskiden yalnızca maxRetries
+  // tetikliyordu: kuyruk sınırını değiştirmek motora hiç ulaşmıyordu ve
+  // ayar sessizce etkisiz kalıyordu. Listeyi tek yerde tutuyoruz ki yeni bir
+  // ayar eklendiğinde aynı sessiz hata tekrarlanmasın.
+  if (ENGINE_SETTINGS.some((k) => k in changes)) pushEngineSettings();
+  if (changes['useHelper']) void pushHelper(true);
 });
 
 // ── İndirme devralma (PRD F1) ────────────────────────────────────────────────
@@ -185,11 +208,86 @@ async function createOffscreen(): Promise<void> {
   }
   await settingsReady;
   pushEngineSettings();
+  void pushHelper();
 }
+
+// Yardımcı ayarı değişince önbellek geçersiz: kullanıcı az önce kurmuş olabilir.
 
 function ensureOffscreen(): Promise<void> {
   offscreenInflight ??= createOffscreen().finally(() => { offscreenInflight = null; });
   return offscreenInflight;
+}
+
+/**
+ * Yerel yardımcıyla el sıkışma.
+ *
+ * `connectNative` yalnızca yüklü manifest'te bizim eklenti kimliğimiz yazılıysa
+ * çalışır; yardımcı port ve token'ı bu kanaldan verir. Kanal hemen kapanır —
+ * veri trafiği HTTP'ye geçer, çünkü yardımcının varlık sebeplerinden biri
+ * tarayıcı kapandıktan SONRA da sürmek ve o an bu kanal ölmüş olur.
+ *
+ * Yardımcı yoksa sessizce null döner. Kurulum önerisi/dırdırı YOK.
+ */
+async function helperHandshake(): Promise<HelperHandshake | null> {
+  if (!settings.useHelper) return null;
+  // Host izni GEREKMİYOR: yardımcı yalnızca bizim eklenti kaynağımıza CORS
+  // izni veriyor (kaynağı Chrome native-messaging ile ona bildiriyor).
+  // Bir izin daha az istemek, hem sürtünmeyi hem inceleme yüzeyini küçültür.
+  const granted = await chrome.permissions.contains({
+    permissions: ['nativeMessaging'],
+  }).catch(() => false);
+  if (!granted) return null;
+
+  return new Promise((resolve) => {
+    let port: chrome.runtime.Port;
+    try {
+      port = chrome.runtime.connectNative(HELPER_HOST);
+    } catch {
+      resolve(null);
+      return;
+    }
+    const done = (v: HelperHandshake | null) => {
+      try { port.disconnect(); } catch { /* zaten kapalı */ }
+      resolve(v);
+    };
+    // Yardımcı kurulu değilse onDisconnect gelir; asılı kalmamak için süre sınırı.
+    const timer = setTimeout(() => done(null), 4000);
+    port.onMessage.addListener((msg) => {
+      clearTimeout(timer);
+      done(isValidHandshake(msg) ? msg : null);
+    });
+    port.onDisconnect.addListener(() => {
+      clearTimeout(timer);
+      resolve(null);
+    });
+  });
+}
+
+/**
+ * Son başarılı el sıkışma. Önbelleklenir çünkü `ensureOffscreen()` HER indirmede
+ * çağrılıyor ve her seferinde `connectNative` yapmak yardımcı süreciyle
+ * gereksiz bir el sıkışma turu demek. Yardımcı ölürse HTTP çağrısı hata verir
+ * ve motor kendi indirmesine döner; o noktada önbellek `invalidateHelper()`
+ * ile temizlenir.
+ */
+let cachedHandshake: HelperHandshake | null = null;
+let handshakeTried = false;
+
+function invalidateHelper(): void {
+  cachedHandshake = null;
+  handshakeTried = false;
+}
+
+/** El sıkışmayı motora iter; yardımcı yoksa null gider ve motor kendi indirir. */
+async function pushHelper(force = false): Promise<void> {
+  if (force) invalidateHelper();
+  if (!handshakeTried) {
+    cachedHandshake = await helperHandshake();
+    handshakeTried = true;
+  }
+  void chrome.runtime.sendMessage({
+    target: 'engine', type: 'helper', handshake: cachedHandshake,
+  } satisfies Msg).catch(() => undefined);
 }
 
 interface Delivery {
@@ -594,6 +692,13 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
       case 'beam-unpair': {
         await chrome.storage.local.set({ beam: { seen: [] } });
         await chrome.alarms.clear(BEAM_ALARM);
+        break;
+      }
+      case 'enable-helper': {
+        const ok = await enableHelper();
+        void chrome.runtime.sendMessage({
+          target: 'panel', type: 'helper-result', ok,
+        } satisfies Msg).catch(() => undefined);
         break;
       }
       case 'hello-panel': {

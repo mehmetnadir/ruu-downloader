@@ -269,3 +269,84 @@ func TestConnectionsCapped(t *testing.T) {
 		t.Fatalf("bağlantı sayısı sınırlanmadı: %d", got)
 	}
 }
+
+func TestCORSOnlyForKnownExtension(t *testing.T) {
+	s, _ := newTestServer(t)
+	s.origin = "chrome-extension://abc"
+
+	// Tanınan kaynak: izin başlığı gelir
+	req := httptest.NewRequest("GET", "/health", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	req.Header.Set("Origin", "chrome-extension://abc")
+	rec := httptest.NewRecorder()
+	s.routes().ServeHTTP(rec, req)
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "chrome-extension://abc" {
+		t.Fatalf("tanınan kaynağa izin verilmedi: %q", got)
+	}
+
+	// Yabancı kaynak: izin başlığı YOK — joker asla kullanılmaz, yoksa herhangi
+	// bir web sayfası yardımcıyı sürebilir.
+	req2 := httptest.NewRequest("GET", "/health", nil)
+	req2.Header.Set("Authorization", "Bearer test-token")
+	req2.Header.Set("Origin", "https://kotu.example")
+	rec2 := httptest.NewRecorder()
+	s.routes().ServeHTTP(rec2, req2)
+	if rec2.Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Fatal("yabancı kaynağa CORS izni verildi")
+	}
+}
+
+func TestPreflightRejectsForeignOrigin(t *testing.T) {
+	s, _ := newTestServer(t)
+	s.origin = "chrome-extension://abc"
+	req := httptest.NewRequest("OPTIONS", "/jobs", nil)
+	req.Header.Set("Origin", "https://kotu.example")
+	rec := httptest.NewRecorder()
+	s.routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("yabancı preflight kabul edildi: %d", rec.Code)
+	}
+}
+
+func TestPrivateNetworkAccessOptIn(t *testing.T) {
+	// Chrome, yerel ağa isteği ancak hedef açıkça kabul ederse geçirir.
+	// Bu başlık olmadan CORS doğru olsa bile tarayıcı isteği düşürür.
+	s, _ := newTestServer(t)
+	s.origin = "chrome-extension://abc"
+	req := httptest.NewRequest("OPTIONS", "/health", nil)
+	req.Header.Set("Origin", "chrome-extension://abc")
+	req.Header.Set("Access-Control-Request-Private-Network", "true")
+	rec := httptest.NewRecorder()
+	s.routes().ServeHTTP(rec, req)
+	if rec.Header().Get("Access-Control-Allow-Private-Network") != "true" {
+		t.Fatal("PNA izni verilmedi — tarayıcı isteği sessizce düşürür")
+	}
+	// İstenmediğinde başlık eklenmemeli (gereksiz izin yüzeyi)
+	req2 := httptest.NewRequest("OPTIONS", "/health", nil)
+	req2.Header.Set("Origin", "chrome-extension://abc")
+	rec2 := httptest.NewRecorder()
+	s.routes().ServeHTTP(rec2, req2)
+	if rec2.Header().Get("Access-Control-Allow-Private-Network") != "" {
+		t.Fatal("istenmeden PNA izni verildi")
+	}
+}
+
+func TestListJobsForReattach(t *testing.T) {
+	// Tarayıcı kapanıp açılınca eklenti süren işi bu uçtan bulur; olmazsa
+	// indirme diskte biter ama panelde terk edilmiş görünür.
+	origin := rangeServerDelay(t, 8<<20, 300*time.Millisecond)
+	defer origin.Close()
+	s, _ := newTestServer(t)
+	body := fmt.Sprintf(`{"id":"re1","url":%q,"dest":"r.bin","size":%d,"connections":2}`, origin.URL, 8<<20)
+	do(t, s, "POST", "/jobs", "test-token", body)
+
+	rec := do(t, s, "GET", "/jobs", "test-token", "")
+	var list []JobStatus
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].ID != "re1" {
+		t.Fatalf("süren iş listelenmedi: %+v", list)
+	}
+	do(t, s, "DELETE", "/jobs/re1", "test-token", "")
+}
