@@ -606,3 +606,72 @@ başarılı olunca motora `deliver-ack` gönderir, motor bekçiyi 6 saate uzatı
 **Tür klasörleri artık VARSAYILAN KAPALI.** Kutudan çıktığı hâliyle bir Ruu
 indirmesi tam olarak bir Chrome indirmesinin gideceği yere gider; `Ruu/<kategori>/`
 altına yönlendirme kullanıcının açtığı bir ek özelliktir.
+
+---
+
+## Yardımcı uygulama — YAPILDI (2026-08-04)
+
+Önceki karar "zorunlu kurulum HAYIR" idi ve o kısım değişmedi. Nadir bir kısıt
+ekledi: *tek, basit, güncellemeye pek ihtiyaç duymayan* bir uygulama. Bu kısıt
+tasarımı belirledi.
+
+### Neden aria2 yerine kendi ikilimiz
+
+aria2 önerisi "kullanıcı bize güvenmek zorunda kalmasın" gerekçesine dayanıyordu.
+Ama aria2 kendi indirme stratejisini uygular; bizim motorumuzun kazanımları
+(adaptif rampa, çökme-devam günlüğü, süresi dolan link kurtarma, Gmail akışı)
+oraya geçmez ve eklenti merkez olmaktan çıkar — Nadir'in istediğinin tersi.
+Kendi ikilimiz **beynin eklentide kalmasını** sağlıyor.
+
+Güven sorunu kod boyutu ve durağanlıkla çözülüyor, marka vaadiyle değil.
+
+### Tasarım ekseni: yardımcı APTAL olmalı
+
+Tüm zekâ eklentide: kaç bağlantı, nasıl bölünecek, ne zaman geri çekilecek,
+hangi host kısıtlıyor, dosya adı ne olacak. Yardımcı yalnızca bir iş tarifi alır
+ve uygular. **"Güncellemeye ihtiyaç duymaması" bunun sonucudur** — rampa
+algoritmasını iyileştirdiğimizde yardımcı sürümü değişmez.
+
+Yardımcının açtığı tek iki kapı:
+| Sınır | Tarayıcı neden yapamaz | Yardımcı ne yapar |
+|---|---|---|
+| Host başına 6 bağlantı | `g_max_sockets_per_group` Chromium sabiti | istenen kadar açar (tavan 32) |
+| Tarayıcı kapanınca indirme durur | tarayıcı yoksa eklenti de yok | kendi süreci olarak sürer |
+
+### Mimari
+
+- **Go**, tek statik ikili, ~6 MB, çalışma zamanı bağımlılığı yok.
+  5 platforma çapraz derleniyor (darwin/linux arm64+amd64, windows amd64).
+- **El sıkışma native-messaging ile** (port + token), **veri localhost HTTP ile**.
+  Neden ikisi: native-messaging kanalını yalnızca manifest'teki eklenti kimliği
+  açabilir → port/token sızmaz. Ama o kanal tarayıcı kapanınca ölür — oysa
+  yardımcının varlık sebeplerinden biri tam olarak sonrasında sürmek.
+- Aralık defteri (`.ruupart`) eklentinin `mergeRange` biçimiyle AYNI: bir işi
+  yardımcı başlatıp eklenti bitirebilir. Eklenti her zaman doğruluk kaynağı.
+
+### Güvenlik sınırları (testlerle kilitli)
+
+- `assertLoopback`: 127.0.0.1 dışında dinlemeyi REDDEDER (dışa açık bir yardımcı
+  = kullanıcı adına çalışan uzak indirme servisi)
+- Sabit-süreli token karşılaştırması
+- `safeDest`: yol bileşenleri atılır — indirme dizini dışına yazılamaz
+- Yalnız http/https şeması (`file://` reddedilir)
+- Bağlantı tavanı 32 — kullanıcı kaynak sunucuya saldırı aracına dönüşmesin
+- İptal edilen işin kısmi dosyası ve defteri KORUNUR
+
+Auto-update YOK, telemetri YOK, çökme raporu YOK. Bu bir eksiklik değil tasarım:
+auto-update en büyük kötü-yazılım vektörü ve "nadiren güncellenen" hedefiyle çelişir.
+
+### İzinler isteğe bağlı
+
+`nativeMessaging` ve `http://127.0.0.1/*` **optional_permissions** içinde.
+Yardımcıyı istemeyen kullanıcı bu izinleri hiç vermez; mağaza inceleme yüzeyi
+de büyümez. PRIVACY.md ikisini de açıklıyor; denetleyici artık
+optional_permissions'ı da beyan karşısında kontrol ediyor.
+
+### Durum
+
+Yardımcı ve uzantı istemcisi hazır ve test edildi (17 Go testi race detector ile,
+12 uzantı testi). **Motor akışına henüz bağlanmadı** — sıradaki tur: eklentinin
+`shouldUseHelper()` kararını verip işi yardımcıya devretmesi ve ilerlemeyi
+panelde birleştirmesi.

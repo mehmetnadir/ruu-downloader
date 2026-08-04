@@ -466,7 +466,10 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
       when, from, job.sender,
       job.digestOk ? `✓ ${t('verified')}` : '',
       job.digestSkipped ? `⚠ ${t('notVerified')}` : '',
-      job.native ? t('wNative') : '',
+      // "tarayıcıya devredildi" tek başına NEDENİ söylemiyordu; kullanıcı
+      // hızlı inmediğini görüp bizde hata sanıyordu. Sebep sunucudadır:
+      // Range desteklemeyen bir host'ta bölmek mümkün değil.
+      job.native ? `${t('wNative')} · ${t('wNativeWhy')}` : '',
     ].filter(Boolean).join(' · ');
     ref.stats.title = job.url;
   } else {

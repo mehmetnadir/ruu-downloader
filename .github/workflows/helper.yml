@@ -1,0 +1,28 @@
+name: helper
+on:
+  push: { paths: ['helper/**', '.github/workflows/helper.yml'] }
+  pull_request: { paths: ['helper/**'] }
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.24', cache-dependency-path: helper/go.sum }
+      - name: vet
+        working-directory: helper
+        run: go vet ./...
+      # Yardımcı eşzamanlı yazan goroutine'lerle çalışıyor — race detector
+      # burada isteğe bağlı değil, kapı.
+      - name: test (race)
+        working-directory: helper
+        run: go test -race ./...
+      - name: cross-compile
+        working-directory: helper
+        run: |
+          for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
+            GOOS=${t%/*} GOARCH=${t#*/} CGO_ENABLED=0 \
+              go build -trimpath -ldflags "-s -w -buildid=" -o /tmp/rh-${t%/*}-${t#*/} .
+          done
+          ls -la /tmp/rh-*

@@ -330,5 +330,9 @@
   "errSaveCancelled": {
     "message": "Emplacement non choisi",
     "description": "User dismissed the Save As dialog"
+  },
+  "wNativeWhy": {
+    "message": "pas de téléchargement segmenté",
+    "description": "Why the job was handed to the browser: server has no Range support"
   }
 }

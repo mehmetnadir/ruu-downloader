@@ -5,7 +5,7 @@
 **The download manager Chrome deserves — segmented speed, unkillable resume, zero telemetry.**
 
 [![CI-ready E2E](https://img.shields.io/badge/E2E-17%20scenarios-7fb069)](test/e2e/run.sh)
-[![Unit tests](https://img.shields.io/badge/unit-119%20passing-7fb069)](test/)
+[![Unit tests](https://img.shields.io/badge/unit-131%20passing-7fb069)](test/)
 [![Languages](https://img.shields.io/badge/i18n-11%20languages-e8a33d)](public/_locales/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-e8a33d)](LICENSE)
 [![Privacy](https://img.shields.io/badge/telemetry-zero-16130f)](PRIVACY.md)
@@ -75,6 +75,12 @@ modern web platform primitives — no native app, no companion daemon, no ads, n
   up its slot to the next one. This runs entirely inside the extension — there
   is no daemon to install, no port to configure, nothing to trust but the
   extension you already reviewed.
+- 🔌 **Optional helper for the two things a browser can't do** — Chromium caps you at
+  6 connections per host and stops everything when you close the browser. A small Go
+  binary ([`helper/`](helper/), ~6 MB, no runtime) lifts both. It is opt-in, the
+  permissions are optional, and **the extension stays the brain**: the helper takes a
+  job description and executes it, so improving the ramp never means shipping a new
+  binary. No auto-update, no telemetry, reproducible build, one-command uninstall.
 - 📁 **Your Chrome settings win** — Ruu passes no `saveAs` flag, so Chrome decides:
   if you have *"Ask where to save each file"* on, you get the dialog; if not, the file
   lands in your normal download folder. Type-based subfolders exist but are **off by
@@ -145,7 +151,7 @@ Chrome 137+ removed `--load-extension` (E2E loads via CDP `Extensions.loadUnpack
 
 ## Testing
 
-Nothing ships untested — 119 unit tests plus a one-command E2E harness that drives a
+Nothing ships untested — 131 unit tests plus a one-command E2E harness that drives a
 real Chromium against a throttled, fault-injecting local server:
 
 ```bash

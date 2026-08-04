@@ -330,5 +330,9 @@
   "errSaveCancelled": {
     "message": "保存先が選択されませんでした",
     "description": "User dismissed the Save As dialog"
+  },
+  "wNativeWhy": {
+    "message": "分割非対応",
+    "description": "Why the job was handed to the browser: server has no Range support"
   }
 }

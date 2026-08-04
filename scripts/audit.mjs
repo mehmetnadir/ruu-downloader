@@ -174,7 +174,9 @@ findings.sort((a, b) => order[a.sev] - order[b.sev] || a.area.localeCompare(b.ar
 if (existsSync('PRIVACY.md')) {
   const priv = readFileSync('PRIVACY.md', 'utf8');
   const mf = JSON.parse(readFileSync('public/manifest.json', 'utf8'));
-  for (const perm of mf.permissions ?? []) {
+  // optional_permissions de beyan edilmeli: kullanıcı çalışma anında onay
+  // verirken ne verdiğini bilmeli, ve incelemeci de aynı listeye bakıyor.
+  for (const perm of [...(mf.permissions ?? []), ...(mf.optional_permissions ?? [])]) {
     if (!priv.includes(`\`${perm}\``)) {
       add('HIGH', 'gizlilik', `PRIVACY.md '${perm}' iznini açıklamıyor`);
     }
