@@ -43,8 +43,16 @@ shasum -a 256 ruu-helper
 The published checksum for each release is in `CHECKSUMS.txt`. If yours matches, the
 binary you are running is the source you just read.
 
-**How to remove it.** Quit it and delete the file. It has no installer, no service
-registration you did not ask for, no registry keys, and no leftovers.
+**How to install it.** Open Ruu's settings and flip on *Helper app*. If the helper
+is not present, the panel shows a one-line command with your extension ID already
+filled in — paste it into a terminal, done. It downloads the prebuilt binary for
+your platform, **verifies its SHA-256 against the published checksums, and aborts
+on mismatch**. If you have Go and this repo, the same script builds from source
+instead, which is the most verifiable path. Windows uses `install.ps1`.
+
+**How to remove it.** Run `ruu-helper-uninstall` — it removes everything the
+installer created (binary, manifest, itself). No admin rights are ever requested,
+nothing is written outside your user profile, no service is registered.
 
 ## Protocol
 

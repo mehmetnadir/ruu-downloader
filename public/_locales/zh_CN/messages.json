@@ -358,5 +358,25 @@
   "errHelperMissing": {
     "message": "未找到辅助程序",
     "description": "Helper not installed"
+  },
+  "helpNotInstalled": {
+    "message": "未安装辅助程序",
+    "description": "Helper missing: heading"
+  },
+  "helpRunThis": {
+    "message": "在终端运行一次，然后重新打开此面板：",
+    "description": "Helper missing: instruction"
+  },
+  "helpCopy": {
+    "message": "复制命令",
+    "description": "Copy install command"
+  },
+  "helpCopied": {
+    "message": "已复制",
+    "description": "Copied confirmation"
+  },
+  "helpWindows": {
+    "message": "Windows：仓库中的 helper/install.ps1",
+    "description": "Windows install pointer"
   }
 }

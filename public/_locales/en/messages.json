@@ -358,5 +358,25 @@
   "errHelperMissing": {
     "message": "Helper app not found",
     "description": "Helper not installed"
+  },
+  "helpNotInstalled": {
+    "message": "Helper not installed",
+    "description": "Helper missing: heading"
+  },
+  "helpRunThis": {
+    "message": "Run this once in Terminal, then reopen this panel:",
+    "description": "Helper missing: instruction"
+  },
+  "helpCopy": {
+    "message": "Copy command",
+    "description": "Copy install command"
+  },
+  "helpCopied": {
+    "message": "Copied",
+    "description": "Copied confirmation"
+  },
+  "helpWindows": {
+    "message": "Windows: see helper/install.ps1 in the repo",
+    "description": "Windows install pointer"
   }
 }

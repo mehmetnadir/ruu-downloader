@@ -143,6 +143,30 @@ const setRetries = $<HTMLInputElement>('#set-retries');
 const setQueue = $<HTMLInputElement>('#set-queue');
 const setHelper = $<HTMLInputElement>('#set-helper');
 const setAfterClose = $<HTMLInputElement>('#set-afterclose');
+const helperInstall = $('#helper-install');
+const helperCmd = $('#helper-cmd');
+const helperCopy = $<HTMLButtonElement>('#helper-copy');
+
+/**
+ * Kurulum komutu — kullanıcının KENDİ eklenti kimliği gömülü gelir.
+ *
+ * Kimliği kullanıcının chrome://extensions'tan elle bulmasını istemek, kurulumu
+ * pratikte imkânsız kılıyordu. Kimlik zaten burada; komutu hazır vermek doğru olan.
+ */
+const INSTALL_CMD = `curl -fsSL https://raw.githubusercontent.com/mehmetnadir/ruu-downloader/main/helper/install.sh | bash -s -- ${chrome.runtime.id}`;
+
+function showHelperInstall(show: boolean): void {
+  helperInstall.hidden = !show;
+  if (show) helperCmd.textContent = INSTALL_CMD;
+}
+
+helperCopy.textContent = t('helpCopy');
+helperCopy.addEventListener('click', () => {
+  void navigator.clipboard.writeText(INSTALL_CMD).then(() => {
+    helperCopy.textContent = t('helpCopied');
+    setTimeout(() => { helperCopy.textContent = t('helpCopy'); }, 2000);
+  }).catch(() => undefined);
+});
 const setNotify = $<HTMLSelectElement>('#set-notify');
 const setParty = $<HTMLInputElement>('#set-party');
 const partyRow = $('#party-row');
@@ -591,6 +615,10 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
     // "açık ama çalışmıyor" durumu kullanıcıyı yanıltır.
     setHelper.checked = raw.ok;
     setAfterClose.disabled = !raw.ok;
+    // İzin verildi ama program yoksa kutu kapanır VE kurulum yolu gösterilir.
+    // Eskiden yalnızca ekran okuyucuya "bulunamadı" deniyordu; gören kullanıcı
+    // için çıkmaz sokaktı.
+    showHelperInstall(!raw.ok && raw.needsInstall === true);
     if (!raw.ok) liveRegion.textContent = t('errHelperMissing');
   }
 });

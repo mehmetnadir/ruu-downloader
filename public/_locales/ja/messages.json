@@ -358,5 +358,25 @@
   "errHelperMissing": {
     "message": "ヘルパーアプリが見つかりません",
     "description": "Helper not installed"
+  },
+  "helpNotInstalled": {
+    "message": "ヘルパー未インストール",
+    "description": "Helper missing: heading"
+  },
+  "helpRunThis": {
+    "message": "ターミナルで一度実行し、パネルを開き直してください:",
+    "description": "Helper missing: instruction"
+  },
+  "helpCopy": {
+    "message": "コマンドをコピー",
+    "description": "Copy install command"
+  },
+  "helpCopied": {
+    "message": "コピーしました",
+    "description": "Copied confirmation"
+  },
+  "helpWindows": {
+    "message": "Windows: リポジトリの helper/install.ps1",
+    "description": "Windows install pointer"
   }
 }

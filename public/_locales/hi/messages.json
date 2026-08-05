@@ -358,5 +358,25 @@
   "errHelperMissing": {
     "message": "सहायक ऐप नहीं मिला",
     "description": "Helper not installed"
+  },
+  "helpNotInstalled": {
+    "message": "सहायक इंस्टॉल नहीं है",
+    "description": "Helper missing: heading"
+  },
+  "helpRunThis": {
+    "message": "टर्मिनल में एक बार यह चलाएँ, फिर यह पैनल दोबारा खोलें:",
+    "description": "Helper missing: instruction"
+  },
+  "helpCopy": {
+    "message": "कमांड कॉपी करें",
+    "description": "Copy install command"
+  },
+  "helpCopied": {
+    "message": "कॉपी हो गया",
+    "description": "Copied confirmation"
+  },
+  "helpWindows": {
+    "message": "Windows: रिपॉज़िटरी में helper/install.ps1",
+    "description": "Windows install pointer"
   }
 }

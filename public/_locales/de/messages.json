@@ -358,5 +358,25 @@
   "errHelperMissing": {
     "message": "Hilfsprogramm nicht gefunden",
     "description": "Helper not installed"
+  },
+  "helpNotInstalled": {
+    "message": "Helfer nicht installiert",
+    "description": "Helper missing: heading"
+  },
+  "helpRunThis": {
+    "message": "Einmal im Terminal ausführen, dann Panel neu öffnen:",
+    "description": "Helper missing: instruction"
+  },
+  "helpCopy": {
+    "message": "Befehl kopieren",
+    "description": "Copy install command"
+  },
+  "helpCopied": {
+    "message": "Kopiert",
+    "description": "Copied confirmation"
+  },
+  "helpWindows": {
+    "message": "Windows: helper/install.ps1 im Repo",
+    "description": "Windows install pointer"
   }
 }

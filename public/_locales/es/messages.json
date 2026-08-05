@@ -358,5 +358,25 @@
   "errHelperMissing": {
     "message": "Aplicación auxiliar no encontrada",
     "description": "Helper not installed"
+  },
+  "helpNotInstalled": {
+    "message": "Auxiliar no instalado",
+    "description": "Helper missing: heading"
+  },
+  "helpRunThis": {
+    "message": "Ejecuta esto una vez en la Terminal y reabre el panel:",
+    "description": "Helper missing: instruction"
+  },
+  "helpCopy": {
+    "message": "Copiar comando",
+    "description": "Copy install command"
+  },
+  "helpCopied": {
+    "message": "Copiado",
+    "description": "Copied confirmation"
+  },
+  "helpWindows": {
+    "message": "Windows: helper/install.ps1 en el repo",
+    "description": "Windows install pointer"
   }
 }

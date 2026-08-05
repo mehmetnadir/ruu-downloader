@@ -55,7 +55,7 @@ export type Msg =
   | { target: 'engine'; type: 'deliver-ack'; jobId: string }
   | { target: 'engine'; type: 'helper'; handshake: HelperHandshakeMsg | null }
   | { target: 'sw'; type: 'enable-helper' }
-  | { target: 'panel'; type: 'helper-result'; ok: boolean }
+  | { target: 'panel'; type: 'helper-result'; ok: boolean; needsInstall?: boolean }
   | { target: 'engine'; type: 'renew'; jobId: string; url: string }
   // engine/panel → sw
   | { target: 'sw'; type: 'add'; url: string; connections?: number; filenameHint?: string; priv?: boolean; origin?: string; sender?: string }

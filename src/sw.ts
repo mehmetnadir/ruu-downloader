@@ -58,15 +58,21 @@ function pushEngineSettings(): void {
 }
 
 /** Panel "yardımcıyı kullan"ı açtığında izinleri ister ve yeniden yoklar. */
-async function enableHelper(): Promise<boolean> {
-  const ok = await chrome.permissions.request({
+interface EnableResult { ok: boolean; needsInstall: boolean }
+
+async function enableHelper(): Promise<EnableResult> {
+  const granted = await chrome.permissions.request({
     permissions: ['nativeMessaging'],
   }).catch(() => false);
-  if (!ok) return false;
+  // İzin reddedildi = kullanıcının kararı; kurulum önerme.
+  if (!granted) return { ok: false, needsInstall: false };
+
   await chrome.storage.local.set({ useHelper: true });
   settings.useHelper = true;
   await pushHelper(true);
-  return true;
+  // İzin var ama el sıkışma olmadı = program kurulu değil. Panelin kurulum
+  // yolunu gösterebilmesi için bu ikisini AYIRMAK gerekiyor.
+  return { ok: cachedHandshake !== null, needsInstall: cachedHandshake === null };
 }
 
 /** Chrome'un kendi indirme arayüzünü aç/kapat (downloads.ui izni). */
@@ -695,9 +701,9 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
         break;
       }
       case 'enable-helper': {
-        const ok = await enableHelper();
+        const r = await enableHelper();
         void chrome.runtime.sendMessage({
-          target: 'panel', type: 'helper-result', ok,
+          target: 'panel', type: 'helper-result', ok: r.ok, needsInstall: r.needsInstall,
         } satisfies Msg).catch(() => undefined);
         break;
       }

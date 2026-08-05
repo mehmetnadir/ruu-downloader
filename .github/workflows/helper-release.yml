@@ -1,0 +1,35 @@
+name: helper-release
+on:
+  push: { tags: ['helper-v*'] }
+  workflow_dispatch:
+
+permissions: { contents: write }
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.24' }
+      - name: test
+        working-directory: helper
+        run: go test -race ./...
+      - name: build (reproducible)
+        working-directory: helper
+        run: |
+          mkdir -p ../out/helper
+          for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
+            os=${t%/*}; arch=${t#*/}
+            ext=""; [ "$os" = "windows" ] && ext=".exe"
+            GOOS=$os GOARCH=$arch CGO_ENABLED=0 \
+              go build -trimpath -ldflags "-s -w -buildid=" \
+              -o "../out/helper/ruu-helper-${os}-${arch}${ext}" .
+          done
+          cd ../out/helper && sha256sum ruu-helper-* > CHECKSUMS.txt && cat CHECKSUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/helper/*
+          # Kullanıcı bu sağlamaları kendi indirdiğiyle karşılaştırabilsin diye
+          # sürüm notunda da yayınlanır.
+          body_path: out/helper/CHECKSUMS.txt

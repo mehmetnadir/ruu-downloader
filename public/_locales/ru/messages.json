@@ -358,5 +358,25 @@
   "errHelperMissing": {
     "message": "Вспомогательная программа не найдена",
     "description": "Helper not installed"
+  },
+  "helpNotInstalled": {
+    "message": "Помощник не установлен",
+    "description": "Helper missing: heading"
+  },
+  "helpRunThis": {
+    "message": "Выполните это один раз в терминале и снова откройте панель:",
+    "description": "Helper missing: instruction"
+  },
+  "helpCopy": {
+    "message": "Копировать команду",
+    "description": "Copy install command"
+  },
+  "helpCopied": {
+    "message": "Скопировано",
+    "description": "Copied confirmation"
+  },
+  "helpWindows": {
+    "message": "Windows: helper/install.ps1 в репозитории",
+    "description": "Windows install pointer"
   }
 }

@@ -78,9 +78,12 @@ modern web platform primitives — no native app, no companion daemon, no ads, n
 - 🔌 **Optional helper for the two things a browser can't do** — Chromium caps you at
   6 connections per host and stops everything when you close the browser. A small Go
   binary ([`helper/`](helper/), ~6 MB, no runtime) lifts both. It is opt-in, the
-  permissions are optional, and **the extension stays the brain**: the helper takes a
+  permission is optional, and **the extension stays the brain**: the helper takes a
   job description and executes it, so improving the ramp never means shipping a new
-  binary. No auto-update, no telemetry, reproducible build, one-command uninstall.
+  binary. Installing is one pasted command — the settings panel prints it with your
+  extension ID filled in, and the script refuses to install if the binary's SHA-256
+  does not match the published checksum. No auto-update, no telemetry, reproducible
+  build, `ruu-helper-uninstall` removes every trace.
 - 📁 **Your Chrome settings win** — Ruu passes no `saveAs` flag, so Chrome decides:
   if you have *"Ask where to save each file"* on, you get the dialog; if not, the file
   lands in your normal download folder. Type-based subfolders exist but are **off by

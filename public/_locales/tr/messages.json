@@ -358,5 +358,25 @@
   "errHelperMissing": {
     "message": "Yardımcı uygulama bulunamadı",
     "description": "Helper not installed"
+  },
+  "helpNotInstalled": {
+    "message": "Yardımcı kurulu değil",
+    "description": "Helper missing: heading"
+  },
+  "helpRunThis": {
+    "message": "Terminalde bir kez şunu çalıştır, sonra bu paneli kapatıp aç:",
+    "description": "Helper missing: instruction"
+  },
+  "helpCopy": {
+    "message": "Komutu kopyala",
+    "description": "Copy install command"
+  },
+  "helpCopied": {
+    "message": "Kopyalandı",
+    "description": "Copied confirmation"
+  },
+  "helpWindows": {
+    "message": "Windows: depodaki helper/install.ps1",
+    "description": "Windows install pointer"
   }
 }

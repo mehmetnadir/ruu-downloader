@@ -358,5 +358,25 @@
   "errHelperMissing": {
     "message": "لم يتم العثور على التطبيق المساعد",
     "description": "Helper not installed"
+  },
+  "helpNotInstalled": {
+    "message": "المساعد غير مثبّت",
+    "description": "Helper missing: heading"
+  },
+  "helpRunThis": {
+    "message": "نفّذ هذا مرة واحدة في الطرفية ثم أعد فتح اللوحة:",
+    "description": "Helper missing: instruction"
+  },
+  "helpCopy": {
+    "message": "نسخ الأمر",
+    "description": "Copy install command"
+  },
+  "helpCopied": {
+    "message": "تم النسخ",
+    "description": "Copied confirmation"
+  },
+  "helpWindows": {
+    "message": "ويندوز: helper/install.ps1 في المستودع",
+    "description": "Windows install pointer"
   }
 }

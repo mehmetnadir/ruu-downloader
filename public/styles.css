@@ -327,3 +327,34 @@ h2 { font-size: 10.5px; letter-spacing: 1.1px; color: var(--muted); font-weight:
   .card-fill { transition: none; }
   .icon-btn, .primary { transition: none; }
 }
+
+/* Yardımcı kurulu değilse: yolu GÖSTER, sadece "bulunamadı" deme.
+   Kullanıcının kendi eklenti kimliği komuta gömülü gelir. */
+.helper-install {
+  margin: 8px 0 12px; padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  animation: hi-in var(--dur-fast) var(--ease-out);
+}
+@keyframes hi-in { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .helper-install { animation: none; } }
+.hi-title { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--text); }
+.hi-desc { margin: 0 0 8px; font-size: 11px; color: var(--muted); line-height: 1.45; }
+.hi-cmd {
+  display: block; padding: 8px 9px; margin-bottom: 8px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px; line-height: 1.5; color: var(--text);
+  overflow-x: auto; white-space: pre; user-select: all;
+}
+.hi-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hi-btn {
+  padding: 5px 11px; font-size: 11px; font-weight: 500;
+  color: var(--bg); background: var(--accent);
+  border: none; border-radius: 6px; cursor: pointer;
+  transition: background var(--dur-micro) var(--ease-out);
+}
+.hi-btn:hover { background: var(--accent-strong); }
+.hi-note { font-size: 10.5px; color: var(--muted); }
