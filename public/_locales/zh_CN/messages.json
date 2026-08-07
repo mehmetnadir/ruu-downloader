@@ -378,5 +378,29 @@
   "helpWindows": {
     "message": "Windows：仓库中的 helper/install.ps1",
     "description": "Windows install pointer"
+  },
+  "optTitle": {
+    "message": "设置",
+    "description": "Options page title"
+  },
+  "optSub": {
+    "message": "Ruu 的一切设置，尽在此处。",
+    "description": "Options page subtitle"
+  },
+  "optSecTakeover": {
+    "message": "浏览器接管",
+    "description": "Section: takeover"
+  },
+  "optSecDownload": {
+    "message": "下载",
+    "description": "Section: downloading"
+  },
+  "optSecDone": {
+    "message": "下载完成时",
+    "description": "Section: when done"
+  },
+  "optSecHelper": {
+    "message": "辅助程序",
+    "description": "Section: helper app"
   }
 }

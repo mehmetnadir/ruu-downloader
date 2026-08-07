@@ -439,6 +439,36 @@ const MB = 1024 * 1024;
     `durum=${st} ad="${name}" diskte=${onDisk ? 'var' : 'YOK'}`);
 }
 
+// S18: AYARLAR SAYFASI — tam sekme options: render oluyor mu, ayar değişikliği
+// motora ULAŞIYOR mu? (Ayarlar panelden taşındı; taşıma sırasında bir kablonun
+// kopması en olası regresyon.)
+{
+  await browser.call('Target.createTarget', { url: `chrome-extension://${extId}/options.html` });
+  const opt = await pageCdp('options.html');
+  await sleep(1200);
+  const shape = JSON.parse(await evalIn(opt, `JSON.stringify({
+    cards: document.querySelectorAll('.opt-card').length,
+    svc: document.querySelectorAll('.svc-row').length,
+    inputs: ['set-default','set-takeover','set-minmb','set-folders','set-queue',
+             'set-retries','set-helper','set-afterclose','set-notify','set-party','set-open']
+      .filter(id => !document.getElementById(id)).join(','),
+    titled: [...document.querySelectorAll('[data-i18n]')].every(e => e.textContent.trim().length > 0),
+  })`));
+  // Ayar değişikliği: kuyruk sınırını options üzerinden 3 yap → motora ulaşmalı
+  await evalIn(opt, `(()=>{const q=document.getElementById('set-queue');q.value='3';
+    q.dispatchEvent(new Event('change'));return 'ok'})()`);
+  await sleep(1200);
+  const off = await pageCdp('offscreen.html');
+  const engineSees = await evalIn(off, `__ruu.helperOpts().queueLimit`);
+  off.close();
+  await evalIn(opt, `chrome.storage.local.set({queueLimit:0}); 'reset'`);
+  opt.close();
+  const ok = shape.cards >= 6 && shape.svc >= 20 && shape.inputs === ''
+    && shape.titled && engineSees === 3;
+  record('S18 ayarlar sayfası (tam sekme)', ok,
+    `kart=${shape.cards} servis=${shape.svc} eksik=[${shape.inputs}] i18n=${shape.titled} motor=${engineSees}`);
+}
+
 // S13: HAYALET İNDİRME — probe uçarken iptal edilen iş DİRİLMEMELİ.
 // Denetim bulgusu 2: probe abort edilmiyordu ve start() await'ten sonra
 // kontrolsüz devam edip silinmiş dosyayı yeniden yaratıyordu.

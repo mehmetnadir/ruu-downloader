@@ -378,5 +378,29 @@
   "helpWindows": {
     "message": "Windows : helper/install.ps1 dans le dépôt",
     "description": "Windows install pointer"
+  },
+  "optTitle": {
+    "message": "Réglages",
+    "description": "Options page title"
+  },
+  "optSub": {
+    "message": "Tout ce que fait Ruu, au même endroit.",
+    "description": "Options page subtitle"
+  },
+  "optSecTakeover": {
+    "message": "Prise en main du navigateur",
+    "description": "Section: takeover"
+  },
+  "optSecDownload": {
+    "message": "Téléchargement",
+    "description": "Section: downloading"
+  },
+  "optSecDone": {
+    "message": "À la fin d'un téléchargement",
+    "description": "Section: when done"
+  },
+  "optSecHelper": {
+    "message": "Application auxiliaire",
+    "description": "Section: helper app"
   }
 }

@@ -378,5 +378,29 @@
   "helpWindows": {
     "message": "Windows: helper/install.ps1 im Repo",
     "description": "Windows install pointer"
+  },
+  "optTitle": {
+    "message": "Einstellungen",
+    "description": "Options page title"
+  },
+  "optSub": {
+    "message": "Alles, was Ruu tut, an einem Ort.",
+    "description": "Options page subtitle"
+  },
+  "optSecTakeover": {
+    "message": "Browser-Übernahme",
+    "description": "Section: takeover"
+  },
+  "optSecDownload": {
+    "message": "Download",
+    "description": "Section: downloading"
+  },
+  "optSecDone": {
+    "message": "Wenn ein Download fertig ist",
+    "description": "Section: when done"
+  },
+  "optSecHelper": {
+    "message": "Hilfsprogramm",
+    "description": "Section: helper app"
   }
 }

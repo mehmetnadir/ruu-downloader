@@ -11,6 +11,7 @@ const options = {
     'sidepanel': 'src/sidepanel/main.ts',
     'mail': 'src/content/mail.ts',
     'done': 'src/sidepanel/done.ts',
+    'options': 'src/options/main.ts',
   },
   outdir: 'dist',
   bundle: true,

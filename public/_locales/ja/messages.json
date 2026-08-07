@@ -378,5 +378,29 @@
   "helpWindows": {
     "message": "Windows: リポジトリの helper/install.ps1",
     "description": "Windows install pointer"
+  },
+  "optTitle": {
+    "message": "設定",
+    "description": "Options page title"
+  },
+  "optSub": {
+    "message": "Ruu のすべてをここで。",
+    "description": "Options page subtitle"
+  },
+  "optSecTakeover": {
+    "message": "ブラウザ引き継ぎ",
+    "description": "Section: takeover"
+  },
+  "optSecDownload": {
+    "message": "ダウンロード",
+    "description": "Section: downloading"
+  },
+  "optSecDone": {
+    "message": "ダウンロード完了時",
+    "description": "Section: when done"
+  },
+  "optSecHelper": {
+    "message": "ヘルパーアプリ",
+    "description": "Section: helper app"
   }
 }

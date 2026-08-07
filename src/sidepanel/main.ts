@@ -3,25 +3,10 @@ import { DEFAULT_MODE, type ServiceMode } from '../content/modes';
 import type { HistoryEntry } from '../engine/history';
 import { SERVICES } from '../content/services';
 import { icons } from './icons';
-import { initBeamUi } from './beam-ui';
-
-const $ = <T extends HTMLElement>(sel: string): T => document.querySelector(sel) as T;
+import { $, applyI18n, escapeHtml, fmtBytes, SETTING_DEFAULTS, t } from './common';
 
 // ── i18n ─────────────────────────────────────────────────────────────────────
-const t = (key: string): string => chrome.i18n.getMessage(key) || key;
-document.documentElement.dir = chrome.i18n.getMessage('@@bidi_dir') || 'ltr';
-document.documentElement.lang = chrome.i18n.getUILanguage();
-for (const el of document.querySelectorAll<HTMLElement>('[data-i18n]')) {
-  el.textContent = t(el.dataset['i18n']!);
-}
-for (const el of document.querySelectorAll<HTMLElement>('[data-i18n-title]')) {
-  const label = t(el.dataset['i18nTitle']!);
-  el.title = label;
-  el.setAttribute('aria-label', label);
-}
-for (const el of document.querySelectorAll<HTMLInputElement>('[data-i18n-ph]')) {
-  el.placeholder = t(el.dataset['i18nPh']!);
-}
+applyI18n();
 /** Motor hata anahtarlarını yerelleştir; bilinmeyenler ham geçer. */
 const ERR_KEYS = new Set([
   'errChanged', 'errCancelled', 'errAllDown', 'errDelivery',
@@ -123,99 +108,17 @@ const DEFAULTS = {
 
 const settingsBtn = $<HTMLButtonElement>('#settings-btn');
 settingsBtn.innerHTML = icons.sliders;
-for (const el of document.querySelectorAll<HTMLElement>('.set-icon[data-icon]')) {
-  el.innerHTML = icons[el.dataset['icon'] as keyof typeof icons] ?? '';
-}
-const settingsPanel = $('#settings');
 const onboard = $('#onboard');
+void chrome.storage.local.get({ onboarded: false }).then((s2) => {
+  onboard.hidden = Boolean(s2['onboarded']);
+});
 
+// Ayarlar artık TAM SAYFADA: 11 satır + 28 servis + Beam + tanılama, panelin
+// ~320 px'lik sütununa kaydırmalı çekmece olarak sığmıyordu. Panel indirme
+// İZLEME yeridir; yapılandırma options sayfasına taşındı (src/options/).
 settingsBtn.addEventListener('click', () => {
-  const open = settingsPanel.hidden;
-  settingsPanel.hidden = !open;
-  settingsBtn.setAttribute('aria-expanded', String(open));
+  void chrome.runtime.openOptionsPage();
 });
-
-const setDefault = $<HTMLInputElement>('#set-default');
-const setTakeover = $<HTMLInputElement>('#set-takeover');
-const setMinMb = $<HTMLInputElement>('#set-minmb');
-const setFolders = $<HTMLInputElement>('#set-folders');
-const setRetries = $<HTMLInputElement>('#set-retries');
-const setQueue = $<HTMLInputElement>('#set-queue');
-const setHelper = $<HTMLInputElement>('#set-helper');
-const setAfterClose = $<HTMLInputElement>('#set-afterclose');
-const helperInstall = $('#helper-install');
-const helperCmd = $('#helper-cmd');
-const helperCopy = $<HTMLButtonElement>('#helper-copy');
-
-/**
- * Kurulum komutu — kullanıcının KENDİ eklenti kimliği gömülü gelir.
- *
- * Kimliği kullanıcının chrome://extensions'tan elle bulmasını istemek, kurulumu
- * pratikte imkânsız kılıyordu. Kimlik zaten burada; komutu hazır vermek doğru olan.
- */
-const INSTALL_CMD = `curl -fsSL https://raw.githubusercontent.com/mehmetnadir/ruu-downloader/main/helper/install.sh | bash -s -- ${chrome.runtime.id}`;
-
-function showHelperInstall(show: boolean): void {
-  helperInstall.hidden = !show;
-  if (show) helperCmd.textContent = INSTALL_CMD;
-}
-
-helperCopy.textContent = t('helpCopy');
-helperCopy.addEventListener('click', () => {
-  void navigator.clipboard.writeText(INSTALL_CMD).then(() => {
-    helperCopy.textContent = t('helpCopied');
-    setTimeout(() => { helperCopy.textContent = t('helpCopy'); }, 2000);
-  }).catch(() => undefined);
-});
-const setNotify = $<HTMLSelectElement>('#set-notify');
-const setParty = $<HTMLInputElement>('#set-party');
-const partyRow = $('#party-row');
-const setOpen = $<HTMLInputElement>('#set-open');
-
-void chrome.storage.local.get(DEFAULTS).then((s) => {
-  onboard.hidden = Boolean(s['onboarded']);
-  setDefault.checked = Boolean(s['defaultExperience']);
-  setTakeover.checked = Boolean(s['takeover']);
-  setMinMb.value = String(s['takeoverMinMB']);
-  setFolders.checked = Boolean(s['typeFolders']);
-  setRetries.value = String(s['maxRetries']);
-  setQueue.value = String(s['queueLimit']);
-  setHelper.checked = Boolean(s['useHelper']);
-  setAfterClose.checked = Boolean(s['continueAfterClose']);
-  setAfterClose.disabled = !s['useHelper'];
-  setNotify.value = String(s['notifyMode']);
-  setParty.value = String(s['partyUrl']);
-  partyRow.hidden = s['notifyMode'] !== 'party';
-  setOpen.checked = Boolean(s['openWhenDone']);
-});
-
-const save = (patch: Record<string, unknown>): void => {
-  void chrome.storage.local.set(patch);
-};
-setDefault.addEventListener('change', () => save({ defaultExperience: setDefault.checked }));
-setTakeover.addEventListener('change', () => save({ takeover: setTakeover.checked }));
-setMinMb.addEventListener('change', () => save({ takeoverMinMB: Math.max(0, Number(setMinMb.value) || 0) }));
-setFolders.addEventListener('change', () => save({ typeFolders: setFolders.checked }));
-setRetries.addEventListener('change', () => save({ maxRetries: Math.min(10, Math.max(0, Number(setRetries.value) || 0)) }));
-setQueue.addEventListener('change', () => save({ queueLimit: Math.min(20, Math.max(0, Number(setQueue.value) || 0)) }));
-
-// Yardımcı AÇILIRKEN izin istenir; kullanıcı reddederse ya da program kurulu
-// değilse kutu geri kapanır — sessizce "açık" görünüp çalışmaması yanıltıcı olur.
-setHelper.addEventListener('change', () => {
-  if (!setHelper.checked) {
-    void save({ useHelper: false, continueAfterClose: false });
-    setAfterClose.disabled = true;
-    return;
-  }
-  send({ target: 'sw', type: 'enable-helper' });
-});
-setAfterClose.addEventListener('change', () => save({ continueAfterClose: setAfterClose.checked }));
-setNotify.addEventListener('change', () => {
-  partyRow.hidden = setNotify.value !== 'party';
-  save({ notifyMode: setNotify.value });
-});
-setParty.addEventListener('change', () => save({ partyUrl: setParty.value.trim() || DEFAULTS.partyUrl }));
-setOpen.addEventListener('change', () => save({ openWhenDone: setOpen.checked }));
 
 // ── Kalıcı indirme geçmişi ───────────────────────────────────────────────────
 // Chrome'un indirme balonunu gizlemeyi öneriyoruz; kendi geçmişimizi tutmamak
@@ -251,84 +154,6 @@ chrome.storage.onChanged.addListener((ch, area) => {
   if (area === 'local' && ch['history']) void renderHistory();
 });
 
-// ── Beam: telefon → bu bilgisayar ────────────────────────────────────────────
-initBeamUi($('#beam-body'));
-
-// ── Paylaşım servisleri: kapalı / sor / otomatik ─────────────────────────────
-const svcList = $('#svc-list');
-const MODE_LABEL: Record<ServiceMode, string> = {
-  off: t('mOff'), ask: t('mAsk'), auto: t('mAuto'),
-};
-let svcModes: Record<string, ServiceMode> = {};
-
-function renderServices(): void {
-  svcList.innerHTML = SERVICES.map((svc) => {
-    const cur = svcModes[svc.id] ?? DEFAULT_MODE;
-    const opts = (['off', 'ask', 'auto'] as ServiceMode[])
-      .map((m) => `<option value="${m}"${m === cur ? ' selected' : ''}>${MODE_LABEL[m]}</option>`)
-      .join('');
-    // 'unaccel' servisler hızlandırılamaz → otomatik seçeneği anlamsız değil
-    // (sayfayı yine açar) ama kullanıcı bilsin diye ad yanında işaret var
-    const mark = svc.kind === 'unaccel' ? ' <span class="svc-mark">•</span>' : '';
-    return `<div class="svc-row"><span class="svc-name">${svc.name}${mark}</span>` +
-      `<select class="svc-mode" data-svc="${svc.id}" aria-label="${svc.name}">${opts}</select></div>`;
-  }).join('');
-}
-
-void chrome.storage.local.get({ serviceModes: {} }).then((s) => {
-  svcModes = (s['serviceModes'] ?? {}) as Record<string, ServiceMode>;
-  renderServices();
-});
-
-svcList.addEventListener('change', (e) => {
-  const sel = e.target as HTMLSelectElement;
-  if (!sel.classList.contains('svc-mode')) return;
-  svcModes = { ...svcModes, [sel.dataset['svc']!]: sel.value as ServiceMode };
-  save({ serviceModes: svcModes });
-});
-
-const setAll = (mode: ServiceMode): void => {
-  svcModes = Object.fromEntries(SERVICES.map((s) => [s.id, mode]));
-  save({ serviceModes: svcModes });
-  renderServices();
-};
-$('#svc-all-auto').addEventListener('click', () => setAll('auto'));
-$('#svc-all-ask').addEventListener('click', () => setAll('ask'));
-
-// Öneri: telemetri YOK — kullanıcı GitHub'da hazır doldurulmuş bir issue açar
-$('#svc-suggest').addEventListener('click', () => {
-  const body = encodeURIComponent(
-    'Servis adı:\n\nÖrnek paylaşım linki (isteğe bağlı):\n\nNotlar:\n',
-  );
-  void chrome.tabs.create({
-    url: 'https://github.com/mehmetnadir/ruu-downloader/issues/new' +
-      `?title=${encodeURIComponent('Servis önerisi: ')}&body=${body}&labels=service-request`,
-  });
-});
-
-// ── Devralma teşhis günlüğü ──────────────────────────────────────────────────
-const diagList = $('#diag-list');
-const escapeHtml = (s: string): string => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const DIAG_LABEL: Record<string, string> = {
-  taken: t('dTaken'), small: t('dSmall'), scheme: t('dScheme'),
-  disabled: t('dDisabled'), 'not-active': t('dNotActive'), 'cancel-failed': t('dCancelFailed'),
-  unaccel: t('dUnaccel'), 'share-open': t('dTaken'), 'share-auto': t('dTaken'),
-};
-function renderDiag(log: Array<{ url: string; action: string; size?: number }>): void {
-  diagList.innerHTML = log.slice(0, 5).map((e) => {
-    const sz = e.size && e.size > 0 ? ` · ${fmtBytes(e.size)}` : '';
-    const cls = e.action === 'taken' ? 'ok' : 'skip';
-    return `<div class="diag-row ${cls}"><span class="diag-url" title="${escapeHtml(e.url)}">${escapeHtml(e.url)}</span><span class="diag-why">${DIAG_LABEL[e.action] ?? e.action}${sz}</span></div>`;
-  }).join('') || `<div class="diag-row skip"><span class="diag-why">—</span></div>`;
-}
-void chrome.storage.local.get({ takeoverLog: [] })
-  .then((s) => renderDiag(s['takeoverLog'] as Array<{ url: string; action: string; size?: number }>));
-chrome.storage.onChanged.addListener((ch, area) => {
-  if (area === 'local' && ch['takeoverLog']) {
-    renderDiag(ch['takeoverLog'].newValue as Array<{ url: string; action: string; size?: number }>);
-  }
-});
-
 // ── Yerel istatistik satırı ──────────────────────────────────────────────────
 const statsLine = $('#stats-line');
 function renderStats(s: { count: number; bytes: number; bestSpeed: number } | undefined): void {
@@ -344,27 +169,20 @@ chrome.storage.onChanged.addListener((ch, area) => {
   }
 });
 
+const saveLocal = (patch: Record<string, unknown>): void => {
+  void chrome.storage.local.set(patch);
+};
 $('#onboard-yes').addEventListener('click', () => {
-  save({ onboarded: true, defaultExperience: true, takeover: true });
-  setDefault.checked = true;
-  setTakeover.checked = true;
+  saveLocal({ onboarded: true, defaultExperience: true, takeover: true });
   onboard.hidden = true;
 });
 $('#onboard-no').addEventListener('click', () => {
-  save({ onboarded: true, defaultExperience: false, takeover: false });
-  setTakeover.checked = false;
+  saveLocal({ onboarded: true, defaultExperience: false, takeover: false });
   onboard.hidden = true;
 });
 
 function hostOf(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
-}
-
-function fmtBytes(n: number): string {
-  if (n >= 1 << 30) return `${(n / (1 << 30)).toFixed(2)} GB`;
-  if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;
-  if (n >= 1 << 10) return `${(n / (1 << 10)).toFixed(0)} KB`;
-  return `${n} B`;
 }
 
 function fmtEta(sec: number): string {
@@ -610,17 +428,7 @@ document.body.addEventListener('click', (e) => {
 
 chrome.runtime.onMessage.addListener((raw: Msg) => {
   if (raw.target === 'panel' && raw.type === 'jobs') render(raw.jobs);
-  if (raw.target === 'panel' && raw.type === 'helper-result') {
-    // İzin verilmediyse ya da program kurulu değilse kutuyu geri kapat:
-    // "açık ama çalışmıyor" durumu kullanıcıyı yanıltır.
-    setHelper.checked = raw.ok;
-    setAfterClose.disabled = !raw.ok;
-    // İzin verildi ama program yoksa kutu kapanır VE kurulum yolu gösterilir.
-    // Eskiden yalnızca ekran okuyucuya "bulunamadı" deniyordu; gören kullanıcı
-    // için çıkmaz sokaktı.
-    showHelperInstall(!raw.ok && raw.needsInstall === true);
-    if (!raw.ok) liveRegion.textContent = t('errHelperMissing');
-  }
+  // helper-result artık ayarlar sayfasında ele alınıyor (src/options/).
 });
 
 send({ target: 'sw', type: 'hello-panel' });

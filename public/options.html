@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruu</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="options-page">
+
+<header class="opt-header">
+  <div class="opt-brand">
+    <span id="opt-logo" class="opt-logo"></span>
+    <div>
+      <h1 data-i18n="optTitle"></h1>
+      <p class="opt-sub" data-i18n="optSub"></p>
+    </div>
+  </div>
+</header>
+
+<main class="opt-grid">
+
+  <section class="opt-card" aria-labelledby="sec-takeover">
+    <h2 id="sec-takeover" data-i18n="optSecTakeover"></h2>
+    <label class="set-row">
+      <span class="set-icon" data-icon="globe"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="stDefT"></span>
+        <span class="set-desc" data-i18n="stDefD"></span>
+      </span>
+      <input type="checkbox" id="set-default">
+    </label>
+    <label class="set-row">
+      <span class="set-icon" data-icon="magnet"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="stTakeT"></span>
+        <span class="set-desc" data-i18n="stTakeD"></span>
+      </span>
+      <input type="checkbox" id="set-takeover">
+    </label>
+    <label class="set-row">
+      <span class="set-icon" data-icon="gauge"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="stThrT"></span>
+        <span class="set-desc" data-i18n="stThrD"></span>
+      </span>
+      <input type="number" id="set-minmb" min="0" max="1024" step="1">
+    </label>
+    <div class="diag">
+      <div class="diag-title" data-i18n="diagTitle"></div>
+      <div id="diag-list"></div>
+    </div>
+  </section>
+
+  <section class="opt-card" aria-labelledby="sec-download">
+    <h2 id="sec-download" data-i18n="optSecDownload"></h2>
+    <label class="set-row">
+      <span class="set-icon" data-icon="folder"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="stFolT"></span>
+        <span class="set-desc" data-i18n="stFolD"></span>
+      </span>
+      <input type="checkbox" id="set-folders">
+    </label>
+    <label class="set-row">
+      <span class="set-icon" data-icon="queue"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="setQueueLimit"></span>
+        <span class="set-desc" data-i18n="setQueueLimitHelp"></span>
+      </span>
+      <input type="number" id="set-queue" min="0" max="20" step="1">
+    </label>
+    <label class="set-row">
+      <span class="set-icon" data-icon="refresh"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="stRetT"></span>
+        <span class="set-desc" data-i18n="stRetD"></span>
+      </span>
+      <input type="number" id="set-retries" min="0" max="10" step="1">
+    </label>
+  </section>
+
+  <section class="opt-card" aria-labelledby="sec-done">
+    <h2 id="sec-done" data-i18n="optSecDone"></h2>
+    <label class="set-row">
+      <span class="set-icon" data-icon="bell"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="stNotT"></span>
+        <span class="set-desc" data-i18n="stNotD"></span>
+      </span>
+      <select id="set-notify">
+        <option value="silent" data-i18n="ntSilent"></option>
+        <option value="notify" data-i18n="ntNotify"></option>
+        <option value="party" data-i18n="ntParty"></option>
+        <option value="tab" data-i18n="ntTab"></option>
+      </select>
+    </label>
+    <label class="set-row" id="party-row" hidden>
+      <span class="set-icon" data-icon="music"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="stPartyT"></span>
+        <span class="set-desc" data-i18n="stPartyD"></span>
+      </span>
+      <input type="url" id="set-party" placeholder="YouTube URL">
+    </label>
+    <label class="set-row">
+      <span class="set-icon" data-icon="external"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="stOpenT"></span>
+        <span class="set-desc" data-i18n="stOpenD"></span>
+      </span>
+      <input type="checkbox" id="set-open">
+    </label>
+  </section>
+
+  <section class="opt-card" aria-labelledby="sec-helper">
+    <h2 id="sec-helper" data-i18n="optSecHelper"></h2>
+    <label class="set-row">
+      <span class="set-icon" data-icon="plug"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="setHelperT"></span>
+        <span class="set-desc" data-i18n="setHelperD"></span>
+      </span>
+      <input type="checkbox" id="set-helper">
+    </label>
+    <div id="helper-install" class="helper-install" hidden>
+      <p class="hi-title" data-i18n="helpNotInstalled"></p>
+      <p class="hi-desc" data-i18n="helpRunThis"></p>
+      <code id="helper-cmd" class="hi-cmd"></code>
+      <div class="hi-actions">
+        <button id="helper-copy" type="button" class="hi-btn"></button>
+        <span class="hi-note" data-i18n="helpWindows"></span>
+      </div>
+    </div>
+    <label class="set-row">
+      <span class="set-icon" data-icon="power"></span>
+      <span class="set-text">
+        <span class="set-title" data-i18n="setAfterCloseT"></span>
+        <span class="set-desc" data-i18n="setAfterCloseD"></span>
+      </span>
+      <input type="checkbox" id="set-afterclose">
+    </label>
+  </section>
+
+  <section class="opt-card opt-wide" aria-labelledby="sec-svc">
+    <h2 id="sec-svc" data-i18n="svcTitle"></h2>
+    <p class="svc-desc" data-i18n="svcDesc"></p>
+    <div class="svc-bulk">
+      <button id="svc-all-auto" class="btn-ghost" data-i18n="svcAllAuto"></button>
+      <button id="svc-all-ask" class="btn-ghost" data-i18n="svcAllAsk"></button>
+      <button id="svc-suggest" class="btn-ghost" data-i18n="svcSuggest"></button>
+    </div>
+    <div id="svc-list" class="svc-grid"></div>
+  </section>
+
+  <section class="opt-card" aria-labelledby="sec-beam">
+    <h2 id="sec-beam" data-i18n="beamTitle"></h2>
+    <p class="svc-desc" data-i18n="beamDesc"></p>
+    <div id="beam-body">
+      <button id="beam-pair" class="btn-ghost" data-i18n="beamPair"></button>
+    </div>
+  </section>
+
+</main>
+
+<div id="live-region" class="visually-hidden" aria-live="polite"></div>
+<script type="module" src="options.js"></script>
+</body>
+</html>

@@ -378,5 +378,29 @@
   "helpWindows": {
     "message": "Windows: helper/install.ps1 в репозитории",
     "description": "Windows install pointer"
+  },
+  "optTitle": {
+    "message": "Настройки",
+    "description": "Options page title"
+  },
+  "optSub": {
+    "message": "Всё, что делает Ruu, в одном месте.",
+    "description": "Options page subtitle"
+  },
+  "optSecTakeover": {
+    "message": "Перехват браузера",
+    "description": "Section: takeover"
+  },
+  "optSecDownload": {
+    "message": "Загрузка",
+    "description": "Section: downloading"
+  },
+  "optSecDone": {
+    "message": "Когда загрузка завершена",
+    "description": "Section: when done"
+  },
+  "optSecHelper": {
+    "message": "Вспомогательная программа",
+    "description": "Section: helper app"
   }
 }
