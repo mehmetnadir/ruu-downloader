@@ -33,7 +33,9 @@ description and executes it. That is deliberate — a binary you rarely have to 
 is a binary you can actually audit once and keep.
 
 **How to verify it.** The source is this directory; it is small enough to read in one
-sitting. Builds are reproducible:
+sitting. Builds are reproducible **with the same Go toolchain the release used**
+(see `.github/workflows/helper-release.yml` — a different Go version produces a
+different, equally valid binary with a different hash):
 
 ```
 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -buildid=" -o ruu-helper .
