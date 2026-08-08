@@ -95,7 +95,10 @@ type journalFile struct {
 }
 
 func (j *Job) loadJournal() {
-	blob, err := os.ReadFile(j.path + journalSuffix)
+	j.mu.Lock()
+	path := j.path
+	j.mu.Unlock()
+	blob, err := os.ReadFile(path + journalSuffix)
 	if err != nil {
 		return
 	}
@@ -108,7 +111,7 @@ func (j *Job) loadJournal() {
 		return
 	}
 	// Savunma: gerçek dosya boyutunu aşan aralıkları kırp (defter ileride kalmış olabilir).
-	st, err := os.Stat(j.path)
+	st, err := os.Stat(path)
 	if err != nil {
 		return
 	}
@@ -124,7 +127,11 @@ func (j *Job) loadJournal() {
 			safe = MergeRange(safe, r)
 		}
 	}
+	// KİLİT ŞART: status() aynı anda kilitli okuyor — kilitsiz yazım CI'ın
+	// race detector'ında yakalandı (lokalde zamanlama tutmadı, CI'da tuttu).
+	j.mu.Lock()
 	j.ranges = safe
+	j.mu.Unlock()
 }
 
 func (j *Job) run(ctx context.Context, dir string, client *http.Client) {
