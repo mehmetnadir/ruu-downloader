@@ -41,14 +41,60 @@ type server struct {
 	mu     sync.Mutex
 	jobs   map[string]*Job
 	ctx    context.Context
+	/** Son HTTP isteği — boşta kalma kapanışının saati. */
+	lastReq atomicTime
+}
+
+type atomicTime struct {
+	mu sync.Mutex
+	t  time.Time
+}
+
+func (a *atomicTime) set(t time.Time) { a.mu.Lock(); a.t = t; a.mu.Unlock() }
+func (a *atomicTime) get() time.Time  { a.mu.Lock(); defer a.mu.Unlock(); return a.t }
+
+/** Boşta kalma sınırı: aktif iş yok + bu kadar süre istek yoksa sunucu kendini kapatır. */
+const idleLimit = 15 * time.Minute
+
+// startIdleWatch makes the detached server clean up after itself. A helper
+// that lives forever after one download is a background process the user
+// never asked to keep — self-termination is part of the trust story.
+func (s *server) startIdleWatch(ctx context.Context, stop context.CancelFunc) {
+	s.lastReq.set(time.Now())
+	go func() {
+		t := time.NewTicker(time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				s.mu.Lock()
+				busy := false
+				for _, j := range s.jobs {
+					if j.status().State == "running" {
+						busy = true
+						break
+					}
+				}
+				s.mu.Unlock()
+				if !busy && time.Since(s.lastReq.get()) > idleLimit {
+					removeEndpoint()
+					stop() // zarif kapanış — httpSrv.Shutdown tetiklenir
+					return
+				}
+			}
+		}
+	}()
 }
 
 func main() {
 	var (
 		dir      = flag.String("dir", defaultDownloadDir(), "indirme dizini")
 		addr     = flag.String("addr", "127.0.0.1:0", "dinlenecek adres (yalnız yerel)")
-		handshake = flag.Bool("handshake", false, "Chrome native-messaging modu: port+token'ı stdio ile bildir")
-		originArg = flag.String("origin", "", "izin verilecek eklenti kaynağı (test için; normalde Chrome argüman olarak geçirir)")
+		handshake = flag.Bool("handshake", false, "fırlatıcı modu: sunucuyu garanti et, adresi stdio NM çerçevesiyle bildir, çık")
+		serveMode = flag.Bool("serve", false, "sunucu modu (fırlatıcı başlatır; elle kullanma)")
+		originArg = flag.String("origin", "", "izin verilecek eklenti kaynağı (normalde Chrome argüman olarak geçirir)")
 		showVer  = flag.Bool("version", false, "sürümü yaz ve çık")
 	)
 	flag.Parse()
@@ -77,11 +123,20 @@ func main() {
 	// hiçbir kaynağa açmaz. Bir izin daha az = daha az sürtünme, daha küçük
 	// inceleme yüzeyi.
 	origin := *originArg
-	for _, a := range flag.Args() {
-		if strings.HasPrefix(a, "chrome-extension://") {
-			origin = strings.TrimSuffix(a, "/")
-			break
+	// NM manifest'i argüman TAŞIYAMAZ — Chrome, çağıran eklentinin origin'ini
+	// argv'ye kendisi ekler. Bu, "Chrome beni başlattı"nın işaretidir ve
+	// FIRLATICI modunu otomatik açar. (Chrome, kanalı kapanan host sürecini
+	// öldürür; sunucu bu yüzden ayrı, bağımsız bir süreçtir — bkz. launcher.go)
+	if o, fromChrome := originFromArgs(flag.Args()); fromChrome {
+		origin = o
+		*handshake = true
+	}
+	if *handshake && !*serveMode {
+		if err := runLauncher(*dir, origin); err != nil {
+			fmt.Fprintln(os.Stderr, "fırlatıcı:", err)
+			os.Exit(1)
 		}
+		return
 	}
 	srv := &server{
 		token: hex.EncodeToString(tok), origin: origin, dir: *dir,
@@ -99,16 +154,17 @@ func main() {
 	}
 	port := ln.Addr().(*net.TCPAddr).Port
 
-	if *handshake {
-		// Chrome bizi native-messaging ile başlattı. Yalnızca manifest'te yazılı
-		// eklenti kimliği bu kanalı açabilir — port ve token'ı buradan vermek,
-		// makinedeki rastgele bir programın onları öğrenmesini engeller.
-		if err := writeNativeMessage(os.Stdout, map[string]any{
-			"port": port, "token": srv.token, "version": version, "dir": srv.dir,
+	if *serveMode {
+		// Adres endpoint dosyasına yazılır; fırlatıcı ve sonraki fırlatıcılar
+		// sunucuyu oradan bulur (tek sunucu, süreç birikmez).
+		if err := writeEndpoint(endpoint{
+			Port: port, Token: srv.token, PID: os.Getpid(), Version: version, Dir: srv.dir,
 		}); err != nil {
-			fmt.Fprintln(os.Stderr, "el sıkışma yazılamadı:", err)
+			fmt.Fprintln(os.Stderr, "endpoint yazılamadı:", err)
 			os.Exit(1)
 		}
+		defer removeEndpoint()
+		srv.startIdleWatch(ctx, stop)
 	} else {
 		fmt.Printf("ruu-helper %s · http://127.0.0.1:%d · token: %s\n", version, port, srv.token)
 	}
@@ -188,6 +244,7 @@ func (s *server) preflight(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		s.lastReq.set(time.Now())
 		got := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		// Sabit süreli karşılaştırma: token'ı bayt bayt tahmin ettirmeyelim.
 		if subtle.ConstantTimeCompare([]byte(got), []byte(s.token)) != 1 {

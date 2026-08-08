@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/binary"
+	"io"
+	"os/exec"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -349,4 +352,117 @@ func TestListJobsForReattach(t *testing.T) {
 		t.Fatalf("süren iş listelenmedi: %+v", list)
 	}
 	do(t, s, "DELETE", "/jobs/re1", "test-token", "")
+}
+
+func TestChromeLaunchImpliesHandshake(t *testing.T) {
+	// Chrome NM manifest'i argüman taşıyamaz; origin argv'de görülüyorsa
+	// FIRLATICI modu otomatik açılmalı: NM çerçevesi BAĞIMSIZ sunucunun
+	// adresini taşır ve fırlatıcı çıkar. (Chrome, kanalı kapanan süreci
+	// öldürür — sunucu o yüzden ayrı süreçtir; saha testi yakaladı.)
+	bin := t.TempDir() + "/rh"
+	build := exec.Command("go", "build", "-o", bin, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("derleme: %v\n%s", err, out)
+	}
+	home := t.TempDir() // endpoint dosyası gerçek konuma yazılmasın
+	cmd := exec.Command(bin, "-dir", t.TempDir(), "chrome-extension://abcdefghijklmnop/")
+	cmd.Env = append(os.Environ(), "HOME="+home, "XDG_CONFIG_HOME="+home)
+	stdout, _ := cmd.StdoutPipe()
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = cmd.Process.Kill(); _, _ = cmd.Process.Wait() }()
+
+	// İlk çıktı NM çerçevesi OLMALI: uint32-LE uzunluk + JSON (düz metin değil)
+	head := make([]byte, 4)
+	done := make(chan error, 1)
+	go func() { _, err := io.ReadFull(stdout, head); done <- err }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("çıktı gelmedi")
+	}
+	n := binary.LittleEndian.Uint32(head)
+	if n == 0 || n > 4096 {
+		t.Fatalf("NM çerçevesi değil: ilk 4 bayt %v (uzunluk %d)", head, n)
+	}
+	body := make([]byte, n)
+	if _, err := io.ReadFull(stdout, body); err != nil {
+		t.Fatal(err)
+	}
+	var msg struct {
+		Port  int    `json:"port"`
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(body, &msg); err != nil {
+		t.Fatalf("el sıkışma JSON değil: %q", body)
+	}
+	if msg.Port == 0 || len(msg.Token) < 32 {
+		t.Fatalf("el sıkışma eksik: %+v", msg)
+	}
+
+	// Fırlatıcı ÇIKMALI (kanal kapanınca Chrome öldürecek — sunucu etkilenmemeli)
+	exited := make(chan struct{})
+	go func() { _ = cmd.Wait(); close(exited) }()
+	select {
+	case <-exited:
+	case <-time.After(5 * time.Second):
+		t.Fatal("fırlatıcı çıkmadı — Chrome kill edince sunucu da ölürdü")
+	}
+
+	// Sunucu fırlatıcıdan BAĞIMSIZ yaşamalı ve el sıkışmadaki adres çalışmalı
+	req, _ := http.NewRequest("GET", fmt.Sprintf("http://127.0.0.1:%d/health", msg.Port), nil)
+	req.Header.Set("Authorization", "Bearer "+msg.Token)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("sunucu fırlatıcıyla birlikte öldü: %v", err)
+	}
+	_ = res.Body.Close()
+
+	// İKİNCİ fırlatıcı AYNI sunucuyu vermeli (süreç birikmez)
+	cmd2 := exec.Command(bin, "-dir", t.TempDir(), "chrome-extension://abcdefghijklmnop/")
+	cmd2.Env = cmd.Env
+	out2, _ := cmd2.StdoutPipe()
+	if err := cmd2.Start(); err != nil {
+		t.Fatal(err)
+	}
+	head2 := make([]byte, 4)
+	if _, err := io.ReadFull(out2, head2); err != nil {
+		t.Fatal(err)
+	}
+	body2 := make([]byte, binary.LittleEndian.Uint32(head2))
+	if _, err := io.ReadFull(out2, body2); err != nil {
+		t.Fatal(err)
+	}
+	_ = cmd2.Wait()
+	var msg2 struct {
+		Port int `json:"port"`
+	}
+	_ = json.Unmarshal(body2, &msg2)
+	if msg2.Port != msg.Port {
+		t.Fatalf("ikinci fırlatıcı yeni sunucu açtı: %d != %d", msg2.Port, msg.Port)
+	}
+
+	// temizlik: sunucuyu endpoint'ten bulup öldür
+	var ep struct {
+		PID int `json:"pid"`
+	}
+	for _, p := range []string{
+		home + "/Library/Application Support/ruu-helper/endpoint.json",
+		home + "/ruu-helper/endpoint.json",
+		home + "/.config/ruu-helper/endpoint.json",
+	} {
+		if blob, err := os.ReadFile(p); err == nil {
+			_ = json.Unmarshal(blob, &ep)
+			break
+		}
+	}
+	if ep.PID > 0 {
+		if pr, err := os.FindProcess(ep.PID); err == nil {
+			_ = pr.Kill()
+		}
+	}
 }
