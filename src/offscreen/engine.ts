@@ -246,7 +246,10 @@ class Job {
         try {
           st = await h.client.status(this.id);
         } catch {
-          return; // yardımcı yeniden başlıyor olabilir; yoklamaya devam
+          // Yardımcı yeniden başlıyor olabilir; yoklamaya devam — ama SW
+          // durumu bilsin ki ikon/band gerçeği göstersin.
+          send({ target: 'sw', type: 'helper-status', up: false });
+          return;
         }
         this.acked = toEngineRanges(st.ranges);
         this.alloc = RangeAllocator.restore(this.size!, this.acked, MIN_SPLIT);
@@ -890,7 +893,8 @@ async function setHelper(hs: HelperHandshake | null): Promise<void> {
   try {
     helper = { client, caps: await client.health() };
   } catch {
-    helper = null; // yardımcı kapanmış olabilir — sessizce kendi motorumuza dön
+    helper = null; // yardımcı kapanmış olabilir — kendi motorumuza dön
+    send({ target: 'sw', type: 'helper-status', up: false }); // ikon yalan söylemesin
     broadcast();
     return;
   }

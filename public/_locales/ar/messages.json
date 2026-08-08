@@ -402,5 +402,29 @@
   "optSecHelper": {
     "message": "التطبيق المساعد",
     "description": "Section: helper app"
+  },
+  "hsTitle": {
+    "message": "اتصال المساعد",
+    "description": "Helper status band title"
+  },
+  "hsUp": {
+    "message": "متصل — حتى 32 اتصالاً وتستمر التنزيلات بعد إغلاق المتصفح.",
+    "description": "Helper connected"
+  },
+  "hsOff": {
+    "message": "غير مستخدم — يعمل Ruu كاملاً في المتصفح. فعّله أدناه.",
+    "description": "Helper not enabled"
+  },
+  "hsDown": {
+    "message": "مفعّل لكن يتعذر الوصول إليه. نفّذ الأمر ثم أعد التحقق.",
+    "description": "Helper enabled but unreachable"
+  },
+  "hsRetry": {
+    "message": "إعادة التحقق",
+    "description": "Re-check button"
+  },
+  "hsIconHint": {
+    "message": "الأيقونة: كهرماني = المتصفح · معكوس = المساعد متصل",
+    "description": "Toolbar icon legend"
   }
 }

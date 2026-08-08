@@ -402,5 +402,29 @@
   "optSecHelper": {
     "message": "Yardımcı uygulama",
     "description": "Section: helper app"
+  },
+  "hsTitle": {
+    "message": "Yardımcı bağlantısı",
+    "description": "Helper status band title"
+  },
+  "hsUp": {
+    "message": "Bağlı — indirmeler 32 bağlantıya kadar çıkabilir ve tarayıcı kapansa da sürer.",
+    "description": "Helper connected"
+  },
+  "hsOff": {
+    "message": "Kullanılmıyor — Ruu tamamen tarayıcıda çalışıyor. 6 bağlantı sınırını aşmak ve tarayıcı kapansa da sürmesi için aşağıdan aç.",
+    "description": "Helper not enabled"
+  },
+  "hsDown": {
+    "message": "Açık ama ulaşılamıyor. Sistemine uygun komutu çalıştır, sonra Yeniden dene.",
+    "description": "Helper enabled but unreachable"
+  },
+  "hsRetry": {
+    "message": "Yeniden dene",
+    "description": "Re-check button"
+  },
+  "hsIconHint": {
+    "message": "Araç çubuğu ikonu: amber = tarayıcı motoru · ters renk = yardımcı bağlı",
+    "description": "Toolbar icon legend"
   }
 }

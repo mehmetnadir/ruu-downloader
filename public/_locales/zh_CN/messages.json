@@ -402,5 +402,29 @@
   "optSecHelper": {
     "message": "辅助程序",
     "description": "Section: helper app"
+  },
+  "hsTitle": {
+    "message": "辅助程序连接",
+    "description": "Helper status band title"
+  },
+  "hsUp": {
+    "message": "已连接 — 最多 32 个连接，关闭浏览器后下载仍继续。",
+    "description": "Helper connected"
+  },
+  "hsOff": {
+    "message": "未使用 — Ruu 完全在浏览器中运行。可在下方开启。",
+    "description": "Helper not enabled"
+  },
+  "hsDown": {
+    "message": "已开启但无法访问。请运行命令后重新检查。",
+    "description": "Helper enabled but unreachable"
+  },
+  "hsRetry": {
+    "message": "重新检查",
+    "description": "Re-check button"
+  },
+  "hsIconHint": {
+    "message": "图标：琥珀色=浏览器 · 反色=辅助程序已连接",
+    "description": "Toolbar icon legend"
   }
 }

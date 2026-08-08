@@ -94,6 +94,8 @@ function applyDownloadUi(): void {
 const settingsReady = chrome.storage.local.get(settings).then((s) => {
   Object.assign(settings, s);
   applyDownloadUi();
+  // İkon durum göstergesi: SW her uyanışta gerçek durumu yansıtmalı.
+  if (settings.useHelper) void pushHelper();
 });
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
@@ -278,6 +280,64 @@ async function helperHandshake(): Promise<HelperHandshake | null> {
  */
 let cachedHandshake: HelperHandshake | null = null;
 let handshakeTried = false;
+/** Son bilinen yardımcı durumu — ikon ve options bandı buna bakar. */
+let helperUp = false;
+let helperVersion = '';
+
+const HELPER_ALARM = 'ruu-helper-health';
+
+/**
+ * Araç çubuğu ikonu = durum göstergesi.
+ * Kahve tonları (amber zemin) → yalnız tarayıcı motoru.
+ * Ters renk (koyu zemin, amber ok) → yerel yardımcı BAĞLI.
+ * Kullanıcı panele bakmadan hangi motorun devrede olduğunu görür.
+ */
+function updateActionIcon(): void {
+  const dir = helperUp ? 'icons/helper' : 'icons';
+  void chrome.action.setIcon({
+    path: { 16: `${dir}/icon16.png`, 48: `${dir}/icon48.png`, 128: `${dir}/icon128.png` },
+  }).catch(() => undefined);
+}
+
+/**
+ * Yardımcı sağlığını doğrular ve ikonu günceller.
+ *
+ * El sıkışma port+token verir ama sürecin ŞU AN yaşadığını kanıtlamaz —
+ * kullanıcı programı kapatmış olabilir. Gerçek durum yalnızca /health'e
+ * sorularak bilinir. Yardımcı ölmüşse el sıkışma önbelleği de temizlenir ki
+ * bir sonraki deneme taze connectNative yapsın.
+ */
+async function refreshHelperStatus(): Promise<void> {
+  const hs = cachedHandshake;
+  if (!settings.useHelper || !hs) {
+    helperUp = false; helperVersion = '';
+    updateActionIcon();
+    return;
+  }
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 3000);
+    const res = await fetch(`http://127.0.0.1:${hs.port}/health`, {
+      headers: { Authorization: `Bearer ${hs.token}` }, signal: ctl.signal,
+    });
+    clearTimeout(timer);
+    const body = res.ok ? ((await res.json()) as { version?: string }) : null;
+    helperUp = res.ok;
+    helperVersion = body?.version ?? '';
+  } catch {
+    helperUp = false; helperVersion = '';
+    invalidateHelper(); // süreç ölmüş — sonraki deneme taze el sıkışma yapsın
+  }
+  updateActionIcon();
+}
+
+function broadcastHelperState(): void {
+  void chrome.runtime.sendMessage({
+    target: 'panel', type: 'helper-state',
+    enabled: settings.useHelper, up: helperUp,
+    ...(helperVersion ? { version: helperVersion } : {}),
+  } satisfies Msg).catch(() => undefined);
+}
 
 function invalidateHelper(): void {
   cachedHandshake = null;
@@ -294,6 +354,14 @@ async function pushHelper(force = false): Promise<void> {
   void chrome.runtime.sendMessage({
     target: 'engine', type: 'helper', handshake: cachedHandshake,
   } satisfies Msg).catch(() => undefined);
+  await refreshHelperStatus();
+  // İkon CANLI kalmalı: yardımcı kapatılırsa ters renk yalan söylemeye başlar.
+  // 1 dk'lık alarm localhost'a tek GET — maliyeti önemsiz, dürüstlük değerli.
+  if (settings.useHelper) {
+    void chrome.alarms.create(HELPER_ALARM, { periodInMinutes: 1 });
+  } else {
+    void chrome.alarms.clear(HELPER_ALARM);
+  }
 }
 
 interface Delivery {
@@ -607,6 +675,16 @@ async function beamPoll(): Promise<void> {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === BEAM_ALARM) { void beamPoll(); return; }
+  if (alarm.name === HELPER_ALARM) {
+    void (async () => {
+      await settingsReady;
+      const was = helperUp;
+      await refreshHelperStatus();
+      if (was !== helperUp) broadcastHelperState();
+      if (!settings.useHelper) void chrome.alarms.clear(HELPER_ALARM);
+    })();
+    return;
+  }
   const m = alarm.name.match(/^ruu-share-close-(\d+)$/);
   if (!m) return;
   const tabId = Number(m[1]);
@@ -698,6 +776,22 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
       case 'beam-unpair': {
         await chrome.storage.local.set({ beam: { seen: [] } });
         await chrome.alarms.clear(BEAM_ALARM);
+        break;
+      }
+      case 'helper-query': {
+        // Options bandı taze durum ister; el sıkışma hiç yapılmadıysa yap.
+        if (!handshakeTried) await pushHelper();
+        else await refreshHelperStatus();
+        broadcastHelperState();
+        break;
+      }
+      case 'helper-status': {
+        // Motorun anlık gözlemi (poll hatası) alarmı beklemesin
+        if (!raw.up && helperUp) {
+          helperUp = false;
+          updateActionIcon();
+          broadcastHelperState();
+        }
         break;
       }
       case 'enable-helper': {

@@ -1,7 +1,11 @@
 /**
  * Ruu ikon üreteci — bağımlılıksız PNG (zlib + el yazımı chunk encoder).
- * Amber yuvarlatılmış zemin + koyu "aşağı ok + çizgi" (logo ile aynı geometri).
- * Kullanım: node scripts/gen-icon.mjs   → public/icons/icon{16,48,128}.png
+ * İKİ set üretir:
+ *   icons/icon*.png         amber zemin + koyu ok  → yalnız tarayıcı motoru
+ *   icons/helper/icon*.png  koyu zemin + amber ok  → yardımcı BAĞLI (ters renk)
+ * İkon pasif logo değil durum göstergesidir: kullanıcı panele bakmadan
+ * yardımcının çalıştığını araç çubuğundan görür.
+ * Kullanım: node scripts/gen-icon.mjs
  */
 import { deflateSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -49,7 +53,7 @@ function encodePng(size, pixels) {
   ]);
 }
 
-function drawIcon(size) {
+function drawIcon(size, bg, fg) {
   const px = Buffer.alloc(size * size * 4);
   const put = (x, y, c) => {
     if (x < 0 || y < 0 || x >= size || y >= size) return;
@@ -61,14 +65,14 @@ function drawIcon(size) {
     for (let x = 0; x < size; x++) {
       const cx = Math.max(r - x, x - (size - 1 - r), 0);
       const cy = Math.max(r - y, y - (size - 1 - r), 0);
-      if (cx * cx + cy * cy <= r * r) put(x, y, AMBER);
+      if (cx * cx + cy * cy <= r * r) put(x, y, bg);
     }
   }
   const u = size / 24; // logo geometrisi 24'lük grid'de
   const stroke = Math.max(1, Math.round(2.2 * u));
   const fillRect = (x0, y0, x1, y1) => {
     for (let y = Math.round(y0); y < Math.round(y1); y++)
-      for (let x = Math.round(x0); x < Math.round(x1); x++) put(x, y, DARK);
+      for (let x = Math.round(x0); x < Math.round(x1); x++) put(x, y, fg);
   };
   // gövde: dikey şaft (12,4)→(12,14)
   fillRect(12 * u - stroke / 2, 4.5 * u, 12 * u + stroke / 2, 14 * u);
@@ -83,8 +87,9 @@ function drawIcon(size) {
   return px;
 }
 
-mkdirSync('public/icons', { recursive: true });
+mkdirSync('public/icons/helper', { recursive: true });
 for (const size of [16, 48, 128]) {
-  writeFileSync(`public/icons/icon${size}.png`, encodePng(size, drawIcon(size)));
-  console.log(`icon${size}.png yazıldı`);
+  writeFileSync(`public/icons/icon${size}.png`, encodePng(size, drawIcon(size, AMBER, DARK)));
+  writeFileSync(`public/icons/helper/icon${size}.png`, encodePng(size, drawIcon(size, DARK, AMBER)));
+  console.log(`icon${size}.png + helper/icon${size}.png yazıldı`);
 }

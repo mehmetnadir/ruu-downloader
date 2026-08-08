@@ -402,5 +402,29 @@
   "optSecHelper": {
     "message": "ヘルパーアプリ",
     "description": "Section: helper app"
+  },
+  "hsTitle": {
+    "message": "ヘルパー接続",
+    "description": "Helper status band title"
+  },
+  "hsUp": {
+    "message": "接続済み — 最大32接続、ブラウザを閉じてもダウンロード継続。",
+    "description": "Helper connected"
+  },
+  "hsOff": {
+    "message": "未使用 — Ruu はブラウザ内で完全動作。下で有効化できます。",
+    "description": "Helper not enabled"
+  },
+  "hsDown": {
+    "message": "有効ですが到達できません。コマンドを実行して再確認してください。",
+    "description": "Helper enabled but unreachable"
+  },
+  "hsRetry": {
+    "message": "再確認",
+    "description": "Re-check button"
+  },
+  "hsIconHint": {
+    "message": "アイコン: アンバー=ブラウザ · 反転=ヘルパー接続中",
+    "description": "Toolbar icon legend"
   }
 }

@@ -104,12 +104,63 @@ setHelper.addEventListener('change', () => {
 setAfterClose.addEventListener('change', () => save({ continueAfterClose: setAfterClose.checked }));
 
 chrome.runtime.onMessage.addListener((raw: Msg) => {
-  if (raw.target === 'panel' && raw.type === 'helper-result') {
+  if (raw.target !== 'panel') return;
+  if (raw.type === 'helper-result') {
     setHelper.checked = raw.ok;
     setAfterClose.disabled = !raw.ok;
     showHelperInstall(!raw.ok && raw.needsInstall === true);
     if (!raw.ok) $('#live-region').textContent = t('errHelperMissing');
+    send({ target: 'sw', type: 'helper-query' }); // bant + ikon tazelensin
   }
+  if (raw.type === 'helper-state') renderStatus(raw.enabled, raw.up, raw.version);
+});
+
+// ── Durum bandı: yardımcı bağlantısı bir bakışta ─────────────────────────────
+// Araç çubuğu ikonuyla aynı gerçeği söyler: bant yeşilse ikon ters renktedir.
+const hstatus = $('#hstatus');
+const hstatusMsg = $('#hstatus-msg');
+const hstatusCmd = $('#hstatus-cmd');
+const hstatusRetry = $<HTMLButtonElement>('#hstatus-retry');
+
+/**
+ * Kurulum tarifi işletim sistemine göre seçilir — kullanıcıya üç sistemin
+ * tarifini birden gösterip "senin olanı bul" demek tarif sayılmaz.
+ */
+function osCommand(): string {
+  const plat = (navigator as Navigator & { userAgentData?: { platform?: string } })
+    .userAgentData?.platform ?? navigator.platform;
+  if (/win/i.test(plat)) {
+    return `$env:RUU_EXT_ID='${chrome.runtime.id}'; iwr -useb https://raw.githubusercontent.com/mehmetnadir/ruu-downloader/main/helper/install.ps1 | iex`;
+  }
+  return INSTALL_CMD; // macOS ve Linux aynı bash kurucusunu paylaşır
+}
+
+function renderStatus(enabled: boolean, up: boolean, version?: string): void {
+  const state = !enabled ? 'off' : up ? 'up' : 'down';
+  hstatus.dataset['state'] = state;
+  hstatusMsg.textContent = state === 'up'
+    ? `${t('hsUp')}${version ? ` · v${version}` : ''}`
+    : state === 'off' ? t('hsOff') : t('hsDown');
+  hstatusCmd.hidden = state !== 'down';
+  if (state === 'down') hstatusCmd.textContent = osCommand();
+  hstatusRetry.hidden = state !== 'down';
+}
+
+hstatusRetry.addEventListener('click', () => {
+  send({ target: 'sw', type: 'helper-query' });
+});
+
+// Sayfa açılışında taze durum iste
+send({ target: 'sw', type: 'helper-query' });
+
+// Ayar başka bir bağlamdan değişirse (panel onboard'u, SW) kutu ile durum
+// bandı ÇELİŞMEMELİ — useHelper'ı canlı izle.
+chrome.storage.onChanged.addListener((ch, area) => {
+  if (area !== 'local' || !ch['useHelper']) return;
+  const on = Boolean(ch['useHelper'].newValue);
+  setHelper.checked = on;
+  setAfterClose.disabled = !on;
+  send({ target: 'sw', type: 'helper-query' });
 });
 
 // ── Paylaşım servisleri: kapalı / sor / otomatik ─────────────────────────────

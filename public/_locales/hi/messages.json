@@ -402,5 +402,29 @@
   "optSecHelper": {
     "message": "सहायक ऐप",
     "description": "Section: helper app"
+  },
+  "hsTitle": {
+    "message": "सहायक कनेक्शन",
+    "description": "Helper status band title"
+  },
+  "hsUp": {
+    "message": "जुड़ा है — 32 कनेक्शन तक, ब्राउज़र बंद होने पर भी डाउनलोड जारी।",
+    "description": "Helper connected"
+  },
+  "hsOff": {
+    "message": "उपयोग में नहीं — Ruu पूरी तरह ब्राउज़र में चलता है। नीचे चालू करें।",
+    "description": "Helper not enabled"
+  },
+  "hsDown": {
+    "message": "चालू है पर पहुँच नहीं। कमांड चलाएँ, फिर दोबारा जाँचें।",
+    "description": "Helper enabled but unreachable"
+  },
+  "hsRetry": {
+    "message": "दोबारा जाँचें",
+    "description": "Re-check button"
+  },
+  "hsIconHint": {
+    "message": "आइकन: एम्बर = ब्राउज़र · उल्टा = सहायक जुड़ा",
+    "description": "Toolbar icon legend"
   }
 }

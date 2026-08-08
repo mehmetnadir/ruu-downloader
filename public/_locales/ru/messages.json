@@ -402,5 +402,29 @@
   "optSecHelper": {
     "message": "Вспомогательная программа",
     "description": "Section: helper app"
+  },
+  "hsTitle": {
+    "message": "Связь с помощником",
+    "description": "Helper status band title"
+  },
+  "hsUp": {
+    "message": "Подключено — до 32 соединений, загрузки продолжаются после закрытия браузера.",
+    "description": "Helper connected"
+  },
+  "hsOff": {
+    "message": "Не используется — Ruu работает полностью в браузере. Включите ниже.",
+    "description": "Helper not enabled"
+  },
+  "hsDown": {
+    "message": "Включено, но недоступно. Выполните команду и проверьте снова.",
+    "description": "Helper enabled but unreachable"
+  },
+  "hsRetry": {
+    "message": "Проверить снова",
+    "description": "Re-check button"
+  },
+  "hsIconHint": {
+    "message": "Значок: янтарный = браузер · инвертированный = помощник подключён",
+    "description": "Toolbar icon legend"
   }
 }

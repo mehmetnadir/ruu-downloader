@@ -402,5 +402,29 @@
   "optSecHelper": {
     "message": "Aplicación auxiliar",
     "description": "Section: helper app"
+  },
+  "hsTitle": {
+    "message": "Conexión del auxiliar",
+    "description": "Helper status band title"
+  },
+  "hsUp": {
+    "message": "Conectado — hasta 32 conexiones y las descargas siguen al cerrar el navegador.",
+    "description": "Helper connected"
+  },
+  "hsOff": {
+    "message": "Sin usar — Ruu funciona por completo en el navegador. Actívalo abajo.",
+    "description": "Helper not enabled"
+  },
+  "hsDown": {
+    "message": "Activado pero inaccesible. Ejecuta el comando y vuelve a comprobar.",
+    "description": "Helper enabled but unreachable"
+  },
+  "hsRetry": {
+    "message": "Comprobar de nuevo",
+    "description": "Re-check button"
+  },
+  "hsIconHint": {
+    "message": "Icono: ámbar = navegador · invertido = auxiliar conectado",
+    "description": "Toolbar icon legend"
   }
 }
