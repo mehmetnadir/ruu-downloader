@@ -426,5 +426,13 @@
   "hsIconHint": {
     "message": "Symbol: Amber = Browser · invertiert = Helfer verbunden",
     "description": "Toolbar icon legend"
+  },
+  "copyUrl": {
+    "message": "Download-Link kopieren",
+    "description": "Card action: copy source URL"
+  },
+  "copiedUrl": {
+    "message": "Link kopiert",
+    "description": "Announced after copying"
   }
 }

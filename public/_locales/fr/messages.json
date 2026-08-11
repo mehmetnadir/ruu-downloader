@@ -426,5 +426,13 @@
   "hsIconHint": {
     "message": "Icône : ambre = navigateur · inversée = auxiliaire connecté",
     "description": "Toolbar icon legend"
+  },
+  "copyUrl": {
+    "message": "Copier le lien",
+    "description": "Card action: copy source URL"
+  },
+  "copiedUrl": {
+    "message": "Lien copié",
+    "description": "Announced after copying"
   }
 }

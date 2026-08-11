@@ -3,7 +3,7 @@
  */
 import { BEAM_ALARM, loadState, pollOnce, saveState } from './beam/client';
 import { matchShareLink } from './content/patterns';
-import { safeFallbackName } from './engine/filename';
+import { downloadsRelative, safeFallbackName } from './engine/filename';
 import { HELPER_HOST, isValidHandshake, type HelperHandshake } from './engine/helper';
 import { DEFAULT_CATEGORY_NAMES, routeByType } from './engine/foldering';
 import { decideTakeover } from './engine/takeover';
@@ -141,11 +141,36 @@ async function logTakeover(entry: Record<string, unknown>): Promise<void> {
   await chrome.storage.local.set({ takeoverLog: cur.slice(0, 8) });
 }
 
+/**
+ * Devralma bekleme odası: dosya adı henüz BELİRLENMEMİŞ indirmeler.
+ *
+ * SAHA HATASI (Nadir): "Her dosya için sor" açıkken Chrome kaydetme penceresi
+ * açılıyor; biz onCreated ANINDA devralıp iptal ediyorduk. Kullanıcı pencerede
+ * klasör + isim seçiyordu ama pencere ÇOKTAN İPTAL EDİLMİŞ indirmenindi —
+ * seçim boşluğa gidiyor, dosya motorun ürettiği adla İndirilenler'e iniyordu.
+ *
+ * Doğru sıra: filename atanana kadar BEKLE (pencere onayı ya da otomatik
+ * belirleme), sonra devral — kullanıcının seçtiği ad ve İndirilenler-altı
+ * klasörü ZORUNLU ad olarak motora taşınır ve teslimde ikinci bir pencere
+ * açılmaz (saveAs:false).
+ */
+const pendingTakeover = new Map<number, chrome.downloads.DownloadItem>();
+
 chrome.downloads.onCreated.addListener((item) => {
   void (async () => {
-    // Kullanıcının GERÇEK ayarları yüklenmeden devralma kararı verilemez
-    // (soğuk açılışta bu olay SW'yi uyandıran olayın ta kendisi olabilir).
     await settingsReady;
+    if (!item.filename) {
+      // Ad henüz yok: "sor" penceresi açık olabilir. Kararı onChanged'a bırak.
+      pendingTakeover.set(item.id, item);
+      // Pencere iptalle kapanırsa onChanged 'interrupted' getirir → temizlenir.
+      return;
+    }
+    await attemptTakeover(item);
+  })();
+});
+
+async function attemptTakeover(item: chrome.downloads.DownloadItem): Promise<void> {
+  {
     // Paylaşım akışı açıksa kullanıcı zaten "Ruu ile indir" dedi → eşiği atla
     const decision = decideTakeover(item, settings, isOwn, shareTabs.size > 0);
     const shortUrl = decision.url.length > 72 ? `${decision.url.slice(0, 69)}…` : decision.url;
@@ -176,12 +201,32 @@ chrome.downloads.onCreated.addListener((item) => {
     }
     void logTakeover({ url: shortUrl, action: 'taken', size: item.totalBytes });
     closeShareTabsAfterDownload();
-    const hint = item.filename ? item.filename.split(/[\\/]/).pop() : undefined;
+    // Chrome'un belirlediği ad = kullanıcının seçimi (pencere açıldıysa) ya da
+    // sitenin önerisi. İkisinde de bu ad ZORUNLUDUR — motorun probe'daki
+    // Content-Disposition tahmini kullanıcı seçimini ezmemeli.
+    const forcedName = item.filename ? downloadsRelative(item.filename) : undefined;
     void chrome.runtime.sendMessage({
-      target: 'engine', type: 'add', url: decision.url, filenameHint: hint,
+      target: 'engine', type: 'add', url: decision.url, forcedName,
       ...takeOrigin(),
     } satisfies Msg).catch(() => undefined);
-  })();
+  }
+}
+
+chrome.downloads.onChanged.addListener((delta) => {
+  const pending = pendingTakeover.get(delta.id);
+  if (!pending) return;
+  if (delta.state?.current === 'interrupted' || delta.error) {
+    pendingTakeover.delete(delta.id); // pencere iptal edildi ya da indirme öldü
+    return;
+  }
+  if (delta.filename?.current) {
+    // Kullanıcı seçimini yaptı (ya da Chrome adı belirledi) — ŞİMDİ devral.
+    pendingTakeover.delete(delta.id);
+    void (async () => {
+      await settingsReady;
+      await attemptTakeover({ ...pending, filename: delta.filename!.current! });
+    })();
+  }
 });
 
 /**
@@ -817,11 +862,16 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
          * sonra saf ASCII adla dene. Tamamlanmış bir indirme adlandırma
          * yüzünden asla çöpe gitmemeli.
          */
-        const attempts = [
-          routeByType(raw.filename, settings.typeFolders, CATEGORY_NAMES),
-          raw.filename,                    // kategori klasörü olmadan
-          safeFallbackName(raw.filename),  // saf ASCII, uzantı korunur
-        ];
+        // forced = kullanıcı adı/yolu kaydetme penceresinde ZATEN seçti:
+        // kategori klasörü uygulanmaz (kullanıcı yolu > otomatik yol) ve
+        // saveAs:false ile pencere İKİNCİ kez açılmaz.
+        const attempts = raw.forced
+          ? [raw.filename, safeFallbackName(raw.filename)]
+          : [
+            routeByType(raw.filename, settings.typeFolders, CATEGORY_NAMES),
+            raw.filename,                    // kategori klasörü olmadan
+            safeFallbackName(raw.filename),  // saf ASCII, uzantı korunur
+          ];
         try {
           let id: number | undefined;
           let lastErr: unknown;
@@ -833,6 +883,7 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
               // kaydetme penceresi çıkar, kapalıysa varsayılan klasöre iner.
               id = await chrome.downloads.download({
                 url: raw.blobUrl, filename, conflictAction: 'uniquify',
+                ...(raw.forced ? { saveAs: false } : {}),
               });
               break;
             } catch (err) { lastErr = err; }

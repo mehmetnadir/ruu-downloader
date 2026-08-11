@@ -262,11 +262,15 @@ function setWord(ref: CardRef, text: string): void {
 }
 
 function btn(act: string, idAttr: string, idVal: string | number, label: string, icon: string): string {
-  return `<button class="icon-btn" data-act="${act}" data-${idAttr}="${idVal}" aria-label="${label}" title="${label}">${icon}</button>`;
+  // idVal artık URL de taşıyor — attribute'a ham gömmek tırnak/& ile kırılır.
+  return `<button class="icon-btn" data-act="${act}" data-${idAttr}="${escapeHtml(String(idVal))}" aria-label="${label}" title="${label}">${icon}</button>`;
 }
 
 function actionButtons(job: JobSnapshot): string {
   let out = '';
+  // İndirme adresi HER durumda kopyalanabilir: sürerken (başka araca taşımak),
+  // bittiğinde (paylaşmak), hata verdiğinde (elle denemek) — Nadir'in isteği.
+  out += btn('copy', 'url', job.url, t('copyUrl'), icons.copy);
   if (job.state === 'downloading') out += btn('pause', 'id', job.id, t('pause'), icons.pause);
   else if (job.state === 'paused') out += btn('resume', 'id', job.id, t('resume'), icons.play);
   if (job.state === 'error' && !job.native) {
@@ -412,6 +416,20 @@ document.body.addEventListener('click', (e) => {
   const act = btn.dataset['act']!;
   if (act === 'renew') {
     setRenewMode(btn.dataset['id']!);
+    return;
+  }
+  if (act === 'copy') {
+    const url = btn.dataset['url'];
+    if (url) {
+      void navigator.clipboard.writeText(url).then(() => {
+        liveRegion.textContent = t('copiedUrl');
+        // Görsel onay: ikon kısa süre onaya döner — sessiz kopyalama "çalıştı mı?"
+        // sorusu bıraktırır.
+        const prev = btn.innerHTML;
+        btn.innerHTML = icons.check;
+        setTimeout(() => { btn.innerHTML = prev; }, 1500);
+      }).catch(() => undefined);
+    }
     return;
   }
   if (act === 'open' || act === 'show') {

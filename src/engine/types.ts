@@ -44,7 +44,9 @@ export interface HelperHandshakeMsg {
 
 export type Msg =
   // panel/sw → engine
-  | { target: 'engine'; type: 'add'; url: string; connections?: number; filenameHint?: string; priv?: boolean; origin?: string; sender?: string; manual?: boolean }
+  | { target: 'engine'; type: 'add'; url: string; connections?: number; filenameHint?: string;
+      /** Kullanıcının kaydetme penceresi seçimi — sunucu başlıklarını EZER, teslimde pencere yeniden açılmaz. */
+      forcedName?: string; priv?: boolean; origin?: string; sender?: string; manual?: boolean }
   | { target: 'engine'; type: 'pause'; jobId: string }
   | { target: 'engine'; type: 'resume'; jobId: string }
   | { target: 'engine'; type: 'cancel'; jobId: string }
@@ -74,7 +76,7 @@ export type Msg =
   | { target: 'sw'; type: 'beam-pair'; pairing: { relay: string; pairId: string; keyB64: string } }
   | { target: 'sw'; type: 'beam-unpair' }
   | { target: 'sw'; type: 'hello-panel' }
-  | { target: 'sw'; type: 'deliver'; jobId: string; blobUrl: string; filename: string; size: number; topSpeed: number; priv?: boolean; origin?: string; sender?: string }
+  | { target: 'sw'; type: 'deliver'; jobId: string; blobUrl: string; filename: string; size: number; topSpeed: number; priv?: boolean; origin?: string; sender?: string; forced?: boolean }
   | { target: 'sw'; type: 'native-fallback'; jobId: string; url: string }
   | { target: 'sw'; type: 'keepawake'; on: boolean }
   // engine → panel

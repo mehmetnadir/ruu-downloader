@@ -426,5 +426,13 @@
   "hsIconHint": {
     "message": "Toolbar icon: amber = browser engine · inverted = helper connected",
     "description": "Toolbar icon legend"
+  },
+  "copyUrl": {
+    "message": "Copy download link",
+    "description": "Card action: copy source URL"
+  },
+  "copiedUrl": {
+    "message": "Link copied",
+    "description": "Announced after copying"
   }
 }

@@ -426,5 +426,13 @@
   "hsIconHint": {
     "message": "الأيقونة: كهرماني = المتصفح · معكوس = المساعد متصل",
     "description": "Toolbar icon legend"
+  },
+  "copyUrl": {
+    "message": "نسخ رابط التنزيل",
+    "description": "Card action: copy source URL"
+  },
+  "copiedUrl": {
+    "message": "تم نسخ الرابط",
+    "description": "Announced after copying"
   }
 }

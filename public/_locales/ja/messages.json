@@ -426,5 +426,13 @@
   "hsIconHint": {
     "message": "アイコン: アンバー=ブラウザ · 反転=ヘルパー接続中",
     "description": "Toolbar icon legend"
+  },
+  "copyUrl": {
+    "message": "リンクをコピー",
+    "description": "Card action: copy source URL"
+  },
+  "copiedUrl": {
+    "message": "コピーしました",
+    "description": "Announced after copying"
   }
 }

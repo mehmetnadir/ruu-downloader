@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { safeFallbackName, sanitizeFilename } from '../src/engine/filename';
+import { downloadsRelative, safeFallbackName, sanitizeFilename, sanitizeRelativePath } from '../src/engine/filename';
 
 describe('sanitizeFilename', () => {
   it('SAHA HATASI: Türkçe İ ayrışmış gelirse NFC ile birleştirir', () => {
@@ -73,5 +73,28 @@ describe('safeFallbackName (son çare)', () => {
   it('her koşulda boş olmayan bir ad döner', () => {
     expect(safeFallbackName('...')).toBe('download');
     expect(safeFallbackName('日本語')).toBe('download');
+  });
+});
+
+describe('sanitizeRelativePath (kullanıcının pencere seçimi)', () => {
+  it('kullanıcının klasör yapısını KORUR, segmentleri ayrı temizler', () => {
+    expect(sanitizeRelativePath('Okul/2. Sınıf/TESLİM.zip')).toBe('Okul/2. Sınıf/TESLİM.zip');
+    expect(sanitizeRelativePath('a:b/c?d.zip')).toBe('a_b/c_d.zip');
+  });
+
+  it('dizin kaçışını yapıda bile geçirmez', () => {
+    expect(sanitizeRelativePath('../../etc/passwd')).toBe('etc/passwd');
+    expect(sanitizeRelativePath('a/../../b.zip')).toBe('a/b.zip');
+  });
+});
+
+describe('downloadsRelative (Chrome mutlak yolu → teslim yolu)', () => {
+  it('Downloads altındaki seçimi göreli yola çevirir — klasör korunur', () => {
+    expect(downloadsRelative('/Users/nadir/Downloads/Okul/ödev.pdf')).toBe('Okul/ödev.pdf');
+    expect(downloadsRelative('C:\\Users\\x\\Downloads\\işler\\a.zip')).toBe('işler/a.zip');
+  });
+
+  it('Downloads DIŞI seçimde yalnız adı korur — ad asla kaybolmaz', () => {
+    expect(downloadsRelative('/Users/nadir/Desktop/rapor.pdf')).toBe('rapor.pdf');
   });
 });

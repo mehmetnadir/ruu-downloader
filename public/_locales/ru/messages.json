@@ -426,5 +426,13 @@
   "hsIconHint": {
     "message": "Значок: янтарный = браузер · инвертированный = помощник подключён",
     "description": "Toolbar icon legend"
+  },
+  "copyUrl": {
+    "message": "Копировать ссылку",
+    "description": "Card action: copy source URL"
+  },
+  "copiedUrl": {
+    "message": "Ссылка скопирована",
+    "description": "Announced after copying"
   }
 }

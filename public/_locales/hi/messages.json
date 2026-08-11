@@ -426,5 +426,13 @@
   "hsIconHint": {
     "message": "आइकन: एम्बर = ब्राउज़र · उल्टा = सहायक जुड़ा",
     "description": "Toolbar icon legend"
+  },
+  "copyUrl": {
+    "message": "डाउनलोड लिंक कॉपी करें",
+    "description": "Card action: copy source URL"
+  },
+  "copiedUrl": {
+    "message": "लिंक कॉपी हो गया",
+    "description": "Announced after copying"
   }
 }

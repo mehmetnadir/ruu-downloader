@@ -426,5 +426,13 @@
   "hsIconHint": {
     "message": "图标：琥珀色=浏览器 · 反色=辅助程序已连接",
     "description": "Toolbar icon legend"
+  },
+  "copyUrl": {
+    "message": "复制下载链接",
+    "description": "Card action: copy source URL"
+  },
+  "copiedUrl": {
+    "message": "已复制链接",
+    "description": "Announced after copying"
   }
 }

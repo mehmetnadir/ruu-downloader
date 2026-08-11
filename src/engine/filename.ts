@@ -102,3 +102,38 @@ export function safeFallbackName(raw: string): string {
     .replace(/_+/g, '_').replace(/^_|_$/g, '');
   return `${stem || 'download'}${ext}`;
 }
+
+/**
+ * Kullanıcının kaydetme penceresinde seçtiği GÖRELİ yolu temizler.
+ *
+ * sanitizeFilename yol ayıraçlarını atar (sunucudan gelen ada karşı doğru
+ * savunma) — ama kullanıcının kendi seçtiği "Alt Klasör/istediğim.zip" yolu
+ * korunmalı: segmentler AYRI AYRI temizlenir, yapı korunur. ".." burada da
+ * asla geçmez.
+ */
+export function sanitizeRelativePath(raw: string, fallback = 'download'): string {
+  const parts = raw.normalize('NFC').split(/[/\\]/)
+    .map((seg) => seg.trim())
+    .filter((seg) => seg !== '' && seg !== '.' && seg !== '..')
+    .map((seg) => sanitizeFilename(seg, ''))
+    .filter((seg) => seg !== '');
+  return parts.length ? parts.join('/') : fallback;
+}
+
+/**
+ * Chrome'un verdiği MUTLAK yoldan İndirilenler-göreli kısmı çıkarır.
+ *
+ * downloads.download() yalnız İndirilenler ALTINA yazabilir; kullanıcının
+ * klasör seçimini korumak bu göreli kısmı bilmeyi gerektirir. Kök dizinin
+ * fiziksel adı tüm platformlarda "Downloads"tır (macOS/Windows görünen adı
+ * yerelleştirir, diskteki ad değişmez; Linux xdg'de farklı OLABİLİR).
+ * Bulunamazsa yalnız dosya adı döner: klasör kaybolur ama AD asla kaybolmaz.
+ */
+export function downloadsRelative(absPath: string): string {
+  const norm = absPath.replace(/\\/g, '/');
+  const marker = '/Downloads/';
+  const i = norm.lastIndexOf(marker);
+  if (i >= 0) return sanitizeRelativePath(norm.slice(i + marker.length));
+  const base = norm.split('/').pop() ?? '';
+  return sanitizeFilename(base);
+}

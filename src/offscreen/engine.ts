@@ -15,7 +15,7 @@ import { bytesToBase64, digestMatches, parseDigestHeader, type ExpectedDigest } 
 import { mergeRange, parseMeta, reconcileRanges, type JobMeta } from '../engine/manifest';
 import { afterDecision, RAMP_START, shouldAddConnection, type RampState } from '../engine/ramp';
 import { isRunning, nextToStart, shouldStartImmediately } from '../engine/queue';
-import { sanitizeFilename } from '../engine/filename';
+import { sanitizeFilename, sanitizeRelativePath } from '../engine/filename';
 import {
   HelperClient, shouldUseHelper, toEngineRanges,
   type HelperCapabilities, type HelperHandshake,
@@ -109,6 +109,12 @@ class Job {
   digestSkipped = false;
   /** Kuyruğa giriş sırası — FIFO için. */
   readonly seq = ++queueSeq;
+  /**
+   * Kullanıcının kaydetme penceresinde seçtiği ad/yol. Doluysa KESİNDİR:
+   * probe'un Content-Disposition tahmini bunu ezemez ve teslimde kaydetme
+   * penceresi YENİDEN açılmaz — kullanıcı seçimini bir kez yaptı.
+   */
+  forcedName?: string;
   /** İş yerel yardımcıya devredildiyse true — teslim adımı ATLANIR. */
   viaHelper = false;
   /** Yardımcıya devretme denendi ve başarısız olduysa nedeni. */
@@ -148,7 +154,8 @@ class Job {
     try {
       const probe = await this.probeWithRetry();
       this.throwIfCancelled();
-      this.filename = pickFilename(this.url, probe.headers.get('content-disposition'), this.filenameHint);
+      this.filename = this.forcedName
+        ?? pickFilename(this.url, probe.headers.get('content-disposition'), this.filenameHint);
       this.etag = probe.headers.get('etag') ?? undefined;
       this.lastModified = probe.headers.get('last-modified') ?? undefined;
       this.expectedDigest = parseDigestHeader(probe.headers);
@@ -581,6 +588,7 @@ class Job {
       target: 'sw', type: 'deliver', jobId: this.id, blobUrl: this.blobUrl,
       filename: this.filename, size: this.size ?? file.size, topSpeed: this.topSpeed,
       priv: this.priv, origin: this.origin, sender: this.sender,
+      forced: this.forcedName !== undefined,
     });
   }
 
@@ -1030,6 +1038,12 @@ chrome.runtime.onMessage.addListener((raw: Msg) => {
     case 'add': {
       const auto = autoTuneConnections(collectHints());
       const job = new Job(raw.url, Math.min(MAX_CONNECTIONS, Math.max(1, raw.connections ?? auto)), raw.filenameHint);
+      if (raw.forcedName) {
+        // Segment yapısı korunur ("Okul/ödev.pdf"): kullanıcı Downloads altına
+        // klasör seçtiyse teslim aynı klasöre gider.
+        job.forcedName = sanitizeRelativePath(raw.forcedName);
+        job.filename = job.forcedName;
+      }
       job.priv = raw.priv ?? false;
       job.origin = raw.origin;
       job.sender = raw.sender;

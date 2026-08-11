@@ -426,5 +426,13 @@
   "hsIconHint": {
     "message": "Icono: ámbar = navegador · invertido = auxiliar conectado",
     "description": "Toolbar icon legend"
+  },
+  "copyUrl": {
+    "message": "Copiar enlace de descarga",
+    "description": "Card action: copy source URL"
+  },
+  "copiedUrl": {
+    "message": "Enlace copiado",
+    "description": "Announced after copying"
   }
 }

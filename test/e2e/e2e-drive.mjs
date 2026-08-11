@@ -473,6 +473,51 @@ const MB = 1024 * 1024;
     `kart=${shape.cards} servis=${shape.svc} eksik=[${shape.inputs}] i18n=${shape.titled} motor=${engineSees} bant=${shape.hsState}`);
 }
 
+// S19: KULLANICI ADI KORUNUR — devralınan indirmede Chrome'un belirlediği ad
+// (kullanıcının pencere seçimi) sunucunun Content-Disposition'ını EZMELİ.
+// SAHA HATASI (Nadir): "sor" penceresinde seçilen ad çöpe gidiyor, dosya motor
+// adıyla İndirilenler'e iniyordu.
+{
+  // Sunucu 'cd' ile BAŞKA bir ad dayatır; kullanıcı filename'i UserPick.bin
+  // 15 MB: devralma eşiğinin üstünde. Tarayıcının ilk isteği 'kullanici-secimi.bin'
+  // görür (Chrome adı bundan belirler = kullanıcı seçimi vekili; CDP ortamı
+  // pencere seçimini simüle EDEMİYOR — setDownloadBehavior filename önerilerini
+  // ve pencereyi devre dışı bırakır). Motorun Range'li probe'u ise FARKLI ad
+  // görür: 'sunucu-adi.bin'. Saha hatasının özü tam buydu: probe tahmini,
+  // Chrome'un belirlediği adı EZİYORDU.
+  const url = `http://localhost:${serverPort}/f/15?cd=${encodeURIComponent('kullanici-secimi.bin')}&cdRange=${encodeURIComponent('sunucu-adi.bin')}&q=s19`;
+  await evalIn(panel,
+    `chrome.downloads.download({url:${JSON.stringify(url)}}).then(String)`);
+  const off = await pageCdp('offscreen.html');
+  let st = '', name = '';
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    await sleep(700);
+    const r = String(await evalIn(off,
+      `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url.includes('q=s19'));
+        return j? j.state+'|'+j.filename+'|'+(j.forcedName??'BOŞ') : 'yok||'})()`));
+    const parts = r.split('|');
+    st = parts[0]; name = parts[1];
+    if (st === 'done' || st === 'error') { console.log('  s19 forcedName=', parts[2]); break; }
+  }
+  off.close();
+  // Ad kullanıcının seçimi olmalı; klasör yapısı da korunmalı
+  record('S19 Chrome\'un belirlediği ad probe tahminini ezer',
+    st === 'done' && name === 'kullanici-secimi.bin',
+    `durum=${st} ad="${name}" (beklenen kullanici-secimi.bin)`);
+}
+
+// S20: URL KOPYALA butonu her kartta var ve doğru adresi taşır
+{
+  const hasCopy = JSON.parse(await evalIn(panel, `JSON.stringify({
+    count: document.querySelectorAll('[data-act="copy"]').length,
+    urlsOk: [...document.querySelectorAll('[data-act="copy"]')]
+      .every(b => (b.dataset.url ?? '').startsWith('http')),
+  })`));
+  record('S20 URL kopyala butonu', hasCopy.count > 0 && hasCopy.urlsOk,
+    `buton=${hasCopy.count} url'ler geçerli=${hasCopy.urlsOk}`);
+}
+
 // S13: HAYALET İNDİRME — probe uçarken iptal edilen iş DİRİLMEMELİ.
 // Denetim bulgusu 2: probe abort edilmiyordu ve start() await'ten sonra
 // kontrolsüz devam edip silinmiş dosyayı yeniden yaratıyordu.

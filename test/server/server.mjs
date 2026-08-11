@@ -87,7 +87,11 @@ const server = http.createServer(async (req, res) => {
     }
   }
   // ?cd=<ad> → Content-Disposition ile ad dayat (bozuk/Türkçe adları sınamak için)
-  const cdName = url.searchParams.get('cd');
+  // ?cdRange=<ad> → YALNIZ Range'li isteklerde farklı ad: motorun probe'u ile
+  // tarayıcının ilk isteğinin farklı ad gördüğü durumu simüle eder (S19 —
+  // devralmada Chrome'un belirlediği ad, probe tahminini ezmeli).
+  const cdRange = url.searchParams.get('cdRange');
+  const cdName = (req.headers.range && cdRange) ? cdRange : url.searchParams.get('cd');
   if (probeDelay > 0) {
     await new Promise((r) => setTimeout(r, probeDelay));
   }
