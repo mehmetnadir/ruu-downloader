@@ -163,6 +163,19 @@ if (existsSync('out')) {
   }
 }
 
+// 7e) dist sürümü: geliştirici modunda yüklenen manifest gerçek sürümü
+// taşımalı — placeholder 0.0.1 sızarsa kullanıcı hangi sürümü çalıştırdığını
+// bilemez (saha geri bildirimi).
+{
+  try {
+    const distVer = JSON.parse(readFileSync('dist/manifest.json', 'utf8')).version;
+    const pkgVer = JSON.parse(readFileSync('package.json', 'utf8')).version;
+    if (distVer !== pkgVer) {
+      add('WARN', 'sürüm', `dist/manifest.json ${distVer} ≠ package.json ${pkgVer} — build eski ya da damga kayıp`);
+    }
+  } catch { /* dist yoksa build kontrolü zaten başka yerde patlar */ }
+}
+
 // 8) Belge–kod tutarlılığı
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const readme = readFileSync('README.md', 'utf8');
