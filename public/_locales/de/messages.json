@@ -434,5 +434,38 @@
   "copiedUrl": {
     "message": "Link kopiert",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "Sortierung"
+  },
+  "sortDateDesc": {
+    "message": "Neueste zuerst"
+  },
+  "sortDateAsc": {
+    "message": "Älteste zuerst"
+  },
+  "sortNameAsc": {
+    "message": "Name A→Z"
+  },
+  "sortNameDesc": {
+    "message": "Name Z→A"
+  },
+  "sortSizeDesc": {
+    "message": "Größte zuerst"
+  },
+  "sortSizeAsc": {
+    "message": "Kleinste zuerst"
+  },
+  "stBypT": {
+    "message": "Klick mit Modifikatortaste übergibt an den Browser"
+  },
+  "stBypD": {
+    "message": "Cmd, Strg oder Alt beim Klick auf einen Link gedrückt halten – dann lädt Chrome statt Ruu."
+  },
+  "dBypass": {
+    "message": "dem Browser überlassen (Modifikatortaste)"
+  },
+  "dUnfetchable": {
+    "message": "beim Browser geblieben (Link nicht erneut abrufbar)"
   }
 }

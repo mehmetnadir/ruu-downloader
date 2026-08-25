@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ruu E2E — tek komut: build → izole Chrome → uzantı yükle → 3 senaryo → bütünlük.
-# Kullanım: ./test/e2e/run.sh          (varsayılan: görünür Chrome)
-#           HEADLESS=1 ./test/e2e/run.sh
+# Kullanım: ./test/e2e/run.sh          (varsayılan: HEADLESS)
+#           HEADLESS=0 ./test/e2e/run.sh   (görünür Chrome — hata ayıklama)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -34,9 +34,24 @@ echo "── test sunucusu :$SRV_PORT"
 node test/server/server.mjs "$SRV_PORT" & SRV_PID=$!
 sleep 1
 
+# İndirme dizini CDP ile DEĞİL, profil tercihiyle ayarlanır.
+# NEDEN: `Browser.setDownloadBehavior` Chrome'un hedef belirleme yolunu
+# (ChromeDownloadManagerDelegate) baypas eder; `downloads.onDeterminingFilename`
+# hiç tetiklenmez ve dosya adları test edilemez hâle gelir — S21 tam bu yüzden
+# yanlış FAIL veriyordu. Tercihle ayarlayınca gerçek yol koşar.
+mkdir -p "$PROFILE/Default"
+cat > "$PROFILE/Default/Preferences" <<JSON
+{"download":{"default_directory":"$DLDIR","prompt_for_download":false,"directory_upgrade":true},
+ "savefile":{"default_directory":"$DLDIR"},
+ "profile":{"exit_type":"Normal","exited_cleanly":true}}
+JSON
+
 echo "── Chrome (CDP :$CDP_PORT)"
+# VARSAYILAN HEADLESS (Nadir'in isteği 2026-08-24): görünür koşum, üzerinde
+# çalışılan Chrome pencerelerinin arasına giriyor ve S5'in restart adımı
+# dikkat dağıtıyordu. Görünür istenirse: HEADLESS=0 ./test/e2e/run.sh
 HEADLESS_FLAG=""
-[ "${HEADLESS:-0}" = "1" ] && HEADLESS_FLAG="--headless=new"
+[ "${HEADLESS:-1}" = "1" ] && HEADLESS_FLAG="--headless=new"
 # shellcheck disable=SC2086 — HEADLESS_FLAG bilinçli olarak sözcük bölünür
 "$CHROME" $HEADLESS_FLAG \
   --user-data-dir="$PROFILE" \
@@ -55,5 +70,5 @@ EXT_ID="$(node scripts/load-ext.mjs "$CDP_PORT" | sed -n 's/EXTENSION_ID=//p')"
 echo "── uzantı: $EXT_ID"
 
 echo "── senaryolar"
-export RUU_CHROME="$CHROME" RUU_PROFILE="$PROFILE" RUU_HEADLESS="${HEADLESS:-0}" RUU_DIST="$PWD/dist"
+export RUU_CHROME="$CHROME" RUU_PROFILE="$PROFILE" RUU_HEADLESS="${HEADLESS:-1}" RUU_DIST="$PWD/dist"
 node test/e2e/e2e-drive.mjs "$CDP_PORT" "$EXT_ID" "$SRV_PORT" "$DLDIR"

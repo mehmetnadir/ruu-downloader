@@ -107,6 +107,17 @@ class Job {
   private deliveryTimer: ReturnType<typeof setTimeout> | null = null;
   /** Sunucu özet verdi ama dosya doğrulanamayacak kadar büyüktü. */
   digestSkipped = false;
+  /**
+   * Hatanın TEKNİK açıklaması — çevrilmiş başlığın yanında gösterilir.
+   *
+   * NEDEN: "tüm bağlantılar düştü" (errAllDown) doğru ama İŞE YARAMAZ. Sunucu
+   * 403 mü döndü, bağlantı mı koptu, link mi süresi doldu — kullanıcı da biz de
+   * bilemiyorduk; WeTransfer vakası tam bu körlükte takıldı. Artık son
+   * başarısız isteğin durumu kartta yazıyor.
+   */
+  errorDetail?: string;
+  /** Son pompa hatasının özeti (HTTP 403, TypeError…) — errAllDown'a iliştirilir. */
+  private lastFetchFail?: string;
   /** Kuyruğa giriş sırası — FIFO için. */
   readonly seq = ++queueSeq;
   /**
@@ -163,6 +174,10 @@ class Job {
       probe.body?.cancel().catch(() => undefined);
 
       if (probe.status !== 206 || total === null) {
+        // Neden bölemedik? "Range yok" ile "sunucu 403 dedi" AYNI ŞEY DEĞİL;
+        // ikincisinde tarayıcıya devretmek de büyük olasılıkla başarısız olur
+        // ve kullanıcı sebebini görebilmeli.
+        this.errorDetail = `HTTP ${probe.status}`;
         // Range yok → native indiriciye zarif düşüş (PRD F2).
         // DİKKAT: burada 'done' demek YALAN olur — henüz tek bayt inmedi.
         // Chrome'un indirmesi de başarısız olabilir (süresi dolmuş link, 404);
@@ -171,7 +186,12 @@ class Job {
         this.native = true;
         this.state = 'finalizing';
         this.armDeliveryWatchdog();
-        send({ target: 'sw', type: 'native-fallback', jobId: this.id, url: this.url });
+        // forcedName BURADA da gitmeli: kullanıcı adı kaydetme penceresinde
+        // seçtiyse Range desteklemeyen sunucuda da o ad geçerlidir.
+        send({
+          target: 'sw', type: 'native-fallback', jobId: this.id, url: this.url,
+          ...(this.forcedName !== undefined ? { forcedName: this.forcedName } : {}),
+        });
         broadcast();
         return;
       }
@@ -463,7 +483,10 @@ class Job {
           cache: 'no-store',
         });
         dbg.responses++;
-        if (resp.status !== 206 || !resp.body) throw new Error(`beklenmedik durum: ${resp.status}`);
+        if (resp.status !== 206 || !resp.body) {
+          this.lastFetchFail = `HTTP ${resp.status}`;
+          throw new Error(`beklenmedik durum: ${resp.status}`);
+        }
         this.sequentialErrors = 0;
         const reader = resp.body.getReader();
         let gotAny = false;
@@ -500,8 +523,14 @@ class Job {
       this.alloc!.settle(claim);
       const isAbort = controller.signal.aborted ||
         (err instanceof Error && err.name === 'AbortError');
-      if (!isAbort && dbg.pumpErrors.length < 20) {
-        dbg.pumpErrors.push(err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+      if (!isAbort) {
+        if (dbg.pumpErrors.length < 20) {
+          dbg.pumpErrors.push(err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+        }
+        // HTTP durumu zaten yazıldıysa ezme: "403" ham "TypeError"dan bilgilidir.
+        if (err instanceof Error && !err.message.startsWith('beklenmedik durum')) {
+          this.lastFetchFail = err.message || err.name;
+        }
       }
       if (this.state === 'downloading' && !controller.signal.aborted) {
         this.sequentialErrors++;
@@ -782,6 +811,11 @@ class Job {
     if (this.state === 'error') return;
     this.state = 'error';
     this.error = err instanceof Error ? err.message : String(err);
+    // Başlık çevrilebilir bir anahtar ise (errAllDown gibi) teknik sebep tek
+    // başına kaybolur — yanına iliştiriyoruz.
+    if (this.lastFetchFail && this.lastFetchFail !== this.error) {
+      this.errorDetail = this.lastFetchFail;
+    }
     this.abortConnections();
     this.stopRamp();
     this.stopMetaTimer();
@@ -821,6 +855,7 @@ class Job {
       })),
       ranges: this.alloc?.completed() ?? [],
       error: this.error,
+      errorDetail: this.errorDetail,
       native: this.native,
       downloadId: this.downloadId,
       priv: this.priv || undefined,

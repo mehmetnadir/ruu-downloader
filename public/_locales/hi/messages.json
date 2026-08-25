@@ -434,5 +434,38 @@
   "copiedUrl": {
     "message": "लिंक कॉपी हो गया",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "क्रम"
+  },
+  "sortDateDesc": {
+    "message": "नए पहले"
+  },
+  "sortDateAsc": {
+    "message": "पुराने पहले"
+  },
+  "sortNameAsc": {
+    "message": "नाम A→Z"
+  },
+  "sortNameDesc": {
+    "message": "नाम Z→A"
+  },
+  "sortSizeDesc": {
+    "message": "बड़े पहले"
+  },
+  "sortSizeAsc": {
+    "message": "छोटे पहले"
+  },
+  "stBypT": {
+    "message": "मॉडिफ़ायर-क्लिक ब्राउज़र को सौंपता है"
+  },
+  "stBypD": {
+    "message": "लिंक पर क्लिक करते समय Cmd, Ctrl या Alt दबाए रखें — तब Ruu नहीं, Chrome डाउनलोड करेगा।"
+  },
+  "dBypass": {
+    "message": "ब्राउज़र को सौंपा (मॉडिफ़ायर की)"
+  },
+  "dUnfetchable": {
+    "message": "ब्राउज़र के पास रहा (लिंक दोबारा नहीं मँगाया जा सकता)"
   }
 }

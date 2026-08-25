@@ -434,5 +434,38 @@
   "copiedUrl": {
     "message": "Ссылка скопирована",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "Сортировка"
+  },
+  "sortDateDesc": {
+    "message": "Сначала новые"
+  },
+  "sortDateAsc": {
+    "message": "Сначала старые"
+  },
+  "sortNameAsc": {
+    "message": "Имя А→Я"
+  },
+  "sortNameDesc": {
+    "message": "Имя Я→А"
+  },
+  "sortSizeDesc": {
+    "message": "Сначала большие"
+  },
+  "sortSizeAsc": {
+    "message": "Сначала маленькие"
+  },
+  "stBypT": {
+    "message": "Клик с модификатором отдаёт браузеру"
+  },
+  "stBypD": {
+    "message": "Удерживайте Cmd, Ctrl или Alt при клике по ссылке — файл скачает Chrome, а не Ruu."
+  },
+  "dBypass": {
+    "message": "оставлено браузеру (модификатор)"
+  },
+  "dUnfetchable": {
+    "message": "осталось в браузере (ссылка не запрашивается повторно)"
   }
 }

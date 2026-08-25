@@ -48,6 +48,7 @@ export const SETTING_DEFAULTS = {
   queueLimit: 0,
   useHelper: false,
   continueAfterClose: false,
+  modifierBypass: true,
   notifyMode: 'notify',
   partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   openWhenDone: false,

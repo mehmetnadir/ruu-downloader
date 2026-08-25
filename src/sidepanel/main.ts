@@ -1,6 +1,9 @@
 import type { JobSnapshot, Msg } from '../engine/types';
 import { DEFAULT_MODE, type ServiceMode } from '../content/modes';
-import type { HistoryEntry } from '../engine/history';
+import {
+  DEFAULT_SORT, isSortMode, sortEntries, SORT_MODES,
+  type HistoryEntry, type SortMode,
+} from '../engine/history';
 import { SERVICES } from '../content/services';
 import { icons } from './icons';
 import { $, applyI18n, escapeHtml, fmtBytes, SETTING_DEFAULTS, t } from './common';
@@ -101,6 +104,7 @@ const DEFAULTS = {
   queueLimit: 0,
   useHelper: false,
   continueAfterClose: false,
+  modifierBypass: true,
   notifyMode: 'notify',
   partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   openWhenDone: false,
@@ -125,9 +129,40 @@ settingsBtn.addEventListener('click', () => {
 // kullanıcıyı iki arayüzden birden mahrum bırakırdı (denetim bulgusu C5).
 const histSection = $('#hist-section');
 const histList = $('#hist-list');
+const histSort = $<HTMLSelectElement>('#hist-sort');
+
+/**
+ * Sıralama seçimi kalıcıdır: kullanıcı "ada göre"yi seçtiyse panel her
+ * açılışında yeniden tarihe dönmemeli. Bilinmeyen/eski değer varsayılana düşer.
+ */
+let sortMode: SortMode = DEFAULT_SORT;
+const SORT_LABELS: Record<SortMode, string> = {
+  'date-desc': t('sortDateDesc'),
+  'date-asc': t('sortDateAsc'),
+  'name-asc': t('sortNameAsc'),
+  'name-desc': t('sortNameDesc'),
+  'size-desc': t('sortSizeDesc'),
+  'size-asc': t('sortSizeAsc'),
+};
+histSort.title = t('sortLabel');
+histSort.setAttribute('aria-label', t('sortLabel'));
+histSort.innerHTML = SORT_MODES
+  .map((m) => `<option value="${m}">${escapeHtml(SORT_LABELS[m])}</option>`).join('');
+
+histSort.addEventListener('change', () => {
+  if (!isSortMode(histSort.value)) return;
+  sortMode = histSort.value;
+  void chrome.storage.local.set({ histSort: sortMode });
+  void renderHistory();
+  render(lastJobs); // "Tamamlanan" kartları da aynı sırayı izler
+});
 
 async function renderHistory(): Promise<void> {
-  const entries = (await chrome.storage.local.get({ history: [] }))['history'] as HistoryEntry[];
+  const store = await chrome.storage.local.get({ history: [], histSort: DEFAULT_SORT });
+  const saved = store['histSort'];
+  sortMode = isSortMode(saved) ? saved : DEFAULT_SORT;
+  histSort.value = sortMode;
+  const entries = sortEntries(store['history'] as HistoryEntry[], sortMode);
   if (entries.length === 0) { histSection.hidden = true; return; }
   histSection.hidden = false;
   // Dosya hâlâ diskte mi? Silinmişse üstü çizili göster — yalan söyleme.
@@ -320,7 +355,10 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
   } else if (job.state === 'paused') {
     ref.stats.textContent = `%${Math.floor(pct * 100)}`;
   } else if (job.state === 'error') {
-    ref.stats.textContent = terr(job.error);
+    // Teknik sebep (HTTP 403 gibi) başlığın yanında: "tüm bağlantılar düştü"
+    // tek başına kullanıcıya da bize de yol göstermiyordu.
+    ref.stats.textContent = [terr(job.error), job.errorDetail].filter(Boolean).join(' · ');
+    ref.stats.title = job.url;
   } else if (job.state === 'done') {
     // Köken: ne zaman · nereden · kimden (hepsi yerel)
     const when = job.completedAt
@@ -334,7 +372,7 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
       // "tarayıcıya devredildi" tek başına NEDENİ söylemiyordu; kullanıcı
       // hızlı inmediğini görüp bizde hata sanıyordu. Sebep sunucudadır:
       // Range desteklemeyen bir host'ta bölmek mümkün değil.
-      job.native ? `${t('wNative')} · ${t('wNativeWhy')}` : '',
+      job.native ? [t('wNative'), t('wNativeWhy'), job.errorDetail].filter(Boolean).join(' · ') : '',
       job.viaHelper ? t('wViaHelper') : '',
     ].filter(Boolean).join(' · ');
     ref.stats.title = job.url;
@@ -374,18 +412,47 @@ function updateCard(ref: CardRef, job: JobSnapshot): void {
   }
 }
 
+/**
+ * "Tamamlanan" kartlarının sırası.
+ *
+ * SAHA HATASI (Nadir, 2026-08-24): "En son indirilen en üstte olmalı ama
+ * karışık çıkıyor." Kartlar bir kez `appendChild` ile listeye giriyor ve BİR
+ * DAHA yerleşmiyordu; bir iş tamamlandığında listenin SONUNA ekleniyordu.
+ * Sıra "tamamlanma zamanı" değil "hangi kart ne zaman taşındı" oluyordu.
+ * Artık her render'da DOM sırası açıkça kuruluyor.
+ *
+ * Aktif liste sıralanmaz: oradaki sıra kuyruğun kendisidir (FIFO) — motorun
+ * gönderdiği düzen anlamlıdır, ada göre karıştırmak "sıradaki iş hangisi"
+ * bilgisini yok ederdi.
+ */
+function orderDone(list: JobSnapshot[], mode: SortMode): JobSnapshot[] {
+  const key = (j: JobSnapshot): number => j.completedAt ?? 0;
+  const name = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+  const out = [...list];
+  switch (mode) {
+    case 'date-asc': return out.sort((a, b) => key(a) - key(b));
+    case 'name-asc': return out.sort((a, b) => name.compare(a.filename, b.filename));
+    case 'name-desc': return out.sort((a, b) => name.compare(b.filename, a.filename));
+    case 'size-desc': return out.sort((a, b) => (b.size ?? 0) - (a.size ?? 0));
+    case 'size-asc': return out.sort((a, b) => (a.size ?? 0) - (b.size ?? 0));
+    default: return out.sort((a, b) => key(b) - key(a));
+  }
+}
+
+/** Son motor anlık görüntüsü — sıralama değişince yeni mesaj beklemeden yeniden çiz. */
+let lastJobs: JobSnapshot[] = [];
+
 function render(jobsList: JobSnapshot[]): void {
+  lastJobs = jobsList;
   const seen = new Set<string>();
-  let active = 0;
-  let done = 0;
+  const activeJobs: JobSnapshot[] = [];
+  const doneJobs: JobSnapshot[] = [];
 
   for (const job of jobsList) {
     seen.add(job.id);
     const ref = cards.get(job.id) ?? createCard(job);
     updateCard(ref, job);
-    const targetList = job.state === 'done' ? doneList : activeList;
-    if (ref.el.parentElement !== targetList) targetList.appendChild(ref.el);
-    if (job.state === 'done') done++; else active++;
+    (job.state === 'done' ? doneJobs : activeJobs).push(job);
   }
 
   for (const [id, ref] of cards) {
@@ -394,6 +461,18 @@ function render(jobsList: JobSnapshot[]): void {
       cards.delete(id);
     }
   }
+
+  // DOM sırasını her seferinde kur. `append` var olan düğümü TAŞIR (kopyalamaz),
+  // yani kart kimliği, odak ve süren animasyon korunur.
+  for (const [list, ordered] of [[activeList, activeJobs], [doneList, orderDone(doneJobs, sortMode)]] as const) {
+    for (const job of ordered) {
+      const el = cards.get(job.id)?.el;
+      if (el) list.appendChild(el);
+    }
+  }
+
+  const active = activeJobs.length;
+  const done = doneJobs.length;
 
   activeCount.textContent = active ? `(${active})` : '';
   doneCount.textContent = done ? `(${done})` : '';

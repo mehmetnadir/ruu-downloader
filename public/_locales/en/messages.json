@@ -434,5 +434,43 @@
   "copiedUrl": {
     "message": "Link copied",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "Sort",
+    "description": "Accessible label for the download history sort selector"
+  },
+  "sortDateDesc": {
+    "message": "Newest first",
+    "description": "Sort option: newest download first (default)"
+  },
+  "sortDateAsc": {
+    "message": "Oldest first"
+  },
+  "sortNameAsc": {
+    "message": "Name A→Z"
+  },
+  "sortNameDesc": {
+    "message": "Name Z→A"
+  },
+  "sortSizeDesc": {
+    "message": "Largest first"
+  },
+  "sortSizeAsc": {
+    "message": "Smallest first"
+  },
+  "stBypT": {
+    "message": "Modifier-click hands it to the browser",
+    "description": "Setting: Cmd/Ctrl/Alt + click bypasses the extension"
+  },
+  "stBypD": {
+    "message": "Hold Cmd, Ctrl or Alt while clicking a link and Chrome downloads it instead of Ruu."
+  },
+  "dBypass": {
+    "message": "left to the browser (modifier key)",
+    "description": "Takeover diagnostics: skipped because of a modifier-click"
+  },
+  "dUnfetchable": {
+    "message": "browser kept it (link not re-fetchable)",
+    "description": "Takeover diagnostics: skipped because the URL could not be re-fetched (e.g. POST-initiated download)"
   }
 }

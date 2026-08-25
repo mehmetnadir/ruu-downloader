@@ -434,5 +434,38 @@
   "copiedUrl": {
     "message": "تم نسخ الرابط",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "الترتيب"
+  },
+  "sortDateDesc": {
+    "message": "الأحدث أولاً"
+  },
+  "sortDateAsc": {
+    "message": "الأقدم أولاً"
+  },
+  "sortNameAsc": {
+    "message": "الاسم A→Z"
+  },
+  "sortNameDesc": {
+    "message": "الاسم Z→A"
+  },
+  "sortSizeDesc": {
+    "message": "الأكبر أولاً"
+  },
+  "sortSizeAsc": {
+    "message": "الأصغر أولاً"
+  },
+  "stBypT": {
+    "message": "النقر مع مفتاح تعديل يسلّم المهمة للمتصفح"
+  },
+  "stBypD": {
+    "message": "اضغط Cmd أو Ctrl أو Alt أثناء النقر على رابط فيتولى Chrome التنزيل بدل Ruu."
+  },
+  "dBypass": {
+    "message": "تُرك للمتصفح (مفتاح تعديل)"
+  },
+  "dUnfetchable": {
+    "message": "بقي في المتصفح (تعذّر طلب الرابط مجددًا)"
   }
 }

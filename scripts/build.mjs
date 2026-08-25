@@ -28,6 +28,7 @@ const options = {
     'disk-worker': 'src/offscreen/disk-worker.ts',
     'sidepanel': 'src/sidepanel/main.ts',
     'mail': 'src/content/mail.ts',
+    'bypass': 'src/content/bypass.ts',
     'done': 'src/sidepanel/done.ts',
     'options': 'src/options/main.ts',
   },

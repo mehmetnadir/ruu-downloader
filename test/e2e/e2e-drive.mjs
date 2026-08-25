@@ -83,8 +83,10 @@ const record = (name, ok, note = '') => {
 const version = await (await fetch(`http://localhost:${cdpPort}/json/version`)).json();
 const browser = new Cdp(version.webSocketDebuggerUrl);
 
-// indirilen dosyalar temp dizine insin
-await browser.call('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir });
+// İndirme dizini run.sh'ın yazdığı profil tercihinden gelir — CDP override
+// KULLANILMAZ. `Browser.setDownloadBehavior` hedef belirlemeyi ele geçirir ve
+// `downloads.onDeterminingFilename` hiç çalışmaz; ad testleri (S17/S19/S21)
+// o modda gerçeği ölçemiyordu.
 
 // panel sekmesi aç (SW + offscreen uyanır)
 await browser.call('Target.createTarget', { url: `chrome-extension://${extId}/sidepanel.html` });
@@ -109,8 +111,10 @@ async function addAndWait(url, name, timeoutSec, expectState = 'done') {
 }
 
 /**
- * Boyuta göre bul: CDP setDownloadBehavior blob indirmelerini GUID adla kaydediyor
- * (normal kullanımda adlar doğru — manuel denemelerle kanıtlı), ad güvenilmez.
+ * Boyuta göre bul. (Eskiden ad güvenilmezdi: CDP `setDownloadBehavior` blob
+ * indirmelerine GUID ad veriyordu. Artık indirme dizini profil tercihinden
+ * geliyor ve adlar GERÇEK — S17/S19/S21 adı doğrudan doğruluyor. Boyutla arama
+ * yine de en dayanıklı yol: uniquify eki ada " (1)" ekleyebilir.)
  */
 function findFile(expectedBytes) {
   if (!existsSync(downloadDir)) return null;
@@ -516,6 +520,157 @@ const MB = 1024 * 1024;
   })`));
   record('S20 URL kopyala butonu', hasCopy.count > 0 && hasCopy.urlsOk,
     `buton=${hasCopy.count} url'ler geçerli=${hasCopy.urlsOk}`);
+}
+
+// S21: NATIVE FALLBACK KULLANICININ ADINI KORUR
+// SAHA HATASI (Nadir, 2026-08-24): "Kaydetme penceresinde adı yazmama rağmen
+// sunucudan geldiği gibi kaydediyor." Kök neden: Range desteklemeyen sunucuda
+// motor tarayıcıya devrediyor ve SW `downloads.download({url})` çağırıyordu —
+// `filename` HİÇ geçilmiyordu, Chrome sunucunun Content-Disposition'ına düşüyordu.
+// Ayrım kesin olsun diye sunucu BAŞKA bir ad dayatıyor: dosya diskte
+// kullanıcının adıyla oluşmazsa test çöker.
+{
+  const want = 'benim-sectigim-ad.bin';
+  const url = `http://localhost:${serverPort}/f/12?noRange=1&cd=${encodeURIComponent('SUNUCU-ADI.bin')}&q=s21`;
+  await evalIn(panel, `chrome.runtime.sendMessage({target:'engine',type:'add',` +
+    `url:${JSON.stringify(url)},forcedName:${JSON.stringify(want)}}); 'sent'`);
+  const off = await pageCdp('offscreen.html');
+  let st = '';
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    await sleep(700);
+    st = String(await evalIn(off,
+      `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url.includes('q=s21'));` +
+      `return j? j.state : 'yok'})()`));
+    if (st === 'done' || st === 'error') break;
+  }
+  off.close();
+  let named = false, wrong = false;
+  for (let i = 0; i < 20 && !named; i++) {
+    await sleep(500);
+    const files = existsSync(downloadDir) ? readdirSync(downloadDir) : [];
+    named = files.some((f) => f === want || f.startsWith(want.slice(0, -4)));
+    wrong = files.some((f) => f.startsWith('SUNUCU-ADI'));
+  }
+  // Chrome'un kendi kaydındaki ad + işaretin tüketilip tüketilmediği.
+  // CDP `Browser.setDownloadBehavior` hedef belirlemeyi ele geçirdiği için
+  // DİSKTEKİ ad her zaman gerçeği söylemez; kanıtı iki yerden birden alıyoruz.
+  const probe21 = JSON.parse(await evalIn(panel, `Promise.all([
+    chrome.downloads.search({}).then(l => (l.find(d => (d.url||'').includes('q=s21'))?.filename ?? 'yok')),
+    chrome.storage.session.get('nativeNames').then(s => JSON.stringify(s.nativeNames ?? {})),
+  ]).then(a => JSON.stringify({ chromeName: a[0], marks: a[1] }))`));
+  const chromeBase = String(probe21.chromeName).split(/[\\/]/).pop();
+  const consumed = !probe21.marks.includes('q=s21');
+  record('S21 native fallback kullanıcının adını korur',
+    st === 'done' && (named || chromeBase === want) && consumed && !wrong,
+    `durum=${st} disk=${named} chromeAdı="${chromeBase}" işaretTüketildi=${consumed} sunucuAdı=${wrong} (beklenen ${want})`);
+}
+
+// S22: TUŞ BASILI TIKLAMA TARAYICIYA BIRAKIR
+// Nadir'in isteği: bağlantıya Cmd/Ctrl/Alt basılı tıklarsam Ruu KARIŞMASIN.
+// Devralma eşiğinin (10 MB) ÜSTÜNDE bir dosya seçiliyor ki "atlandı" kararı
+// boyuttan değil tuştan gelsin — yoksa test kendi kendini kandırırdı.
+{
+  const page = await browser.call('Target.createTarget', {
+    url: `http://localhost:${serverPort}/link/15?args=rate=30%26q=s22`,
+  });
+  const tab = await pageCdp('/link/15');
+  await sleep(1200); // içerik betiği yüklensin
+  await evalIn(panel, `chrome.storage.local.set({takeoverLog:[]}); 'temiz'`);
+  // Tuşlu mousedown → içerik betiği işareti koyar; ardından tıklama indirmeyi başlatır.
+  await evalIn(tab, `(()=>{const a=document.getElementById('dl');
+    a.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0,metaKey:true}));
+    return 'işaret';})()`);
+  await sleep(300);
+  await evalIn(tab, `document.getElementById('dl').click(); 'tık'`);
+  let why = '', hasJob = true;
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    await sleep(600);
+    why = String(await evalIn(panel,
+      `chrome.storage.local.get({takeoverLog:[]}).then(s=>(s.takeoverLog[0]?.action ?? 'yok'))`));
+    if (why !== 'yok') break;
+  }
+  const off = await pageCdp('offscreen.html');
+  hasJob = Boolean(await evalIn(off,
+    `[...__ruu.jobs.values()].some(x=>x.url.includes('q=s22'))`));
+  off.close();
+  tab.close();
+  await browser.call('Target.closeTarget', { targetId: page.targetId }).catch(() => {});
+  record('S22 tuş basılı tıklama tarayıcıya bırakılır',
+    why === 'bypass' && !hasJob, `karar=${why} ruuİşi=${hasJob}`);
+}
+
+// S23: GEÇMİŞ SIRALAMASI — "en son indirilen en üstte" (Nadir'in şikâyeti) ve
+// seçicinin gerçekten listeyi yeniden dizmesi. Panelin diziye GÜVENMEMESİ
+// gerekiyor: karışık gelen kayıt sırası doğru sırayla çizilmeli.
+{
+  const keep = await evalIn(panel,
+    `chrome.storage.local.get({history:[],histSort:'date-desc'}).then(JSON.stringify)`);
+  const seed = [
+    { id: 9001, name: 'bravo.zip', size: 300, at: 200 },
+    { id: 9002, name: 'çilek.zip', size: 100, at: 500 },
+    { id: 9003, name: 'alfa (10).zip', size: 200, at: 100 },
+    { id: 9004, name: 'alfa (2).zip', size: 400, at: 400 },
+  ];
+  const names = async () => JSON.parse(await evalIn(panel,
+    `JSON.stringify([...document.querySelectorAll('#hist-list .hist-name')].map(e=>e.textContent))`));
+  await evalIn(panel, `chrome.storage.local.set({history:${JSON.stringify(seed)},` +
+    `histSort:'date-desc'}); 'seed'`);
+  await sleep(1200);
+  const byDate = await names();
+  await evalIn(panel, `(()=>{const s=document.getElementById('hist-sort');
+    s.value='name-asc'; s.dispatchEvent(new Event('change')); return 'ada';})()`);
+  await sleep(1200);
+  const byName = await names();
+  await evalIn(panel, `(()=>{const s=document.getElementById('hist-sort');
+    s.value='size-desc'; s.dispatchEvent(new Event('change')); return 'boyuta';})()`);
+  await sleep(1200);
+  const bySize = await names();
+  // eski geçmişi geri koy — sonraki senaryolar etkilenmesin
+  await evalIn(panel, `chrome.storage.local.set(JSON.parse(${JSON.stringify(keep)})); 'geri'`);
+  await sleep(600);
+  const dateOk = JSON.stringify(byDate) ===
+    JSON.stringify(['çilek.zip', 'alfa (2).zip', 'bravo.zip', 'alfa (10).zip']);
+  // Türkçe harmanlama + insan sayı sırası: alfa (2) < alfa (10) < bravo < çilek
+  const nameOk = JSON.stringify(byName) ===
+    JSON.stringify(['alfa (2).zip', 'alfa (10).zip', 'bravo.zip', 'çilek.zip']);
+  const sizeOk = JSON.stringify(bySize) ===
+    JSON.stringify(['alfa (2).zip', 'bravo.zip', 'alfa (10).zip', 'çilek.zip']);
+  record('S23 geçmiş sıralaması (tarih/ad/boyut)', dateOk && nameOk && sizeOk,
+    `tarih=${dateOk} ad=${nameOk} boyut=${sizeOk} · ${JSON.stringify(byName)}`);
+}
+
+// S24: ÖN-UÇUŞ — YENİDEN İSTENEMEYEN ADRESTE TARAYICININ İNDİRMESİ KORUNUR
+// SAHA KANITI (Nadir, 2026-08-24, WeTransfer): indirme POST ile doğuyor, biz
+// devralıp aynı adrese GET atınca sunucu 404 veriyor. Eski sıra (önce iptal,
+// sonra istek) kullanıcının ÇALIŞAN indirmesini öldürüyordu.
+// Burada sunucu ikinci isteğe 403 veriyor: ilk istek tarayıcınındır, ikinci
+// istek bizim ön-uçuşumuz. Doğru davranış = geri çekilmek ve dosyanın
+// tarayıcı eliyle BÜTÜN inmesi.
+{
+  const url = `http://localhost:${serverPort}/f/13?rate=3&key=s24&failAfterReq=1&q=s24`;
+  await evalIn(panel, `chrome.storage.local.set({takeoverLog:[]}); 'temiz'`);
+  const tab = await browser.call('Target.createTarget', { url });
+  let why = 'yok';
+  const deadline = Date.now() + 25_000;
+  while (Date.now() < deadline) {
+    await sleep(600);
+    why = String(await evalIn(panel,
+      `chrome.storage.local.get({takeoverLog:[]}).then(s=>(s.takeoverLog[0]?.action ?? 'yok'))`));
+    if (why !== 'yok') break;
+  }
+  const off = await pageCdp('offscreen.html');
+  const hasJob = Boolean(await evalIn(off,
+    `[...__ruu.jobs.values()].some(x=>x.url.includes('q=s24'))`));
+  off.close();
+  let file = null;
+  for (let i = 0; i < 40 && !file; i++) { await sleep(500); file = findFile(13 * MB); }
+  const bad = file ? verifyPattern(file) : 'dosya yok';
+  await browser.call('Target.closeTarget', { targetId: tab.targetId }).catch(() => {});
+  record('S24 ön-uçuş: yeniden istenemeyen adreste tarayıcının indirmesi korunur',
+    why === 'unfetchable' && !hasJob && !bad,
+    `karar=${why} ruuİşi=${hasJob} ${bad ?? 'dosya bütün'}`);
 }
 
 // S13: HAYALET İNDİRME — probe uçarken iptal edilen iş DİRİLMEMELİ.

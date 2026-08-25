@@ -434,5 +434,38 @@
   "copiedUrl": {
     "message": "已复制链接",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "排序"
+  },
+  "sortDateDesc": {
+    "message": "最新在前"
+  },
+  "sortDateAsc": {
+    "message": "最早在前"
+  },
+  "sortNameAsc": {
+    "message": "名称 A→Z"
+  },
+  "sortNameDesc": {
+    "message": "名称 Z→A"
+  },
+  "sortSizeDesc": {
+    "message": "最大在前"
+  },
+  "sortSizeAsc": {
+    "message": "最小在前"
+  },
+  "stBypT": {
+    "message": "按住修饰键点击交给浏览器"
+  },
+  "stBypD": {
+    "message": "按住 Cmd、Ctrl 或 Alt 点击链接时，由 Chrome 下载而不是 Ruu。"
+  },
+  "dBypass": {
+    "message": "交给浏览器（修饰键）"
+  },
+  "dUnfetchable": {
+    "message": "留给浏览器（链接无法重新请求）"
   }
 }

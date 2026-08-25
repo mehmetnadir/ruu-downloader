@@ -204,7 +204,17 @@ body {
 }
 
 main { padding: 4px 14px 20px; }
-#hist-section h2 { display: flex; align-items: baseline; justify-content: space-between; }
+#hist-section h2 { display: flex; align-items: center; gap: 8px; }
+#hist-section h2 > span:first-child { flex: 1; min-width: 0; }
+/* Sıralama seçici başlık şeridinde yaşıyor: liste uzun, kullanıcı listeyi
+   kaydırmadan sırayı değiştirebilmeli. Görsel ağırlığı başlık kadar hafif. */
+.sort-select {
+  background: var(--surface); color: var(--muted);
+  border: 1px solid var(--border); border-radius: 6px;
+  font: inherit; font-size: 10px; letter-spacing: 0;
+  padding: 2px 4px; cursor: pointer; max-width: 45%;
+}
+.sort-select:hover, .sort-select:focus-visible { color: var(--text); }
 .link-btn {
   background: none; border: none; cursor: pointer; padding: 0;
   color: var(--muted); font-size: 10px; text-transform: none; letter-spacing: 0;

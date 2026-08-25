@@ -434,5 +434,38 @@
   "copiedUrl": {
     "message": "Lien copié",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "Tri"
+  },
+  "sortDateDesc": {
+    "message": "Plus récents d'abord"
+  },
+  "sortDateAsc": {
+    "message": "Plus anciens d'abord"
+  },
+  "sortNameAsc": {
+    "message": "Nom A→Z"
+  },
+  "sortNameDesc": {
+    "message": "Nom Z→A"
+  },
+  "sortSizeDesc": {
+    "message": "Plus gros d'abord"
+  },
+  "sortSizeAsc": {
+    "message": "Plus petits d'abord"
+  },
+  "stBypT": {
+    "message": "Le clic avec touche modificatrice laisse faire le navigateur"
+  },
+  "stBypD": {
+    "message": "Maintenez Cmd, Ctrl ou Alt en cliquant sur un lien : Chrome télécharge à la place de Ruu."
+  },
+  "dBypass": {
+    "message": "laissé au navigateur (touche modificatrice)"
+  },
+  "dUnfetchable": {
+    "message": "laissé au navigateur (lien non re-téléchargeable)"
   }
 }

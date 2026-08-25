@@ -26,6 +26,8 @@ export interface JobSnapshot {
   claims: ClaimSnapshot[];
   ranges: Array<[number, number]>; // birleştirilmiş tamamlanan aralıklar (segment haritası)
   error?: string;
+  /** Hatanın teknik açıklaması (HTTP 403, TypeError…) — çevrilmiş başlığın yanında. */
+  errorDetail?: string;
   native?: boolean;
   downloadId?: number; // teslim sonrası chrome.downloads kimliği (Aç / Göster için)
   priv?: boolean; // gizli indirme: geçmişte iz bırakmaz
@@ -77,7 +79,11 @@ export type Msg =
   | { target: 'sw'; type: 'beam-unpair' }
   | { target: 'sw'; type: 'hello-panel' }
   | { target: 'sw'; type: 'deliver'; jobId: string; blobUrl: string; filename: string; size: number; topSpeed: number; priv?: boolean; origin?: string; sender?: string; forced?: boolean }
-  | { target: 'sw'; type: 'native-fallback'; jobId: string; url: string }
+  /** `forcedName`: kullanıcının kaydetme penceresi seçimi — native dalda da
+   *  uygulanmak ZORUNDA, yoksa Chrome sunucunun adına döner (saha hatası). */
+  | { target: 'sw'; type: 'native-fallback'; jobId: string; url: string; forcedName?: string }
+  /** İçerik betiği: kullanıcı bağlantıya Cmd/Ctrl/Alt basılı tıkladı. */
+  | { target: 'sw'; type: 'bypass-click'; url: string }
   | { target: 'sw'; type: 'keepawake'; on: boolean }
   // engine → panel
   | { target: 'panel'; type: 'jobs'; jobs: JobSnapshot[] };

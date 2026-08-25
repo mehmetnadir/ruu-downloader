@@ -434,5 +434,38 @@
   "copiedUrl": {
     "message": "Link copiado",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "Ordenação"
+  },
+  "sortDateDesc": {
+    "message": "Mais recentes primeiro"
+  },
+  "sortDateAsc": {
+    "message": "Mais antigos primeiro"
+  },
+  "sortNameAsc": {
+    "message": "Nome A→Z"
+  },
+  "sortNameDesc": {
+    "message": "Nome Z→A"
+  },
+  "sortSizeDesc": {
+    "message": "Maiores primeiro"
+  },
+  "sortSizeAsc": {
+    "message": "Menores primeiro"
+  },
+  "stBypT": {
+    "message": "Clique com tecla modificadora entrega ao navegador"
+  },
+  "stBypD": {
+    "message": "Segure Cmd, Ctrl ou Alt ao clicar num link e o Chrome baixa em vez do Ruu."
+  },
+  "dBypass": {
+    "message": "deixado para o navegador (tecla modificadora)"
+  },
+  "dUnfetchable": {
+    "message": "ficou no navegador (link não re-solicitável)"
   }
 }

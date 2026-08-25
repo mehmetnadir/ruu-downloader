@@ -37,6 +37,18 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Tuş basılı tıklama testi için düz sayfa: içinde TEK bir indirme bağlantısı.
+  // ?args=<f/ sorgusu> ile hedef bağlantının parametreleri geçirilir.
+  const lm = url.pathname.match(/^\/link\/(\d+)$/);
+  if (lm) {
+    const args = url.searchParams.get('args') ?? '';
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(`<!doctype html>
+<html><body><h1>Bağlantı sayfası</h1>
+<a id="dl" href="http://localhost:${PORT}/f/${lm[1]}${args ? `?${args}` : ''}">indir</a>
+</body></html>`);
+    return;
+  }
+
   // Süresi dolmuş paylaşım sayfası (uyarı akışı testi)
   if (url.pathname === '/share-expired') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(

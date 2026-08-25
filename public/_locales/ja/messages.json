@@ -434,5 +434,38 @@
   "copiedUrl": {
     "message": "コピーしました",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "並び替え"
+  },
+  "sortDateDesc": {
+    "message": "新しい順"
+  },
+  "sortDateAsc": {
+    "message": "古い順"
+  },
+  "sortNameAsc": {
+    "message": "名前 A→Z"
+  },
+  "sortNameDesc": {
+    "message": "名前 Z→A"
+  },
+  "sortSizeDesc": {
+    "message": "大きい順"
+  },
+  "sortSizeAsc": {
+    "message": "小さい順"
+  },
+  "stBypT": {
+    "message": "修飾キー＋クリックはブラウザに任せる"
+  },
+  "stBypD": {
+    "message": "Cmd・Ctrl・Alt を押しながらリンクをクリックすると、Ruu ではなく Chrome がダウンロードします。"
+  },
+  "dBypass": {
+    "message": "ブラウザに委ねた（修飾キー）"
+  },
+  "dUnfetchable": {
+    "message": "ブラウザに残した（リンクを再取得できない）"
   }
 }

@@ -6,7 +6,11 @@ import { matchShareLink } from './content/patterns';
 import { downloadsRelative, safeFallbackName } from './engine/filename';
 import { HELPER_HOST, isValidHandshake, type HelperHandshake } from './engine/helper';
 import { DEFAULT_CATEGORY_NAMES, routeByType } from './engine/foldering';
-import { decideTakeover } from './engine/takeover';
+import { decideTakeover, preflightVerdict } from './engine/takeover';
+import {
+  nativeDownloadAttempts, pickNativeName, pruneNativeNames, type NativeNameMarks,
+} from './engine/native';
+import { BYPASS_TTL_MS, shouldBypass, type BypassMark } from './engine/bypass';
 import { addEntry, type HistoryEntry } from './engine/history';
 import { applyDownload, EMPTY_STATS, type Stats } from './engine/stats';
 import type { Msg } from './engine/types';
@@ -40,6 +44,10 @@ const settings = {
   queueLimit: 0, // 0 = sınırsız; kuyruk tamamen eklenti içinde çalışır
   useHelper: false, // isteğe bağlı yerel yardımcı — varsayılan KAPALI
   continueAfterClose: false, // yardımcı varsa: tarayıcı kapansa da sürsün
+  // Cmd/Ctrl/Alt basılı tıklama = "bu linki tarayıcı indirsin" (Nadir'in isteği).
+  // Kapatılırsa sayfalara enjekte edilen içerik betiği de KALDIRILIR — izin
+  // yüzeyi kullanıcının seçimiyle küçülür, ayar sadece bir bayrak değildir.
+  modifierBypass: true,
 
   notifyMode: 'notify' as 'silent' | 'notify' | 'party' | 'tab',
   partyUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
@@ -94,6 +102,7 @@ function applyDownloadUi(): void {
 const settingsReady = chrome.storage.local.get(settings).then((s) => {
   Object.assign(settings, s);
   applyDownloadUi();
+  void applyBypassScript();
   // İkon durum göstergesi: SW her uyanışta gerçek durumu yansıtmalı.
   if (settings.useHelper) void pushHelper();
 });
@@ -109,7 +118,64 @@ chrome.storage.onChanged.addListener((changes, area) => {
   // ayar eklendiğinde aynı sessiz hata tekrarlanmasın.
   if (ENGINE_SETTINGS.some((k) => k in changes)) pushEngineSettings();
   if (changes['useHelper']) void pushHelper(true);
+  if (changes['modifierBypass']) void applyBypassScript();
 });
+
+/**
+ * Tuş basılı tıklama işareti — "bu linki Ruu ALMASIN".
+ *
+ * storage.session'da tutulur, bellekte DEĞİL: tıklama ile `downloads.onCreated`
+ * arasında SW uykuya dalabilir (MV3'te 30 sn boşta yeter). Bellekte tutulsaydı
+ * işaret tam ihtiyaç anında buharlaşır, kullanıcı tuşa bastığı hâlde indirme
+ * Ruu'ya düşerdi — sessiz ve tekrarlanabilir bir hayal kırıklığı.
+ */
+const BYPASS_KEY = 'bypassMark';
+
+async function markBypass(url: string): Promise<void> {
+  await chrome.storage.session.set({ [BYPASS_KEY]: { url, at: Date.now() } satisfies BypassMark });
+}
+
+async function takeBypass(item: { url: string; finalUrl?: string }): Promise<boolean> {
+  const mark = (await chrome.storage.session.get(BYPASS_KEY))[BYPASS_KEY] as BypassMark | undefined;
+  if (!shouldBypass(mark, item, Date.now())) {
+    // Süresi geçmiş işareti temizle: sonraki indirmeye sarkmasın.
+    if (mark && Date.now() - mark.at > BYPASS_TTL_MS) {
+      await chrome.storage.session.remove(BYPASS_KEY);
+    }
+    return false;
+  }
+  // TEK KULLANIMLIK: bir tıklama bir indirmeyi devreder. Kalsaydı aynı tuşla
+  // açılan sayfanın tetiklediği ikinci dosya da sessizce tarayıcıya giderdi.
+  await chrome.storage.session.remove(BYPASS_KEY);
+  return true;
+}
+
+/**
+ * Tuş basılı tıklamayı yalnız sayfa bağlamı görebilir; içerik betiği bunun
+ * için var. DİNAMİK kaydediyoruz (manifest'te sabit değil): ayar kapalıysa
+ * betik hiçbir siteye enjekte EDİLMEZ. İzin minimalizmi bir vaat değil,
+ * çalışan bir davranış olmalı.
+ */
+const BYPASS_SCRIPT_ID = 'ruu-bypass';
+
+async function applyBypassScript(): Promise<void> {
+  const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [BYPASS_SCRIPT_ID] })
+    .catch(() => [] as chrome.scripting.RegisteredContentScript[]);
+  if (settings.modifierBypass) {
+    if (existing.length) return;
+    await chrome.scripting.registerContentScripts([{
+      id: BYPASS_SCRIPT_ID,
+      js: ['bypass.js'],
+      matches: ['http://*/*', 'https://*/*'],
+      runAt: 'document_start',
+      allFrames: true,
+      persistAcrossSessions: true,
+    }]).catch(() => undefined);
+  } else if (existing.length) {
+    await chrome.scripting.unregisterContentScripts({ ids: [BYPASS_SCRIPT_ID] })
+      .catch(() => undefined);
+  }
+}
 
 // ── İndirme devralma (PRD F1) ────────────────────────────────────────────────
 // Kendi başlattığımız indirmeler devralma döngüsüne girmesin (URL bazlı, 30 sn TTL).
@@ -159,20 +225,122 @@ const pendingTakeover = new Map<number, chrome.downloads.DownloadItem>();
 chrome.downloads.onCreated.addListener((item) => {
   void (async () => {
     await settingsReady;
-    if (!item.filename) {
+    // İşaret BURADA tüketilir, `attemptTakeover` ertelense bile: "sor" penceresi
+    // açıkken kullanıcı dakikalarca düşünebilir ve 4 sn'lik pencere çoktan
+    // kapanmış olur. Tuşa bastığı an okunmazsa karar kaybolur.
+    const bypassed = settings.modifierBypass ? await takeBypass(item) : false;
+    if (!bypassed && !item.filename) {
       // Ad henüz yok: "sor" penceresi açık olabilir. Kararı onChanged'a bırak.
       pendingTakeover.set(item.id, item);
       // Pencere iptalle kapanırsa onChanged 'interrupted' getirir → temizlenir.
       return;
     }
-    await attemptTakeover(item);
+    await attemptTakeover(item, bypassed);
   })();
 });
 
-async function attemptTakeover(item: chrome.downloads.DownloadItem): Promise<void> {
+/**
+ * Native indirmede kullanıcının seçtiği adı DAYATMA.
+ *
+ * E2E S21 BULGUSU: `downloads.download({ url, filename })` yetmiyor. Chromium'un
+ * `net::GenerateFileName` sırası şudur: önce Content-Disposition, ancak o boşsa
+ * eklentinin `suggested_name`'i. Yani sunucu ad dayattığında bizim (kullanıcının)
+ * adımız sessizce eziliyor — testi yazmasaydık "düzelttik" diyip geçecektik.
+ *
+ * Tek gerçek üstünlük `downloads.onDeterminingFilename`: hedef belirlendikten
+ * SONRA çalışır ve `suggest()` son sözü söyler.
+ *
+ * storage.session'da tutuluyor (bellekte değil): `download()` çağrısı ile olayın
+ * dispatch'i arasında MV3 servis çalışanı uykuya dalabilir.
+ */
+const NATIVE_NAMES_KEY = 'nativeNames';
+
+/**
+ * Bekleyen işaret VAR MI ipucu. `onDeterminingFilename` HER indirmede çalışır;
+ * her seferinde storage okumak için `true` döndürmek tüm indirmelere gereksiz
+ * bir gecikme bindirirdi. Servis çalışanı yeni uyandıysa bilmiyoruz (true ile
+ * başlar); ilk okumada storage boş çıkarsa bir daha async yola sapmayız.
+ */
+let maybeHasNativeNames = true;
+
+const readNativeNames = async (): Promise<NativeNameMarks> =>
+  ((await chrome.storage.session.get(NATIVE_NAMES_KEY))[NATIVE_NAMES_KEY] ?? {}) as NativeNameMarks;
+
+async function rememberNativeName(url: string, filename: string): Promise<void> {
+  const all = pruneNativeNames(await readNativeNames(), Date.now());
+  all[url] = { name: filename, at: Date.now() };
+  maybeHasNativeNames = true;
+  await chrome.storage.session.set({ [NATIVE_NAMES_KEY]: all });
+}
+
+async function takeNativeName(item: chrome.downloads.DownloadItem): Promise<string | null> {
+  const { name, rest } = pickNativeName(await readNativeNames(), item, Date.now());
+  maybeHasNativeNames = Object.keys(rest).length > 0;
+  await chrome.storage.session.set({ [NATIVE_NAMES_KEY]: rest });
+  return name;
+}
+
+chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+  if (!maybeHasNativeNames) return; // hızlı yol: Chrome kendi kararını versin
+  // `true` döndüğümüz an suggest() çağırmak ZORUNLU: çağırmazsak indirme
+  // sonsuza kadar hedef bekler. Bu yüzden her yol suggest ile bitiyor.
+  void (async () => {
+    let picked: string | null = null;
+    try { picked = await takeNativeName(item); } catch { picked = null; }
+    try {
+      if (picked) suggest({ filename: picked, conflictAction: 'uniquify' });
+      else suggest();
+    } catch { /* Chrome kararı çoktan vermiş olabilir */ }
+  })();
+  return true;
+});
+
+/**
+ * Devralma ön-uçuşu: adres BİZE de açılıyor mu?
+ *
+ * SAHA KANITI (Nadir, 2026-08-24, WeTransfer): WeTransfer indirmeyi
+ * `POST /api/v4/transfers/<id>/download` ile doğuruyor. Chrome'un DownloadItem'ı
+ * o adresi taşır ama YÖNTEMİ taşımaz; biz devralınca aynı adrese GET atıyoruz
+ * ve sunucu 404 dönüyor (canlı doğrulandı: GET api → 404, GET sayfa → 200).
+ * Ardından native'e düşülüyor, Chrome da GET ile gidip hata gövdesini alıyor →
+ * `SERVER_BAD_CONTENT`. Kullanıcının ÇALIŞAN indirmesi bizim yüzümüzden ölüyordu.
+ *
+ * Bu yüzden iptalden ÖNCE tek baytlık bir istek atıyoruz. Maliyet bir gidiş-dönüş;
+ * karşılığı, yerine geçemeyeceğimiz bir indirmeyi asla yıkmamak.
+ *
+ * NOT: yalnız DEVRALMA yolunda çağrılır. Panelden elle eklenen adreste korunacak
+ * bir native indirme yoktur; orada motorun kendi probe'u zaten tek otoritedir.
+ */
+const PREFLIGHT_TIMEOUT_MS = 6000;
+
+async function preflight(url: string): Promise<{ ok: boolean; why: string }> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), PREFLIGHT_TIMEOUT_MS);
+  try {
+    const r = await fetch(url, {
+      headers: { Range: 'bytes=0-0' },
+      credentials: 'include',
+      cache: 'no-store',
+      signal: ctl.signal,
+    });
+    // Gövdeyi hemen bırak: 1 bayt istedik ama bağlantıyı açık tutmayalım.
+    r.body?.cancel().catch(() => undefined);
+    return { ok: preflightVerdict(r.status) !== 'abort', why: `HTTP ${r.status}` };
+  } catch (err) {
+    const name = err instanceof Error ? err.name : 'fetch';
+    return { ok: false, why: name === 'AbortError' ? 'timeout' : name };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function attemptTakeover(
+  item: chrome.downloads.DownloadItem,
+  bypassed = false,
+): Promise<void> {
   {
     // Paylaşım akışı açıksa kullanıcı zaten "Ruu ile indir" dedi → eşiği atla
-    const decision = decideTakeover(item, settings, isOwn, shareTabs.size > 0);
+    const decision = decideTakeover(item, settings, isOwn, shareTabs.size > 0, bypassed);
     const shortUrl = decision.url.length > 72 ? `${decision.url.slice(0, 69)}…` : decision.url;
     if (decision.action === 'skip') {
       if (decision.reason !== 'own') {
@@ -191,6 +359,14 @@ async function attemptTakeover(item: chrome.downloads.DownloadItem): Promise<voi
     } catch {
       void logTakeover({ url: shortUrl, action: 'engine-failed', size: item.totalBytes });
       return; // motor yok → dokunma, native indirme devam etsin
+    }
+    // ÖN-UÇUŞ — iptalden ÖNCE. Sıra burada hayat memat meselesi: aşağıdaki
+    // cancel+erase geri alınamaz, adres bize kapalıysa dosya buharlaşır.
+    const pf = await preflight(decision.url);
+    if (!pf.ok) {
+      void logTakeover({ url: shortUrl, action: 'unfetchable', size: item.totalBytes, why: pf.why });
+      closeShareTabsAfterDownload();
+      return; // Chrome'un ÇALIŞAN indirmesine dokunma — dosyayı o getirsin
     }
     try {
       await chrome.downloads.cancel(item.id);
@@ -914,8 +1090,24 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
         // Sonucu İZLEMEK zorundayız: eskiden hata yutuluyordu ve motor işi
         // 'done' sayıyordu — süresi dolmuş bir linkte kullanıcı yeşil
         // "Tamamlandı" kartı görüp dosyanın indiğini sanıyordu.
+        //
+        // SAHA HATASI (2026-08-24): burada `filename` HİÇ geçilmiyordu. Range
+        // desteklemeyen bir sunucuda kullanıcının kaydetme penceresinde yazdığı
+        // ad sessizce düşüyor, Chrome sunucunun Content-Disposition'ına
+        // dönüyordu. Devralma o adı `forcedName` olarak zaten taşıyor — teslimin
+        // öteki ucunda (blob) uygulanıyordu ama native dalında unutulmuştu.
         try {
-          const id = await chrome.downloads.download({ url: raw.url });
+          let id: number | undefined;
+          let lastErr: unknown;
+          const attempts = nativeDownloadAttempts(raw.url, raw.forcedName);
+          // Ad dayatması onDeterminingFilename'e emanet: `filename` seçeneği
+          // Content-Disposition'a yenilir (E2E S21).
+          if (attempts[0]?.filename) await rememberNativeName(raw.url, attempts[0].filename);
+          for (const opts of attempts) {
+            try { id = await chrome.downloads.download(opts); break; }
+            catch (err) { lastErr = err; }
+          }
+          if (id === undefined) throw lastErr ?? new Error('errDelivery');
           await setDelivery(id, {
             jobId: raw.jobId, size: 0, topSpeed: 0, priv: false, native: true,
           });
@@ -925,6 +1117,13 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
             ok: false, error: err instanceof Error ? err.message : String(err),
           } satisfies Msg).catch(() => undefined);
         }
+        break;
+      }
+      case 'bypass-click': {
+        // İçerik betiğinden gelir. Doğrulama SW'de yapılır: sayfa keyfi bir
+        // adres gönderip başka bir indirmeyi tarayıcıya kaçıramasın diye
+        // işaret yalnız http(s) adresler için konur ve tek kullanımlıktır.
+        if (settings.modifierBypass && /^https?:/i.test(raw.url)) await markBypass(raw.url);
         break;
       }
       case 'keepawake': {
@@ -968,12 +1167,19 @@ chrome.downloads.onChanged.addListener((delta) => {
       void chrome.runtime.sendMessage({
         target: 'engine', type: 'delivered', jobId: delivery.jobId, ok: true, downloadId: delta.id,
       } satisfies Msg).catch(() => undefined);
-      void recordStats(delivery.size, delivery.topSpeed);
       void chrome.downloads.search({ id: delta.id }).then((items) => {
         const filename = items[0]?.filename ?? '';
-        void recordHistory(delta.id, delivery, filename);
-        celebrate(delta.id, filename, delivery.size);
-      }).catch(() => celebrate(delta.id, '', delivery.size));
+        // Native dalda boyutu BİZ bilmiyoruz (motor tek bayt indirmedi) —
+        // Chrome biliyor. Eskiden 0 yazılıyordu ve geçmiş "0 B" gösteriyordu;
+        // istatistik de o indirmeleri hiç saymıyordu.
+        const size = delivery.size || items[0]?.fileSize || items[0]?.bytesReceived || 0;
+        void recordStats(size, delivery.topSpeed);
+        void recordHistory(delta.id, { ...delivery, size }, filename);
+        celebrate(delta.id, filename, size);
+      }).catch(() => {
+        void recordStats(delivery.size, delivery.topSpeed);
+        celebrate(delta.id, '', delivery.size);
+      });
     }
   } else if (delta.state?.current === 'interrupted') {
     await dropDelivery(delta.id);

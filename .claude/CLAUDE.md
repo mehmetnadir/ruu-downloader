@@ -5,15 +5,15 @@
 **Chrome minimum:** 116 (sidePanel, getContexts).
 
 ## Son Oturum
-→ Detay: `.claude/session-journal/2026-08-16-1900-helper-takeover-version.md` | Tüm geçmiş: `.claude/session-journal/INDEX.md`
-→ Durum: v0.6.3 hazır (136 unit · 20/20 E2E · 22 Go testi); yardımcı uygulama uçtan uca çalışıyor ve yayında (helper-v1.0.1)
-→ İlk iş: WeTransfer "Takıldı" vakası — Nadir'in hata detay metnini al, kök nedeni kilitle (tahmin yaması YASAK)
+→ Detay: `.claude/session-journal/2026-08-24-1700-wetransfer-preflight-sorting.md` | Tüm geçmiş: `.claude/session-journal/INDEX.md`
+→ Durum: v0.6.4 paketlendi, gate'ler yeşil (181 unit · 24/24 E2E · 22 Go testi); WeTransfer kök nedeni KANITLANDI ve kapandı
+→ İlk iş: Nadir'in kararı — WeTransfer'i Ruu ile hızlandırmak (direct_link yakalama; 206×3 doğrulandı) + v0.6.4'ü gerçek tarayıcıda doğrulaması
 
 ## Hızlı Başlangıç
 
 ```
 npm run build        # dist/ — geliştirici modunda buradan yükle (sürüm damgalanır)
-npx vitest run       # 136 unit
+npx vitest run       # 181 unit
 ./test/e2e/run.sh    # 20 senaryo, izole Chrome
 node scripts/audit.mjs   # teknik borç denetimi (CI kapısı)
 cd helper && go test -race ./...   # 22 Go testi
@@ -46,10 +46,11 @@ cd helper && go test -race ./...   # 22 Go testi
 
 | İş | Durum |
 |---|---|
-| WeTransfer "Takıldı" vakası | 🔴 AÇIK — kök neden yok, Nadir'in hata detayı bekleniyor |
+| WeTransfer "Takıldı" vakası | ✅ KAPANDI v0.6.4 — POST ile doğan indirme, GET ile yeniden istenemiyor; ön-uçuş eklendi |
+| WeTransfer'i Ruu ile hızlandırma (direct_link yakalama) | ⏳ Nadir'in kararı — API'nin verdiği link Range destekliyor (206 doğrulandı) |
 | Windows install.ps1 doğrulaması | ⏳ Test ortamı yok |
-| v0.6.3 CWS yüklemesi | ⏳ Nadir'in kararı (inceleme sırasını sıfırlar) |
+| v0.6.4 CWS yüklemesi | ⏳ Nadir'in kararı (inceleme sırasını sıfırlar) |
 | Faz 4a: Beam rölesi KV → Durable Object | Sırada |
 | Faz 4b: WebRTC P2P · toplu indirme · zamanlama | Sırada |
 
-Son Güncelleme: 2026-08-16
+Son Güncelleme: 2026-08-25

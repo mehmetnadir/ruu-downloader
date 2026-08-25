@@ -434,5 +434,38 @@
   "copiedUrl": {
     "message": "Link kopyalandı",
     "description": "Announced after copying"
+  },
+  "sortLabel": {
+    "message": "Sıralama"
+  },
+  "sortDateDesc": {
+    "message": "En yeni önce"
+  },
+  "sortDateAsc": {
+    "message": "En eski önce"
+  },
+  "sortNameAsc": {
+    "message": "Ad A→Z"
+  },
+  "sortNameDesc": {
+    "message": "Ad Z→A"
+  },
+  "sortSizeDesc": {
+    "message": "En büyük önce"
+  },
+  "sortSizeAsc": {
+    "message": "En küçük önce"
+  },
+  "stBypT": {
+    "message": "Tuş basılı tıklama tarayıcıya bırakır"
+  },
+  "stBypD": {
+    "message": "Bir bağlantıya Cmd, Ctrl veya Alt basılı tıklarsan indirmeyi Ruu değil Chrome yapar."
+  },
+  "dBypass": {
+    "message": "tarayıcıya bırakıldı (tuş)"
+  },
+  "dUnfetchable": {
+    "message": "tarayıcıda kaldı (adres yeniden istenemiyor)"
   }
 }

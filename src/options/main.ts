@@ -30,6 +30,7 @@ const save = (patch: Record<string, unknown>): void => {
 const setDefault = $<HTMLInputElement>('#set-default');
 const setTakeover = $<HTMLInputElement>('#set-takeover');
 const setMinMb = $<HTMLInputElement>('#set-minmb');
+const setBypass = $<HTMLInputElement>('#set-bypass');
 const setFolders = $<HTMLInputElement>('#set-folders');
 const setRetries = $<HTMLInputElement>('#set-retries');
 const setQueue = $<HTMLInputElement>('#set-queue');
@@ -44,6 +45,7 @@ void chrome.storage.local.get(SETTING_DEFAULTS).then((s) => {
   setDefault.checked = Boolean(s['defaultExperience']);
   setTakeover.checked = Boolean(s['takeover']);
   setMinMb.value = String(s['takeoverMinMB']);
+  setBypass.checked = Boolean(s['modifierBypass']);
   setFolders.checked = Boolean(s['typeFolders']);
   setRetries.value = String(s['maxRetries']);
   setQueue.value = String(s['queueLimit']);
@@ -59,6 +61,7 @@ void chrome.storage.local.get(SETTING_DEFAULTS).then((s) => {
 setDefault.addEventListener('change', () => save({ defaultExperience: setDefault.checked }));
 setTakeover.addEventListener('change', () => save({ takeover: setTakeover.checked }));
 setMinMb.addEventListener('change', () => save({ takeoverMinMB: Math.max(0, Number(setMinMb.value) || 0) }));
+setBypass.addEventListener('change', () => save({ modifierBypass: setBypass.checked }));
 setFolders.addEventListener('change', () => save({ typeFolders: setFolders.checked }));
 setRetries.addEventListener('change', () => save({ maxRetries: Math.min(10, Math.max(0, Number(setRetries.value) || 0)) }));
 setQueue.addEventListener('change', () => save({ queueLimit: Math.min(20, Math.max(0, Number(setQueue.value) || 0)) }));
@@ -219,7 +222,8 @@ const DIAG_LABEL: Record<string, string> = {
   taken: t('dTaken'), small: t('dSmall'), scheme: t('dScheme'),
   disabled: t('dDisabled'), 'not-active': t('dNotActive'), 'cancel-failed': t('dCancelFailed'),
   unaccel: t('dUnaccel'), 'share-open': t('dTaken'), 'share-auto': t('dTaken'),
-  'engine-failed': t('dCancelFailed'),
+  'engine-failed': t('dCancelFailed'), bypass: t('dBypass'),
+  unfetchable: t('dUnfetchable'),
 };
 function renderDiag(log: Array<{ url: string; action: string; size?: number }>): void {
   diagList.innerHTML = log.slice(0, 5).map((e) => {
