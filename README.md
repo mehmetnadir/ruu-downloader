@@ -4,8 +4,8 @@
 
 **The download manager Chrome deserves — segmented speed, unkillable resume, zero telemetry.**
 
-[![CI-ready E2E](https://img.shields.io/badge/E2E-24%20scenarios-7fb069)](test/e2e/run.sh)
-[![Unit tests](https://img.shields.io/badge/unit-181%20passing-7fb069)](test/)
+[![CI-ready E2E](https://img.shields.io/badge/E2E-27%20scenarios-7fb069)](test/e2e/run.sh)
+[![Unit tests](https://img.shields.io/badge/unit-196%20passing-7fb069)](test/)
 [![Languages](https://img.shields.io/badge/i18n-11%20languages-e8a33d)](public/_locales/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-e8a33d)](LICENSE)
 [![Privacy](https://img.shields.io/badge/telemetry-zero-16130f)](PRIVACY.md)
@@ -118,7 +118,8 @@ page's consent flow for you.
 | Tier | Services | What happens |
 |---|---|---|
 | **Direct** | Dropbox · Pixeldrain · Catbox · file.io | URL is transformed and handed straight to the engine — no page opens |
-| **Automated** | MediaFire · Box · Gofile · WeTransfer · TeraBox · Google Drive · OneDrive/SharePoint · iCloud Drive · pCloud · SwissTransfer · Smash · TransferNow · Filemail · Send Anywhere · Lifebox · Dosya.tc · Yandex Disk · Mail.ru Cloud · Filebin · 4shared · KrakenFiles | Share page opens in the background, consent/download buttons are clicked, the download is taken over and accelerated |
+| **Resolver** | WeTransfer | Ruu calls the service's own download API, gets the signed `direct_link` and hands it to the engine — no page opens. Signed links are short-lived, so an expired one is re-resolved and the transfer *resumes* from disk rather than restarting |
+| **Automated** | MediaFire · Box · Gofile · TeraBox · Google Drive · OneDrive/SharePoint · iCloud Drive · pCloud · SwissTransfer · Smash · TransferNow · Filemail · Send Anywhere · Lifebox · Dosya.tc · Yandex Disk · Mail.ru Cloud · Filebin · 4shared · KrakenFiles | Share page opens in the background, consent/download buttons are clicked, the download is taken over and accelerated |
 | **Honest no** | MEGA · Proton Drive · Wormhole | End-to-end encrypted: the browser itself decrypts, so *no* extension can accelerate it. Ruu says so plainly and opens the page for a normal download |
 
 Out of scope by design: torrent indexes and video rippers. Ruu is a productivity
@@ -154,7 +155,7 @@ Chrome 137+ removed `--load-extension` (E2E loads via CDP `Extensions.loadUnpack
 
 ## Testing
 
-Nothing ships untested — 181 unit tests plus a one-command E2E harness that drives a
+Nothing ships untested — 196 unit tests plus a one-command E2E harness that drives a
 real Chromium against a throttled, fault-injecting local server:
 
 ```bash

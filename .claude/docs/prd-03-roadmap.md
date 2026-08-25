@@ -104,6 +104,45 @@ parametreleri yok sayılarak tekilleştirilmiş.
 7. A11y hızlı kazanımlar: aria-label, aria-live, focus-visible, reduced-motion tam kapsama
 
 
+## Tier 2 çözücüler — WeTransfer (2026-08-25, v0.7.0)
+
+**Karar:** WeTransfer'de indirmeyi doğuran `POST`u Ruu'nun kendisi atar; sayfa açılmaz.
+
+**Gerekçe:** v0.6.4 kök nedeni kanıtladı (POST ile doğan indirme GET ile yeniden
+istenemiyor) ama çözümü savunmaydı: kenara çekil, dosyayı tarayıcı indirsin.
+Doğru karardı — yanlış olan orada durmaktı. Kullanıcı için sonuç "WeTransfer'de
+Ruu çalışmıyor"du. API'nin verdiği `direct_link` Range destekliyor (206×3 canlı
+kanıt), yani hızlandırılabilir.
+
+**Elenen alternatif — MAIN-world fetch kancası:** wetransfer.com'a içerik betiği
+koyup sayfanın kendi `fetch`ini sarmalayıp cevaptan `direct_link` yakalamak.
+Elendi: (a) izin minimalizmi doktrinini zorluyor (yeni bir siteye betik),
+(b) sayfanın iç uygulamasına bağımlı — bundle değişince sessizce ölür,
+(c) API'yi kendimiz çağırmak aynı sonucu daha az yüzeyle veriyor. Sözleşme
+(intent/security_hash/csrf) kamuya açık ve stabil (transferwee yıllardır aynı).
+
+**Üç parça:**
+1. Çözücü — `share-fetch` yolunda (mail düğmesi / auto mod). E2E S25.
+2. Otomatik yenileme — imzalı adres kısayaşar (~600 sn); iş hataya düşerse
+   yeniden çözülüp `renew` gönderilir, diskteki veriden devam edilir. E2E S26.
+   Motorun `renew` yeteneği vardı ama hiçbir yerden tetiklenmiyordu.
+3. Referrer kurtarma — kullanıcı linke normal sekmede tıklarsa mail yolu devrede
+   değildir; ön-uçuş 404 alınca `DownloadItem.referrer` üzerinden çözücü çalışır.
+   E2E S27.
+
+**Değişmeyen kural:** yeni yol eskisini KALDIRMAZ, önüne geçer. Çözücü `null`
+dönerse autoflow devreye girer; referrer kurtarmada yeni adres ön-uçuştan
+geçmeden Chrome'un indirmesi ASLA iptal edilmez. Bir adım tutmazsa davranış
+v0.6.4 ile bire bir aynı.
+
+**Açık:** canlı WeTransfer linkiyle doğrulanmadı (oturum sırasında elde taze link
+yoktu). E2E fixture'ı sözleşmeyi doğruluyor ama gerçek sunucunun `Origin` /
+bot koruması davranışı ancak sahada görülür. Başarısızlıkta akış v0.6.4'e düşer,
+yani regresyon riski yok — ama "hızlandı" iddiası Nadir'in teyidini bekliyor.
+
+**Sonraki çözücü adayları:** Google Drive (`uc?export=download` + onay jetonu),
+OneDrive (`?download=1`), Filemail. Aynı desen: saf çekirdek + `resolver` alanı.
+
 ## Faz 4-5: Cihazdan cihaza aktarım (2026-08-02 araştırması)
 
 ### CWS politikası — P2P serbest mi? EVET (koşullu)

@@ -13,8 +13,8 @@
 
 ```
 npm run build        # dist/ — geliştirici modunda buradan yükle (sürüm damgalanır)
-npx vitest run       # 181 unit
-./test/e2e/run.sh    # 20 senaryo, izole Chrome
+npx vitest run       # 196 unit
+./test/e2e/run.sh    # 27 senaryo, izole Chrome
 node scripts/audit.mjs   # teknik borç denetimi (CI kapısı)
 cd helper && go test -race ./...   # 22 Go testi
 ```
@@ -25,7 +25,7 @@ cd helper && go test -race ./...   # 22 Go testi
 |---|---|---|
 | İndirme motoru | src/offscreen/engine.ts | Job sınıfı, rampa, yardımcı devri |
 | Servis worker (yönlendirici) | src/sw.ts | devralma, teslim, yardımcı el sıkışma |
-| Saf karar mantığı | src/engine/*.ts | ramp, queue, filename, allocator (hepsi unit testli) |
+| Saf karar mantığı | src/engine/*.ts | ramp, queue, filename, allocator, wetransfer (hepsi unit testli) |
 | Panel (izleme) | src/sidepanel/main.ts | aktif işler + geçmiş |
 | Ayarlar (tam sayfa) | src/options/main.ts | 11 ayar + 28 servis + Beam |
 | Yerel yardımcı | helper/*.go | fırlatıcı/sunucu ayrımı, launcher.go |
@@ -47,9 +47,9 @@ cd helper && go test -race ./...   # 22 Go testi
 | İş | Durum |
 |---|---|
 | WeTransfer "Takıldı" vakası | ✅ KAPANDI v0.6.4 — POST ile doğan indirme, GET ile yeniden istenemiyor; ön-uçuş eklendi |
-| WeTransfer'i Ruu ile hızlandırma (direct_link yakalama) | ⏳ Nadir'in kararı — API'nin verdiği link Range destekliyor (206 doğrulandı) |
+| WeTransfer'i Ruu ile hızlandırma (direct_link) | ✅ YAPILDI v0.7.0 — çözücü + otomatik yenileme + referrer kurtarma (E2E S25/S26/S27). **CANLI link ile doğrulanmadı** — Nadir'de |
 | Windows install.ps1 doğrulaması | ⏳ Test ortamı yok |
-| v0.6.4 CWS yüklemesi | ⏳ Nadir'in kararı (inceleme sırasını sıfırlar) |
+| v0.7.0 CWS yüklemesi | ⏳ Nadir'in kararı (inceleme sırasını sıfırlar) |
 | Faz 4a: Beam rölesi KV → Durable Object | Sırada |
 | Faz 4b: WebRTC P2P · toplu indirme · zamanlama | Sırada |
 

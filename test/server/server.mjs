@@ -8,6 +8,9 @@
  *   ?extra=N                       → istenen aralıktan N byte FAZLA gönder (quirk testi)
  *   ?dropAfter=0.5                 → aralığın %50'sinden sonra bağlantıyı kes (retry testi)
  *
+ *   GET  /wt/:id/:hash                          → WeTransfer-şekilli indirme sayfası
+ *   POST /api/v4/transfers/:id/download         → { direct_link } (csrf + gövde doğrular)
+ *
  * Kullanım: node test/server/server.mjs [port]   (varsayılan 8917)
  */
 import http from 'node:http';
@@ -54,6 +57,97 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(
       '<!doctype html><html><body><h1>Bu transferin süresi doldu</h1>' +
       '<p>Dosyalar artık kullanılamaz.</p><button>Tümünü İndir</button></body></html>');
+    return;
+  }
+
+  // ── WeTransfer-şekilli çözücü fixture'ı (Tier 2 E2E) ──────────────────────
+  // Gerçek servisin sözleşmesini TAKLİT eder, gevşetmez: sayfada csrf meta'sı
+  // vardır ve API o jetonu, `intent`i ve `security_hash`i DOĞRULAR. Böylece
+  // istek şeklimiz bozulursa test kırmızı olur — sahte bir yeşil üretmez.
+  //
+  //   GET  /wt/:transferId/:securityHash          → indirme sayfası (csrf meta)
+  //   POST /api/v4/transfers/:transferId/download → { direct_link }
+  //
+  // transferId senaryoyu seçer:
+  //   res<mb>  → sağlıklı link (tek çağrı yeter)
+  //   ren<mb>  → 1. çağrı ÖLÜ link (probe'dan sonra 403), 2. çağrı sağlam link
+  //              → imzalı adresin süresinin dolması + otomatik yenileme
+  const wt = url.pathname.match(/^\/wt\/([^/]+)\/([^/]+)$/);
+  if (wt) {
+    // ?post=1 → sayfa indirmeyi FORM POST ile doğurur (gerçek WeTransfer davranışı).
+    // Chrome'un DownloadItem'ı adresi taşır ama YÖNTEMİ taşımaz; devralmanın GET
+    // ön-uçuşu 404 alır. Kurtarma yolu ancak `referrer` üzerinden mümkündür.
+    const post = url.searchParams.get('post') === '1'
+      ? `<form id="f" method="POST" action="/wtpost/${wt[1]}"></form>
+<script>document.getElementById('f').submit();</script>`
+      : '<button>Download</button>';
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(`<!doctype html>
+<html><head><meta name="csrf-token" content="tok-${wt[1]}"></head>
+<body><h1>Transfer ${wt[1]}</h1>${post}</body></html>`);
+    return;
+  }
+
+  // POST ile doğan indirme: GET aynı adrese 404 döner (saha kanıtıyla birebir).
+  const wtPost = url.pathname.match(/^\/wtpost\/([^/]+)$/);
+  if (wtPost) {
+    if (req.method !== 'POST') {
+      res.writeHead(404).end('yok');
+      return;
+    }
+    const mb = Number(wtPost[1].slice(3));
+    const size = mb * 1024 * 1024;
+    res.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': String(size),
+      'Content-Disposition': 'attachment; filename="post-dogan.bin"',
+    });
+    for (let off = 0; off < size; off += CHUNK) {
+      const len = Math.min(CHUNK, size - off);
+      if (!res.write(patternChunk(off, len))) await new Promise((r) => res.once('drain', r));
+    }
+    res.end();
+    return;
+  }
+
+  const wtApi = url.pathname.match(/^\/api\/v4\/transfers\/([^/]+)\/download$/);
+  if (wtApi) {
+    const id = wtApi[1];
+    if (req.method !== 'POST') {
+      // Gerçek servisin davranışı: GET burada 404'tür (2026-08-24 saha kanıtı).
+      res.writeHead(404).end('yok');
+      return;
+    }
+    if (req.headers['x-csrf-token'] !== `tok-${id}`) {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+        .end(JSON.stringify({ error: 'csrf' }));
+      return;
+    }
+    const body = await new Promise((resolve) => {
+      let b = '';
+      req.on('data', (c) => { b += c; });
+      req.on('end', () => resolve(b));
+    });
+    let j = {};
+    try { j = JSON.parse(body); } catch { /* aşağıda elenir */ }
+    if (j.intent !== 'entire_transfer' || !j.security_hash) {
+      res.writeHead(422, { 'Content-Type': 'application/json' })
+        .end(JSON.stringify({ error: 'gövde' }));
+      return;
+    }
+    const n = (reqCounts.get(`api:${id}`) ?? 0) + 1;
+    reqCounts.set(`api:${id}`, n);
+    const mb = Number(id.slice(3));
+    let direct;
+    if (id.startsWith('ren')) {
+      direct = n === 1
+        // 1. link: probe (Range 0-0) geçer, sonraki her istek 403 → iş hataya düşer
+        ? `http://localhost:${PORT}/f/${mb}?rate=30&key=${id}-1&failAfterReq=1&q=${id}`
+        : `http://localhost:${PORT}/f/${mb}?rate=30&q=${id}-ok`;
+    } else {
+      direct = `http://localhost:${PORT}/f/${mb}?rate=30&q=${id}`;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+      .end(JSON.stringify({ direct_link: direct }));
     return;
   }
 

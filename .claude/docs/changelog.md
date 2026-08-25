@@ -2,6 +2,35 @@
 
 Sürümler `package.json`'dan; yardımcı uygulama ayrı sürümlenir (`helper-v*`).
 
+## v0.7.0 — 2026-08-25
+- **feat(resolver): WeTransfer artık HIZLANDIRILIYOR (PRD "Tier 2").** v0.6.4
+  kök nedeni kanıtlamış ama çözümü "kenara çekil" olmuştu: dosya iniyordu, ama
+  tarayıcıyla ve tek bağlantıda. Artık indirmeyi doğuran `POST`u Ruu atıyor
+  (`src/engine/wetransfer.ts` saf çekirdek + `sw.ts` I/O): indirme sayfası bir
+  kez çekilir (`we.tl` kısa linki de böyle çözülür, CSRF jetonu da oradan
+  okunur), `POST /api/v4/transfers/<id>/download` ile `direct_link` alınır ve
+  motora verilir. O adres Range destekliyor (206×3 canlı doğrulandı) → segmentli
+  indirme. Paylaşım sayfası HİÇ açılmaz. Doğrulama: E2E S25.
+- **feat(resolver): süresi dolan imzalı adres OTOMATİK yenilenir.**
+  `direct_link` JWT'si ~600 sn yaşar; yavaş hatta büyük bir transfer bunu aşar
+  ve sunucu 403 dönmeye başlar. Bunu söylemeden bırakmak "hızlandırdık" demenin
+  yalan hâli olurdu. Çözücüyle doğan işler izleniyor: iş hataya düşerse
+  paylaşım adresi yeniden çözülüp motora `renew` gönderiliyor — motor boyut/etag
+  doğrulayıp diskteki veriden DEVAM ediyor, baştan indirmiyor. En çok 2 deneme.
+  Not: motorun `renew` yeteneği vardı ama hiçbir yerden TETİKLENMİYORDU; artık
+  tetikleniyor. Doğrulama: E2E S26.
+- **feat(takeover): POST ile doğan indirme YÖNLENDİRENDEN kurtarılır.** Kullanıcı
+  WeTransfer linkine normal sekmede tıklarsa mail düğmesi yolu devrede olmaz;
+  ön-uçuş 404 alır ve v0.6.4 davranışı devreye girerdi. Artık ön-uçuş
+  başarısızsa `DownloadItem.referrer` tanınan bir servisse çözücü çalıştırılıyor.
+  SIRA DEĞİŞMEDİ ve gevşemedi: yeni adres alınır → ön-uçuştan GEÇER → ancak
+  ondan sonra Chrome'un indirmesi iptal edilir. Herhangi bir adım tutmazsa
+  davranış v0.6.4 ile bire bir aynı kalır. Doğrulama: E2E S27.
+- **test:** yeni saf çekirdek için 15 unit (yol kaçışı, şema reddi, öznitelik
+  sırası, `we.tl` reddi dâhil) → 196 unit. Test sunucusuna WeTransfer-şekilli
+  fixture eklendi; fixture csrf jetonunu, `intent`i ve `security_hash`i
+  DOĞRULUYOR — istek şeklimiz bozulursa test sahte yeşil vermez. → 27/27 E2E.
+
 ## v0.6.4 — 2026-08-24
 - **fix(takeover): WeTransfer indirmeleri ölüyordu — ÖN-UÇUŞ eklendi.** Kök neden
   canlı doğrulandı: WeTransfer indirmeyi `POST /api/v4/transfers/<id>/download`

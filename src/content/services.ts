@@ -26,6 +26,16 @@ export interface ServiceDef {
   transform?: (u: URL) => string;
   /** 'unaccel' için kullanıcıya gösterilecek sebep anahtarı */
   reason?: 'e2ee' | 'login';
+  /**
+   * Servise özel ÇÖZÜCÜ (PRD "Tier 2"). Varsa `kind`'dan ÖNCE denenir: servisin
+   * kendi API'sinden doğrudan indirilebilir adres alınır ve motora verilir.
+   *
+   * `kind` bilinçli olarak DEĞİŞMEDEN kalır — çözücü patlarsa (API sözleşmesi
+   * değişti, oturum yok, ağ gitti) akış sessizce `kind`'ın yoluna düşer.
+   * Yeni bir yol eklerken eskisini emniyet ağı olarak bırakmak, kullanıcıyı
+   * "hiç indirmedi" durumundan korur.
+   */
+  resolver?: 'wetransfer';
 }
 
 export const SERVICES: ServiceDef[] = [
@@ -59,7 +69,10 @@ export const SERVICES: ServiceDef[] = [
   {
     id: 'wetransfer', name: 'WeTransfer',
     hosts: ['we.tl', 'wetransfer.com', 'www.wetransfer.com'],
-    kind: 'autoflow',
+    // Çözücü: indirme POST ile doğduğu için devralma bu serviste kenara
+    // çekiliyordu (v0.6.4 ön-uçuşu). Artık POST'u biz atıp Range destekleyen
+    // `direct_link`i alıyoruz; çözücü başarısızsa autoflow devreye girer.
+    kind: 'autoflow', resolver: 'wetransfer',
   },
   {
     id: 'terabox', name: 'TeraBox',

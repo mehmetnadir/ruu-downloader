@@ -9,6 +9,8 @@ export interface ShareMatch {
   name: string;      // kullanıcıya gösterilecek ad
   url: string;
   reason?: 'e2ee' | 'login';
+  /** Servise özel çözücü — `kind`'dan ÖNCE denenir, başarısızsa `kind`'a düşülür. */
+  resolver?: 'wetransfer';
 }
 
 /**
@@ -44,8 +46,15 @@ export function matchShareLink(raw: string): ShareMatch | null {
   }
   // E2E kancası: yerel test sunucusunun sahte paylaşım sayfası (prod'da etkisiz —
   // yalnızca kullanıcının kendi localhost'u eşleşebilir)
-  if ((u.hostname === 'localhost' || u.hostname === '127.0.0.1') && u.pathname.startsWith('/share/')) {
-    return { kind: 'autoflow', service: 'test', name: 'Test', url: raw };
+  if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+    if (u.pathname.startsWith('/share/')) {
+      return { kind: 'autoflow', service: 'test', name: 'Test', url: raw };
+    }
+    // Çözücü kancası: yerel sunucunun WeTransfer-şekilli fixture'ı (/wt/<id>/<hash>).
+    // `kind` yine 'autoflow' — çözücü patlarsa geri çekilme yolu testte de gerçek.
+    if (u.pathname.startsWith('/wt/')) {
+      return { kind: 'autoflow', service: 'test-wt', name: 'Test WT', url: raw, resolver: 'wetransfer' };
+    }
   }
   if (u.protocol !== 'https:') return null;
   const svc = findService(u);
@@ -56,5 +65,6 @@ export function matchShareLink(raw: string): ShareMatch | null {
     name: svc.name,
     url: svc.transform ? svc.transform(u) : raw,
     reason: svc.reason,
+    resolver: svc.resolver,
   };
 }

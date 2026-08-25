@@ -12,6 +12,9 @@ import {
 } from './engine/native';
 import { BYPASS_TTL_MS, shouldBypass, type BypassMark } from './engine/bypass';
 import { addEntry, type HistoryEntry } from './engine/history';
+import {
+  apiBody, apiUrl, parseWetransfer, pickDirectLink, readCsrfToken,
+} from './engine/wetransfer';
 import { applyDownload, EMPTY_STATS, type Stats } from './engine/stats';
 import type { Msg } from './engine/types';
 
@@ -334,6 +337,33 @@ async function preflight(url: string): Promise<{ ok: boolean; why: string }> {
   }
 }
 
+/**
+ * Ön-uçuş "bu adrese ulaşamıyoruz" dedikten SONRA son bir şans.
+ *
+ * v0.6.4'te doğru karar kenara çekilmekti: adresi yeniden isteyemiyorsak
+ * ısrar etmek kullanıcının dosyasını öldürür. Ama artık elimizde bir şey daha
+ * var — indirmenin YÖNLENDİREN sayfası. WeTransfer'de o sayfa tam olarak
+ * `/downloads/<id>/<hash>`tir, yani çözücünün ihtiyacı olan her şey.
+ *
+ * SIRA DEĞİŞMEZ: önce yeni adresi AL, sonra onu ön-uçuştan geçir, ANCAK ondan
+ * sonra Chrome'un indirmesini iptal et. Herhangi bir adım tutmazsa `false`
+ * döner ve davranış v0.6.4 ile bire bir aynı kalır — bu yol hiçbir koşulda
+ * çalışan bir indirmeyi eskisinden daha çok riske atmaz.
+ */
+async function rescueViaResolver(item: chrome.downloads.DownloadItem): Promise<string | null> {
+  const ref = item.referrer;
+  if (!ref || !/^https?:/i.test(ref)) return null;
+  const match = matchShareLink(ref);
+  if (!match?.resolver) return null;
+  const direct = await runResolver({ resolver: match.resolver, url: ref });
+  if (direct === null) return null;
+  // KANIT ŞARTI: yeni adres gerçekten çekilebiliyor mu? Doğrulamadan iptal yok.
+  const pf = await preflight(direct);
+  if (!pf.ok) return null;
+  trackResolved(direct, ref);
+  return direct;
+}
+
 async function attemptTakeover(
   item: chrome.downloads.DownloadItem,
   bypassed = false,
@@ -363,10 +393,16 @@ async function attemptTakeover(
     // ÖN-UÇUŞ — iptalden ÖNCE. Sıra burada hayat memat meselesi: aşağıdaki
     // cancel+erase geri alınamaz, adres bize kapalıysa dosya buharlaşır.
     const pf = await preflight(decision.url);
+    let rescued: string | null = null;
     if (!pf.ok) {
-      void logTakeover({ url: shortUrl, action: 'unfetchable', size: item.totalBytes, why: pf.why });
-      closeShareTabsAfterDownload();
-      return; // Chrome'un ÇALIŞAN indirmesine dokunma — dosyayı o getirsin
+      // Adres bize kapalı. Yönlendiren sayfa tanınan bir servisse, o servisin
+      // API'sinden ÇEKİLEBİLİRLİĞİ KANITLANMIŞ yeni bir adres alabiliriz.
+      rescued = await rescueViaResolver(item);
+      if (rescued === null) {
+        void logTakeover({ url: shortUrl, action: 'unfetchable', size: item.totalBytes, why: pf.why });
+        closeShareTabsAfterDownload();
+        return; // Chrome'un ÇALIŞAN indirmesine dokunma — dosyayı o getirsin
+      }
     }
     try {
       await chrome.downloads.cancel(item.id);
@@ -375,14 +411,18 @@ async function attemptTakeover(
       void logTakeover({ url: shortUrl, action: 'cancel-failed', size: item.totalBytes });
       return; // iptal edemedik → dokunma, native devam etsin
     }
-    void logTakeover({ url: shortUrl, action: 'taken', size: item.totalBytes });
+    void logTakeover({
+      url: shortUrl, action: rescued ? 'rescued' : 'taken', size: item.totalBytes,
+    });
     closeShareTabsAfterDownload();
     // Chrome'un belirlediği ad = kullanıcının seçimi (pencere açıldıysa) ya da
     // sitenin önerisi. İkisinde de bu ad ZORUNLUDUR — motorun probe'daki
     // Content-Disposition tahmini kullanıcı seçimini ezmemeli.
     const forcedName = item.filename ? downloadsRelative(item.filename) : undefined;
+    const finalUrl = rescued ?? decision.url;
+    if (rescued) markOwn(rescued);
     void chrome.runtime.sendMessage({
-      target: 'engine', type: 'add', url: decision.url, forcedName,
+      target: 'engine', type: 'add', url: finalUrl, forcedName,
       ...takeOrigin(),
     } satisfies Msg).catch(() => undefined);
   }
@@ -803,6 +843,141 @@ function notifyMail(
   }).catch(() => undefined);
 }
 
+/**
+ * ── Servise özel çözücüler (PRD "Tier 2") ───────────────────────────────────
+ *
+ * Paylaşım sayfasını açıp sitenin indirmesini devralmak EVRENSEL ama en pahalı
+ * yoldur: pencere açılır, sayfa yüklenir, buton aranır, indirme doğar, devralma
+ * onu iptal eder. Servisin kendi API'si aynı sonucu tek POST ile veriyorsa o
+ * yol hem hızlı hem kırılgan olmayan noktalarda duruyor.
+ *
+ * Çözücü ASLA tek yol değildir: `null` dönerse çağıran taraf eski akışa düşer.
+ */
+const RESOLVE_TIMEOUT_MS = 8000;
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), RESOLVE_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: ctl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * WeTransfer: `POST /api/v4/transfers/<id>/download` → `direct_link`.
+ *
+ * İki istek: (1) indirme sayfası — `we.tl` kısa linkini çözmek ve CSRF jetonunu
+ * okumak için TEK seferde, (2) API POST'u. Çerezler taşınır (`credentials`),
+ * çünkü kişiye özel transferlerde oturum gerekir.
+ *
+ * Hiçbir hata YUKARI SIZMAZ: dönüş `null` ise çağıran autoflow'a düşer.
+ * Burada throw etmek, kullanıcının indirmesini hiç başlatmamak demek olurdu.
+ */
+async function resolveWetransfer(shareUrl: string): Promise<string | null> {
+  try {
+    const page = await fetchWithTimeout(shareUrl, {
+      credentials: 'include', redirect: 'follow', cache: 'no-store',
+    });
+    if (!page.ok) return null;
+    // `page.url` = yönlendirme SONRASI adres. `we.tl/t-xxx`te hash yoktur;
+    // kimlik ancak nihai `/downloads/<id>/<hash>` adresinde bulunur.
+    const t9 = parseWetransfer(page.url);
+    if (!t9) return null;
+    const csrf = readCsrfToken(await page.text());
+    const res = await fetchWithTimeout(apiUrl(t9), {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-requested-with': 'XMLHttpRequest',
+        ...(csrf ? { 'x-csrf-token': csrf } : {}),
+      },
+      body: apiBody(t9),
+    });
+    if (!res.ok) return null;
+    return pickDirectLink(await res.json());
+  } catch {
+    return null;
+  }
+}
+
+async function runResolver(match: { resolver?: string; url: string }): Promise<string | null> {
+  if (match.resolver === 'wetransfer') return resolveWetransfer(match.url);
+  return null;
+}
+
+/**
+ * ── Çözülmüş işlerin YENİLENMESİ ────────────────────────────────────────────
+ *
+ * `direct_link` İMZALIDIR ve kısa ömürlüdür (WeTransfer'de JWT ~600 sn).
+ * Ruu bir dosyayı dakikalarca, birden çok bağlantıyla çeker: yavaş hatta büyük
+ * bir transfer imzanın ömrünü AŞAR ve sunucu 403 dönmeye başlar.
+ *
+ * Bunu söylemeden bırakmak "hızlandırdık" demenin yalan hâli olurdu. Bu yüzden
+ * çözücüyle doğan işler izlenir; iş hataya düşerse paylaşım adresi YENİDEN
+ * çözülür ve motora `renew` gönderilir (motor boyut/etag doğrulayıp diskteki
+ * veriyle DEVAM eder — baştan indirmez).
+ *
+ * Deneme sayısı sınırlıdır: link gerçekten öldüyse (transfer silindi, süre
+ * doldu) sonsuz yeniden çözme kullanıcıya yardım etmez, sadece gürültü üretir.
+ */
+const MAX_RENEW = 2;
+/** Motor işi doğana kadar: çözülmüş adres → paylaşım adresi. */
+const resolvedPending = new Map<string, string>();
+/** İş doğduktan sonra: jobId → { paylaşım adresi, deneme sayısı }. */
+const resolvedJobs = new Map<string, { shareUrl: string; attempts: number }>();
+/** Aynı iş için eşzamanlı ikinci yenileme uçmasın. */
+const renewInflight = new Set<string>();
+
+function trackResolved(directUrl: string, shareUrl: string): void {
+  resolvedPending.set(directUrl, shareUrl);
+  if (resolvedPending.size > 20) {
+    resolvedPending.delete(resolvedPending.keys().next().value as string);
+  }
+}
+
+/**
+ * Motorun panel yayınından yenileme kararı. SAF DEĞİL ama tek karar noktası:
+ * hangi işin yenileneceği burada belirlenir, I/O aşağıda.
+ */
+function onJobsForRenew(jobs: Array<{ id: string; url: string; state: string }>): void {
+  for (const job of jobs) {
+    // İş ilk kez görüldü — çözülmüş adresi jobId'ye bağla.
+    const shareUrl = resolvedPending.get(job.url);
+    if (shareUrl !== undefined) {
+      resolvedPending.delete(job.url);
+      if (!resolvedJobs.has(job.id)) resolvedJobs.set(job.id, { shareUrl, attempts: 0 });
+    }
+    const entry = resolvedJobs.get(job.id);
+    if (!entry) continue;
+    if (job.state === 'done') { resolvedJobs.delete(job.id); continue; }
+    if (job.state !== 'error') continue;
+    if (entry.attempts >= MAX_RENEW || renewInflight.has(job.id)) continue;
+    entry.attempts++;
+    renewInflight.add(job.id);
+    void (async () => {
+      try {
+        const fresh = await resolveWetransfer(entry.shareUrl);
+        if (!fresh) {
+          void logTakeover({ url: job.id, action: 'renew-failed', size: -1 });
+          return;
+        }
+        trackResolved(fresh, entry.shareUrl); // yenilenen adres de izlensin
+        await ensureOffscreen();
+        void chrome.runtime.sendMessage({
+          target: 'engine', type: 'renew', jobId: job.id, url: fresh,
+        } satisfies Msg).catch(() => undefined);
+        void logTakeover({ url: job.id, action: 'renewed', size: -1 });
+      } finally {
+        renewInflight.delete(job.id);
+      }
+    })();
+  }
+}
+
 async function handleShareFetch(
   rawUrl: string,
   ctx: { reqId?: string; mailTabId?: number; sender?: string } = {},
@@ -832,6 +1007,27 @@ async function handleShareFetch(
     void logTakeover({ url: match.url.slice(0, 72), action: 'taken', size: -1 });
     return;
   }
+  // Tier 2: servisin kendi API'si doğrudan indirilebilir adres veriyorsa sayfayı
+  // HİÇ açmadan motora ver. Başarısızsa sessizce Tier 3'e düşülür — yeni yol
+  // eskisini KALDIRMAZ, önüne geçer.
+  if (match.resolver) {
+    const direct = await runResolver(match);
+    if (direct !== null) {
+      markOwn(direct);
+      trackResolved(direct, match.url);
+      await ensureOffscreen();
+      void chrome.runtime.sendMessage({
+        target: 'engine', type: 'add', url: direct,
+        origin: match.name, sender: ctx.sender,
+      } satisfies Msg).catch(() => undefined);
+      // Maildeki düğme dönmeye devam etmesin: iş BAŞLADI.
+      notifyMail(ctx, 'started');
+      void logTakeover({ url: match.name, action: 'resolved', size: -1 });
+      return;
+    }
+    void logTakeover({ url: match.name, action: 'resolve-failed', size: -1 });
+  }
+
   // Tier 3: paylaşım sayfasını arka planda aç + ajanı enjekte et; sitenin
   // başlattığı indirmeyi devralma yakalar. YALNIZCA tanınan servislerde.
   const win = await chrome.windows.create({
@@ -947,6 +1143,8 @@ chrome.runtime.onMessage.addListener((raw: Msg, sender) => {
       j.state === 'downloading' || j.state === 'probing' || j.state === 'finalizing').length;
     void chrome.action.setBadgeText({ text: active ? String(active) : '' }).catch(() => undefined);
     void chrome.action.setBadgeBackgroundColor({ color: '#e8a33d' }).catch(() => undefined);
+    // İmzalı adresle doğan işler burada izlenir: süresi dolan link yenilenir.
+    onJobsForRenew(raw.jobs);
     return;
   }
   if (raw.target !== 'sw') return;

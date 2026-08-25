@@ -673,6 +673,112 @@ const MB = 1024 * 1024;
     `karar=${why} ruuİşi=${hasJob} ${bad ?? 'dosya bütün'}`);
 }
 
+// S25: ÇÖZÜCÜ (Tier 2) — SERVİSİN KENDİ API'SİNDEN direct_link, SAYFA AÇILMADAN
+// WeTransfer indirmeyi POST ile doğurduğu için v0.6.4'te kenara çekiliyorduk:
+// dosya iniyordu ama TARAYICI ile, tek bağlantıda. Artık POST'u biz atıyoruz.
+// Sunucu csrf jetonunu, `intent`i ve `security_hash`i DOĞRULUYOR — istek şeklimiz
+// bozulursa bu test sahte yeşil vermez, kırmızı olur.
+// Kanıtın ikinci yarısı: günlükte 'share-open' OLMAMALI (yani pahalı Tier 3
+// yoluna hiç düşülmedi).
+{
+  const share = `http://localhost:${serverPort}/wt/res14/hash14`;
+  await evalIn(panel, `chrome.storage.local.set({takeoverLog:[]}); 'temiz'`);
+  await sleep(300);
+  await evalIn(panel,
+    `chrome.runtime.sendMessage({target:'sw',type:'share-fetch',url:${JSON.stringify(share)}}); 'sent'`);
+  let actions = '[]';
+  const dR = Date.now() + 30_000;
+  while (Date.now() < dR) {
+    await sleep(600);
+    actions = await evalIn(panel,
+      `chrome.storage.local.get({takeoverLog:[]}).then(s=>JSON.stringify(s.takeoverLog.map(e=>e.action)))`);
+    if (actions.includes('resolved') || actions.includes('share-open')) break;
+  }
+  const off = await pageCdp('offscreen.html');
+  const hasJob = Boolean(await evalIn(off,
+    `[...__ruu.jobs.values()].some(x=>x.url.includes('q=res14'))`));
+  off.close();
+  let file = null;
+  for (let i = 0; i < 60 && !file; i++) { await sleep(700); file = findFile(14 * MB); }
+  const bad = file ? verifyPattern(file) : 'dosya yok';
+  record('S25 çözücü: servis API → direct_link, paylaşım sayfası açılmaz',
+    actions.includes('resolved') && !actions.includes('share-open') && hasJob && !bad,
+    `günlük=${actions} ruuİşi=${hasJob} ${bad ?? 'dosya bütün'}`);
+}
+
+// S26: İMZALI ADRESİN SÜRESİ DOLDU → OTOMATİK YENİLEME
+// `direct_link` imzalıdır ve kısayaşar (WeTransfer'de JWT ~600 sn). Ruu dosyayı
+// dakikalarca çeker; yavaş hatta imza ÖLÜR ve sunucu 403 dönmeye başlar. Bunu
+// söylemeden bırakmak "hızlandırdık" demenin yalan hâli olurdu.
+// Fixture: API'nin 1. cevabı probe'dan sonra 403 veren ÖLÜ bir link, 2. cevabı
+// sağlam link. Doğru davranış = iş hataya düşünce paylaşım adresini yeniden
+// çöz, motora `renew` gönder, diskteki veriden DEVAM et.
+{
+  const share = `http://localhost:${serverPort}/wt/ren9/hash9`;
+  await evalIn(panel, `chrome.storage.local.set({takeoverLog:[]}); 'temiz'`);
+  await sleep(300);
+  await evalIn(panel,
+    `chrome.runtime.sendMessage({target:'sw',type:'share-fetch',url:${JSON.stringify(share)}}); 'sent'`);
+  let actions = '[]';
+  const dN = Date.now() + 45_000;
+  while (Date.now() < dN) {
+    await sleep(700);
+    actions = await evalIn(panel,
+      `chrome.storage.local.get({takeoverLog:[]}).then(s=>JSON.stringify(s.takeoverLog.map(e=>e.action)))`);
+    if (actions.includes('renewed') || actions.includes('renew-failed')) break;
+  }
+  const off = await pageCdp('offscreen.html');
+  let state = '';
+  const dS = Date.now() + 60_000;
+  while (Date.now() < dS) {
+    await sleep(700);
+    state = String(await evalIn(off,
+      `(()=>{const j=[...__ruu.jobs.values()].find(x=>x.url.includes('q=ren9'));` +
+      `return j? j.state : 'yok'})()`));
+    if (state === 'done' || state === 'yok') break;
+  }
+  off.close();
+  let file = null;
+  for (let i = 0; i < 40 && !file; i++) { await sleep(700); file = findFile(9 * MB); }
+  const bad = file ? verifyPattern(file) : 'dosya yok';
+  record('S26 süresi dolan imzalı adres otomatik yenilenir',
+    actions.includes('renewed') && !bad,
+    `günlük=${actions} durum=${state} ${bad ?? 'dosya bütün'}`);
+}
+
+// S27: POST İLE DOĞAN İNDİRME — YÖNLENDİREN SAYFADAN KURTARMA
+// Gerçek WeTransfer hatasının birebir taklidi: sayfa indirmeyi form POST ile
+// doğuruyor, aynı adrese GET 404 veriyor. v0.6.4 burada (doğru olarak) kenara
+// çekiliyordu — dosya iniyordu ama TARAYICI ile, hızlandırmasız.
+// Artık `referrer` tanınan bir servisse API'den yeni adres alınıyor; SIRA
+// kritik: adres alınır → ön-uçuştan geçer → ANCAK ondan sonra Chrome'un
+// indirmesi iptal edilir. Kanıt: günlükte 'rescued' ve Ruu'da gerçek bir iş.
+{
+  const page = `http://localhost:${serverPort}/wt/ref16/hash16?post=1`;
+  await evalIn(panel, `chrome.storage.local.set({takeoverLog:[]}); 'temiz'`);
+  await sleep(300);
+  const tab = await browser.call('Target.createTarget', { url: page });
+  let actions = '[]';
+  const dP = Date.now() + 40_000;
+  while (Date.now() < dP) {
+    await sleep(700);
+    actions = await evalIn(panel,
+      `chrome.storage.local.get({takeoverLog:[]}).then(s=>JSON.stringify(s.takeoverLog.map(e=>e.action)))`);
+    if (actions.includes('rescued') || actions.includes('unfetchable')) break;
+  }
+  const off = await pageCdp('offscreen.html');
+  const hasJob = Boolean(await evalIn(off,
+    `[...__ruu.jobs.values()].some(x=>x.url.includes('q=ref16'))`));
+  off.close();
+  let file = null;
+  for (let i = 0; i < 50 && !file; i++) { await sleep(700); file = findFile(16 * MB); }
+  const bad = file ? verifyPattern(file) : 'dosya yok';
+  await browser.call('Target.closeTarget', { targetId: tab.targetId }).catch(() => {});
+  record('S27 POST ile doğan indirme yönlendirenden kurtarılır',
+    actions.includes('rescued') && hasJob && !bad,
+    `günlük=${actions} ruuİşi=${hasJob} ${bad ?? 'dosya bütün'}`);
+}
+
 // S13: HAYALET İNDİRME — probe uçarken iptal edilen iş DİRİLMEMELİ.
 // Denetim bulgusu 2: probe abort edilmiyordu ve start() await'ten sonra
 // kontrolsüz devam edip silinmiş dosyayı yeniden yaratıyordu.
